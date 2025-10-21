@@ -548,10 +548,41 @@ M  END
           onNew={() => {}}
           onOpen={() => {}}
           onSave={() => {}}
+          onSaveAs={() => {}}
+          onImport={() => {}}
+          onExport={() => {}}
+          onPrint={() => {}}
+          onExit={() => {}}
           onUndo={() => {}}
           onRedo={() => {}}
+          onCut={() => {}}
+          onCopy={() => {}}
+          onPaste={() => {}}
           onClear={handleClear}
+          onFind={() => {}}
+          onSelectAll={() => {}}
+          onZoomIn={() => {}}
+          onZoomOut={() => {}}
+          onFullscreen={() => {}}
+          onToggleSidebar={() => {}}
+          onToggleTheme={() => {}}
+          onToggleVisibility={() => {}}
+          onBatchImport={() => {}}
+          onBatchExport={() => {}}
+          onNameToStructure={() => {}}
+          onAdvancedExport={() => {}}
+          onReactionTemplates={() => {}}
+          on3DViewer={() => {}}
+          onNMRAnalyzer={() => {}}
+          onAIIntegration={() => {}}
+          onAdvancedAnalytics={() => {}}
           onSearchByName={handleSearchByName}
+          onHelp={() => {}}
+          onAbout={() => {}}
+          onShortcuts={() => {}}
+          onBugReport={() => {}}
+          onCheckUpdates={() => {}}
+          onFeedback={() => {}}
           activeView={activeView}
           onViewChange={setActiveView}
         />

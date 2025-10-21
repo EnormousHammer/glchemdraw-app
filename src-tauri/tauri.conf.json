@@ -45,7 +45,7 @@
     "copyright": "Copyright © 2025 GlChemTec. All rights reserved.",
     "shortDescription": "Chemistry structure drawing and NMR spectroscopy analysis",
     "longDescription": "GlChemDraw is a professional desktop application for drawing chemical structures and analyzing NMR spectroscopy data. Features molecular drawing tools, PubChem integration, NMR data visualization, peak integration, and advanced spectroscopy analysis capabilities.",
-    "category": "Science",
+    "category": "DeveloperTool",
     "windows": {
       "wix": {
         "language": "en-US"
@@ -61,6 +61,24 @@
         "sidebarImage": null,
         "installerHooks": null,
         "compression": "lzma"
+      },
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com"
+    },
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": null,
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "appimage": {
+        "bundleMediaFramework": false
       }
     }
   }

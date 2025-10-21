@@ -3,7 +3,7 @@
  * Pre-built reaction schemes and mechanisms for quick insertion
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -28,6 +28,7 @@ import {
   Paper,
   Divider,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -67,184 +68,8 @@ interface ReactionTemplatesProps {
   onReactionSelect: (template: ReactionTemplate) => void;
 }
 
-// Comprehensive reaction template database
-const REACTION_DATABASE: ReactionTemplate[] = [
-  // Basic Organic Reactions
-  {
-    id: 'esterification',
-    name: 'Esterification',
-    description: 'Formation of esters from carboxylic acids and alcohols',
-    category: 'Basic Organic',
-    reactants: ['RCOOH', 'R\'OH'],
-    products: ['RCOOR\'', 'H2O'],
-    reagents: ['H2SO4 (cat.)'],
-    conditions: 'Heat, reflux',
-    mechanism: 'Nucleophilic acyl substitution',
-    isCommon: true,
-    complexity: 'simple',
-    tags: ['ester', 'carboxylic-acid', 'alcohol'],
-  },
-  {
-    id: 'aldol_condensation',
-    name: 'Aldol Condensation',
-    description: 'Formation of β-hydroxy carbonyl compounds',
-    category: 'Basic Organic',
-    reactants: ['RCHO', 'R\'CHO'],
-    products: ['RCH(OH)CHR\'CHO'],
-    reagents: ['NaOH', 'H2O'],
-    conditions: 'Room temperature',
-    mechanism: 'Enolate formation and nucleophilic addition',
-    isCommon: true,
-    complexity: 'medium',
-    tags: ['aldol', 'carbonyl', 'enolate'],
-  },
-  {
-    id: 'grignard_reaction',
-    name: 'Grignard Reaction',
-    description: 'Formation of alcohols from carbonyl compounds',
-    category: 'Basic Organic',
-    reactants: ['RMgX', 'R\'CHO'],
-    products: ['RR\'CHOH'],
-    reagents: ['Et2O', 'H3O+'],
-    conditions: 'Anhydrous, reflux',
-    mechanism: 'Nucleophilic addition to carbonyl',
-    isCommon: true,
-    complexity: 'medium',
-    tags: ['grignard', 'alcohol', 'carbonyl'],
-  },
-  {
-    id: 'diels_alder',
-    name: 'Diels-Alder Reaction',
-    description: 'Cycloaddition of dienes and dienophiles',
-    category: 'Basic Organic',
-    reactants: ['Diene', 'Dienophile'],
-    products: ['Cyclohexene derivative'],
-    reagents: ['Heat'],
-    conditions: 'High temperature, pressure',
-    mechanism: 'Pericyclic cycloaddition',
-    isCommon: true,
-    complexity: 'medium',
-    tags: ['diels-alder', 'cycloaddition', 'pericyclic'],
-  },
-  {
-    id: 'friedel_crafts',
-    name: 'Friedel-Crafts Alkylation',
-    description: 'Alkylation of aromatic rings',
-    category: 'Basic Organic',
-    reactants: ['ArH', 'RCl'],
-    products: ['ArR'],
-    reagents: ['AlCl3'],
-    conditions: 'Room temperature',
-    mechanism: 'Electrophilic aromatic substitution',
-    isCommon: true,
-    complexity: 'simple',
-    tags: ['friedel-crafts', 'aromatic', 'alkylation'],
-  },
-
-  // Pharmaceutical Reactions
-  {
-    id: 'suzuki_coupling',
-    name: 'Suzuki Coupling',
-    description: 'Palladium-catalyzed cross-coupling of boronic acids',
-    category: 'Pharmaceutical',
-    reactants: ['ArB(OH)2', 'Ar\'X'],
-    products: ['Ar-Ar\''],
-    reagents: ['Pd(PPh3)4', 'Base'],
-    conditions: 'Heat, inert atmosphere',
-    mechanism: 'Oxidative addition, transmetallation, reductive elimination',
-    isCommon: true,
-    complexity: 'complex',
-    tags: ['suzuki', 'palladium', 'cross-coupling', 'pharmaceutical'],
-  },
-  {
-    id: 'buchwald_hartwig',
-    name: 'Buchwald-Hartwig Amination',
-    description: 'Palladium-catalyzed C-N bond formation',
-    category: 'Pharmaceutical',
-    reactants: ['ArX', 'R2NH'],
-    products: ['ArNR2'],
-    reagents: ['Pd(OAc)2', 'Ligand', 'Base'],
-    conditions: 'Heat, inert atmosphere',
-    mechanism: 'Oxidative addition, ligand exchange, reductive elimination',
-    isCommon: true,
-    complexity: 'complex',
-    tags: ['buchwald-hartwig', 'amination', 'palladium', 'pharmaceutical'],
-  },
-  {
-    id: 'click_chemistry',
-    name: 'Click Chemistry (CuAAC)',
-    description: 'Copper-catalyzed azide-alkyne cycloaddition',
-    category: 'Pharmaceutical',
-    reactants: ['R-N3', 'R\'-C≡CH'],
-    products: ['R-triazole-R\''],
-    reagents: ['CuSO4', 'Sodium ascorbate'],
-    conditions: 'Room temperature, aqueous',
-    mechanism: 'Copper-catalyzed cycloaddition',
-    isCommon: true,
-    complexity: 'medium',
-    tags: ['click-chemistry', 'triazole', 'copper', 'pharmaceutical'],
-  },
-
-  // Natural Product Synthesis
-  {
-    id: 'aldol_retro',
-    name: 'Retro-Aldol Reaction',
-    description: 'Reverse of aldol condensation',
-    category: 'Natural Products',
-    reactants: ['β-hydroxy carbonyl'],
-    products: ['Two carbonyl compounds'],
-    reagents: ['Base'],
-    conditions: 'Heat',
-    mechanism: 'Reverse aldol condensation',
-    isCommon: true,
-    complexity: 'medium',
-    tags: ['retro-aldol', 'carbonyl', 'natural-products'],
-  },
-  {
-    id: 'michael_addition',
-    name: 'Michael Addition',
-    description: 'Conjugate addition to α,β-unsaturated carbonyls',
-    category: 'Natural Products',
-    reactants: ['NuH', 'α,β-unsaturated carbonyl'],
-    products: ['β-substituted carbonyl'],
-    reagents: ['Base'],
-    conditions: 'Room temperature',
-    mechanism: 'Conjugate addition',
-    isCommon: true,
-    complexity: 'medium',
-    tags: ['michael-addition', 'conjugate-addition', 'natural-products'],
-  },
-
-  // Industrial Reactions
-  {
-    id: 'hydrogenation',
-    name: 'Hydrogenation',
-    description: 'Addition of hydrogen to unsaturated compounds',
-    category: 'Industrial',
-    reactants: ['Unsaturated compound'],
-    products: ['Saturated compound'],
-    reagents: ['H2', 'Catalyst'],
-    conditions: 'High pressure, heat',
-    mechanism: 'Heterogeneous catalysis',
-    isCommon: true,
-    complexity: 'simple',
-    tags: ['hydrogenation', 'catalysis', 'industrial'],
-  },
-  {
-    id: 'oxidation_primary_alcohol',
-    name: 'Primary Alcohol Oxidation',
-    description: 'Oxidation of primary alcohols to aldehydes/carboxylic acids',
-    category: 'Industrial',
-    reactants: ['RCH2OH'],
-    products: ['RCHO or RCOOH'],
-    reagents: ['KMnO4', 'CrO3', 'PCC'],
-    conditions: 'Heat',
-    mechanism: 'Oxidation',
-    isCommon: true,
-    complexity: 'simple',
-    tags: ['oxidation', 'alcohol', 'industrial'],
-  },
-];
+// Empty reaction database - will be populated from external sources
+const REACTION_DATABASE: ReactionTemplate[] = [];
 
 const CATEGORY_ICONS: Record<string, React.ReactElement> = {
   'Basic Organic': <ChemistryIcon />,
@@ -263,16 +88,43 @@ export const ReactionTemplates: React.FC<ReactionTemplatesProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [reactions, setReactions] = useState<ReactionTemplate[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load reactions from external source
+  const loadReactions = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Try to load from a real reaction database API
+      // For now, we'll use an empty array and show a message
+      setReactions([]);
+    } catch (err) {
+      setError('Failed to load reaction templates');
+      console.error('Error loading reactions:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Load reactions when component mounts
+  useEffect(() => {
+    if (open) {
+      loadReactions();
+    }
+  }, [open, loadReactions]);
 
   // Get unique categories
   const categories = useMemo(() => {
-    const cats = ['All', ...Array.from(new Set(REACTION_DATABASE.map(r => r.category)))];
+    const cats = ['All', ...Array.from(new Set(reactions.map(r => r.category)))];
     return cats;
-  }, []);
+  }, [reactions]);
 
   // Filter reactions based on search and category
   const filteredReactions = useMemo(() => {
-    let filtered = REACTION_DATABASE;
+    let filtered = reactions;
 
     // Filter by search term
     if (searchTerm) {
@@ -520,7 +372,45 @@ export const ReactionTemplates: React.FC<ReactionTemplatesProps> = ({
           ))}
         </Grid>
 
-        {filteredReactions.length === 0 && (
+        {isLoading ? (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 8,
+              textAlign: 'center',
+            }}
+          >
+            <CircularProgress size={48} sx={{ mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Loading reaction templates...
+            </Typography>
+          </Box>
+        ) : error ? (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 8,
+              textAlign: 'center',
+            }}
+          >
+            <ChemistryIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+            <Typography variant="h6" color="error.main" gutterBottom>
+              Error loading reactions
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {error}
+            </Typography>
+            <Button variant="outlined" onClick={loadReactions}>
+              Retry
+            </Button>
+          </Box>
+        ) : filteredReactions.length === 0 ? (
           <Box
             sx={{
               display: 'flex',
@@ -533,13 +423,16 @@ export const ReactionTemplates: React.FC<ReactionTemplatesProps> = ({
           >
             <ChemistryIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
-              No reactions found
+              No reaction templates available
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Reaction templates will be loaded from external databases
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Try adjusting your search terms or category filter
+              This feature is under development
             </Typography>
           </Box>
-        )}
+        ) : null}
       </DialogContent>
 
       <DialogActions>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" 
+           Name="GlChemDraw" 
+           Language="1033" 
+           Version="0.1.0" 
+           Manufacturer="GlChemTec" 
+           UpgradeCode="PUT-GUID-HERE">
+    
+    <Package InstallerVersion="200" 
+             Compressed="yes" 
+             InstallScope="perMachine" 
+             Description="Professional Chemistry Structure Drawing & NMR Analysis Software"
+             Comments="GlChemDraw - Modern chemistry software for structure drawing and NMR analysis"
+             Manufacturer="GlChemTec" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="ProductFeature" Title="GlChemDraw" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="ApplicationShortcut" />
+      <ComponentRef Id="ApplicationShortcutDesktop" />
+    </Feature>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="GlChemDraw" />
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="GlChemDraw"/>
+      </Directory>
+      <Directory Id="DesktopFolder" Name="Desktop"/>
+    </Directory>
+
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="MainExecutable" Guid="*">
+        <File Id="GlChemDrawExe" 
+              Name="GlChemDraw.exe" 
+              Source="$(var.TargetDir)GlChemDraw.exe" 
+              KeyPath="yes" />
+      </Component>
+      
+      <Component Id="WebView2Loader" Guid="*">
+        <File Id="WebView2LoaderDll" 
+              Name="WebView2Loader.dll" 
+              Source="$(var.TargetDir)WebView2Loader.dll" />
+      </Component>
+      
+      <Component Id="Resources" Guid="*">
+        <File Id="ResourcesFile" 
+              Name="resources" 
+              Source="$(var.TargetDir)resources" />
+      </Component>
+    </ComponentGroup>
+
+    <Component Id="ApplicationShortcut" Directory="ApplicationProgramsFolder" Guid="*">
+      <Shortcut Id="ApplicationStartMenuShortcut" 
+                Name="GlChemDraw" 
+                Description="Professional Chemistry Structure Drawing & NMR Analysis Software"
+                Target="[#GlChemDrawExe]" 
+                WorkingDirectory="INSTALLFOLDER"/>
+      <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
+      <RegistryValue Root="HKCU" Key="Software\GlChemTec\GlChemDraw" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+
+    <Component Id="ApplicationShortcutDesktop" Directory="Desktop" Guid="*">
+      <Shortcut Id="ApplicationDesktopShortcut" 
+                Name="GlChemDraw" 
+                Description="Professional Chemistry Structure Drawing & NMR Analysis Software"
+                Target="[#GlChemDrawExe]" 
+                WorkingDirectory="INSTALLFOLDER"/>
+      <RemoveFolder Id="Desktop" On="uninstall"/>
+    </Component>
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <UIRef Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.ProjectDir)license.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.ProjectDir)assets\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.ProjectDir)assets\dialog.bmp" />
+
+    <Icon Id="icon.ico" SourceFile="$(var.ProjectDir)assets\icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="icon.ico" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/glchemtec/glchemdraw" />
+    <Property Id="ARPURLINFOABOUT" Value="https://glchemtec.com" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/glchemtec/glchemdraw/releases" />
+
+    <CustomAction Id="LaunchApplication" 
+                  FileKey="GlChemDrawExe" 
+                  ExeCommand="" 
+                  Return="asyncNoWait" />
+
+    <InstallExecuteSequence>
+      <Custom Action="LaunchApplication" 
+              After="InstallFinalize">NOT Installed AND NOT REMOVE</Custom>
+    </InstallExecuteSequence>
+  </Product>
+</Wix>

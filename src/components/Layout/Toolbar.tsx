@@ -30,43 +30,110 @@ import {
   Help as HelpIcon,
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
+import MenuSystem from './MenuSystem';
 
 interface AppToolbarProps {
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
+  onSaveAs: () => void;
+  onImport: () => void;
+  onExport: () => void;
+  onPrint: () => void;
+  onExit: () => void;
   onUndo: () => void;
   onRedo: () => void;
+  onCut: () => void;
+  onCopy: () => void;
+  onPaste: () => void;
   onClear: () => void;
+  onFind: () => void;
+  onSelectAll: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFullscreen: () => void;
+  onToggleSidebar: () => void;
+  onToggleTheme: () => void;
+  onToggleVisibility: () => void;
   onBatchImport?: () => void;
   onBatchExport?: () => void;
   onNameToStructure?: () => void;
   onAdvancedExport?: () => void;
+  onReactionTemplates?: () => void;
+  on3DViewer?: () => void;
+  onNMRAnalyzer?: () => void;
+  onAIIntegration?: () => void;
+  onAdvancedAnalytics?: () => void;
   onSearchByName?: (name: string) => void;
+  onHelp?: () => void;
+  onAbout?: () => void;
+  onShortcuts?: () => void;
+  onBugReport?: () => void;
+  onCheckUpdates?: () => void;
+  onFeedback?: () => void;
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
   activeView?: 'structure' | 'nmr';
   onViewChange?: (view: 'structure' | 'nmr') => void;
   rightContent?: React.ReactNode;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  canCut?: boolean;
+  canCopy?: boolean;
+  canPaste?: boolean;
+  canClear?: boolean;
 }
 
 const AppToolbar: React.FC<AppToolbarProps> = ({
   onNew,
   onOpen,
   onSave,
+  onSaveAs,
+  onImport,
+  onExport,
+  onPrint,
+  onExit,
   onUndo,
   onRedo,
+  onCut,
+  onCopy,
+  onPaste,
   onClear,
+  onFind,
+  onSelectAll,
+  onZoomIn,
+  onZoomOut,
+  onFullscreen,
+  onToggleSidebar,
+  onToggleTheme,
+  onToggleVisibility,
   onBatchImport,
   onBatchExport,
   onNameToStructure,
   onAdvancedExport,
+  onReactionTemplates,
+  on3DViewer,
+  onNMRAnalyzer,
+  onAIIntegration,
+  onAdvancedAnalytics,
   onSearchByName,
+  onHelp,
+  onAbout,
+  onShortcuts,
+  onBugReport,
+  onCheckUpdates,
+  onFeedback,
   darkMode,
   onToggleDarkMode,
   activeView,
   onViewChange,
   rightContent,
+  canUndo,
+  canRedo,
+  canCut,
+  canCopy,
+  canPaste,
+  canClear,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showShortcuts, setShowShortcuts] = React.useState(false);
@@ -205,6 +272,55 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
             Structure Drawing & NMR Analysis
           </Typography>
         </Box>
+
+        {/* Menu System */}
+        <MenuSystem
+          onNew={onNew}
+          onOpen={onOpen}
+          onSave={onSave}
+          onSaveAs={onSaveAs || (() => {})}
+          onImport={onImport || (() => {})}
+          onExport={onExport || (() => {})}
+          onPrint={onPrint || (() => {})}
+          onExit={onExit || (() => {})}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onCut={onCut || (() => {})}
+          onCopy={onCopy || (() => {})}
+          onPaste={onPaste || (() => {})}
+          onClear={onClear}
+          onFind={onFind || (() => {})}
+          onSelectAll={onSelectAll || (() => {})}
+          onZoomIn={onZoomIn || (() => {})}
+          onZoomOut={onZoomOut || (() => {})}
+          onFullscreen={onFullscreen || (() => {})}
+          onToggleSidebar={onToggleSidebar || (() => {})}
+          onToggleTheme={onToggleTheme || (() => {})}
+          onToggleVisibility={onToggleVisibility || (() => {})}
+          onNameToStructure={onNameToStructure || (() => {})}
+          onAdvancedExport={onAdvancedExport || (() => {})}
+          onBatchImport={onBatchImport || (() => {})}
+          onBatchExport={onBatchExport || (() => {})}
+          onReactionTemplates={onReactionTemplates || (() => {})}
+          on3DViewer={on3DViewer || (() => {})}
+          onNMRAnalyzer={onNMRAnalyzer || (() => {})}
+          onAIIntegration={onAIIntegration || (() => {})}
+          onAdvancedAnalytics={onAdvancedAnalytics || (() => {})}
+          onHelp={onHelp || (() => {})}
+          onAbout={onAbout || (() => {})}
+          onShortcuts={onShortcuts || (() => {})}
+          onBugReport={onBugReport || (() => {})}
+          onCheckUpdates={onCheckUpdates || (() => {})}
+          onFeedback={onFeedback || (() => {})}
+          darkMode={darkMode}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          canCut={canCut}
+          canCopy={canCopy}
+          canPaste={canPaste}
+          canClear={canClear}
+          activeView={activeView}
+        />
 
         {activeView === 'structure' && (
         <>

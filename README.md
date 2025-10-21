@@ -1,118 +1,56 @@
-# GlChemDraw - Enterprise Chemistry Drawing Application
+# GlChemDraw
 
-**Professional-grade desktop application for chemical structure drawing, analysis, and database integration**
+**Professional Chemistry Structure Drawing & NMR Analysis Software**
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
-![License](https://img.shields.io/badge/license-Enterprise-green)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+[![Build Status](https://github.com/glchemtec/glchemdraw/workflows/CI/badge.svg)](https://github.com/glchemtec/glchemdraw/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/glchemtec/glchemdraw/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/glchemtec/glchemdraw/releases)
 
-## Overview
+GlChemDraw is a modern, cross-platform desktop application for chemical structure drawing and NMR spectroscopy analysis. Built with React, TypeScript, and Tauri, it provides professional-grade tools for chemists, researchers, and students.
 
-GlChemDraw is an enterprise-level chemistry drawing application built with modern web technologies and packaged as a native desktop application using Tauri. It combines the power of professional chemical editors, comprehensive cheminformatics libraries, and offline-first architecture to provide a robust tool for chemists and researchers.
+## ✨ Features
 
-## Features
+### 🧪 Chemical Structure Drawing
+- **Interactive Molecular Editor**: Intuitive structure drawing with Ketcher integration
+- **Real-time Validation**: Automatic structure validation and error detection
+- **Multiple Formats**: Support for SMILES, MOL, SDF, and other chemical formats
+- **PubChem Integration**: Direct access to PubChem database for compound lookup
+- **3D Visualization**: Interactive 3D molecular viewer with conformer analysis
 
-### ✨ Core Capabilities
+### 📊 NMR Spectroscopy Analysis
+- **Advanced NMR Viewer**: Professional NMR spectrum visualization with Nmrium
+- **Peak Integration**: Automated and manual peak integration tools
+- **Multi-dimensional NMR**: Support for 1D, 2D, and complex NMR experiments
+- **Data Import/Export**: Support for various NMR data formats
+- **Spectral Analysis**: Advanced tools for spectrum interpretation
 
-- **Chemical Structure Drawing**: Professional-grade 2D molecular editor powered by Ketcher
-- **PubChem Integration**: Real-time compound database search with intelligent caching
-- **Offline Support**: Full functionality without internet connection using IndexedDB
-- **NMR Visualization**: Integrated NMR spectrum viewer using NMRium
-- **Property Calculation**: Real-time molecular property and descriptor calculations
-- **File Operations**: Native MOL/SDF file support with import/export
-
-### 🧪 Chemical Features
-
-- Structure validation with RDKit WASM
-- Molecular property calculations (MW, LogP, TPSA, etc.)
-- Lipinski's Rule of Five evaluation
-- SMILES/InChI generation
-- 2D coordinate generation
-- Substructure matching
+### 🔬 Advanced Features
+- **Batch Processing**: Import/export multiple structures simultaneously
+- **Reaction Editor**: Create and edit chemical reaction schemes
+- **Property Calculation**: Molecular descriptors and physical properties
+- **Safety Data**: Integrated safety information and hazard classification
+- **Export Options**: High-quality image and data export capabilities
 
 ### 🎨 User Experience
+- **Modern UI**: Clean, intuitive interface built with Material-UI
+- **Dark/Light Themes**: Multiple theme options with accessibility support
+- **Keyboard Shortcuts**: Comprehensive keyboard navigation
+- **Responsive Design**: Optimized for different screen sizes
+- **Multi-language Support**: Internationalization ready
 
-- Modern Material-UI interface
-- Dark/Light theme support
-- Split-panel layout for multitasking
-- Responsive design
-- Professional chemistry-focused styling
-
-### 🔧 Technical Excellence
-
-- **Security**: CSP headers, input validation, secure file operations
-- **Performance**: Code splitting, lazy loading, request throttling
-- **Offline-First**: IndexedDB caching with 7-day expiration
-- **Cross-Platform**: Windows, macOS, and Linux support
-
-## Technology Stack
-
-### Frontend
-- **Framework**: React 18 with TypeScript
-- **UI Library**: Material-UI v7
-- **Build Tool**: Vite 7
-- **State Management**: React Hooks
-
-### Chemistry Libraries
-- **Ketcher**: Chemical structure editor (Apache 2.0)
-- **RDKit WASM**: Cheminformatics toolkit (BSD 3-Clause)
-- **OpenChemLib**: Lightweight chemistry utilities (BSD 3-Clause)
-- **NMRium**: NMR spectrum visualization (MIT)
-
-### Backend
-- **Runtime**: Tauri 2.0 (Rust + WebView)
-- **File I/O**: Native Rust commands
-- **HTTP Client**: Axios with request throttling
-
-### Data & Storage
-- **Offline Cache**: IndexedDB via idb library
-- **API**: PubChem PUG-REST (5 req/s throttling)
-
-## Project Structure
-
-```
-glchemdraw/
-├── src/                          # Frontend source
-│   ├── components/              # React components
-│   │   ├── ChemCanvas/         # Ketcher integration
-│   │   ├── PubChemPanel/       # Compound search
-│   │   ├── NMRViewer/          # NMR visualization
-│   │   ├── PropertyPanel/      # Property calculator
-│   │   └── Layout/             # App layout
-│   ├── lib/                     # Core libraries
-│   │   ├── chemistry/          # RDKit & OpenChemLib
-│   │   ├── pubchem/            # API client & cache
-│   │   ├── storage/            # IndexedDB layer
-│   │   └── tauri/              # File operations
-│   ├── hooks/                   # Custom React hooks
-│   ├── types/                   # TypeScript definitions
-│   ├── theme.ts                 # MUI theme config
-│   └── App.tsx                  # Main app component
-├── src-tauri/                   # Backend source
-│   ├── src/                     # Rust code
-│   │   ├── main.rs             # Entry point
-│   │   └── lib.rs              # Commands & logic
-│   ├── Cargo.toml              # Rust dependencies
-│   └── tauri.conf.json         # App configuration
-├── public/                      # Static assets
-├── package.json                 # Node dependencies
-├── tsconfig.json               # TypeScript config
-└── vite.config.ts              # Build configuration
-```
-
-## Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-
-- **Node.js**: v20.15.1 or higher
-- **Rust**: 1.89.0 or higher (with Cargo)
-- **npm**: 10.7.0 or higher
+- Node.js 18+ and npm
+- Rust 1.70+ (for Tauri)
+- Git
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/glchemtec/glchemdraw.git
    cd glchemdraw
    ```
 
@@ -123,173 +61,124 @@ glchemdraw/
 
 3. **Run in development mode**
    ```bash
-   npm run tauri dev
+   npm run dev
    ```
 
 4. **Build for production**
    ```bash
+   npm run build
    npm run tauri build
    ```
 
-## Development
+### Pre-built Binaries
+Download the latest release from the [Releases page](https://github.com/glchemtec/glchemdraw/releases).
+
+## 📖 Documentation
+
+- [User Manual](docs/USER_MANUAL.md) - Complete user guide
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Development setup and contribution
+- [API Documentation](docs/API.md) - API reference and examples
+- [Testing Guide](TESTING.md) - Testing strategies and guidelines
+- [Code Signing](CODE_SIGNING.md) - Code signing and security
+
+## 🛠️ Development
+
+### Project Structure
+```
+glchemdraw/
+├── src/                    # Frontend source code
+│   ├── components/         # React components
+│   ├── lib/               # Utility libraries
+│   ├── hooks/             # Custom React hooks
+│   └── test/              # Test files
+├── src-tauri/             # Tauri backend
+├── docs/                  # Documentation
+└── dist/                  # Build output
+```
 
 ### Available Scripts
-
-- `npm run dev` - Start Vite dev server
+- `npm run dev` - Start development server
 - `npm run build` - Build frontend
-- `npm run tauri dev` - Run Tauri app in dev mode
-- `npm run tauri build` - Build production executable
-- `npm run preview` - Preview production build
+- `npm run tauri dev` - Run Tauri development
+- `npm run tauri build` - Build desktop application
+- `npm run test` - Run unit tests
+- `npm run test:e2e` - Run end-to-end tests
+- `npm run test:coverage` - Generate test coverage report
 
-### Environment Setup
+### Technology Stack
+- **Frontend**: React 18, TypeScript, Material-UI
+- **Backend**: Tauri (Rust)
+- **Chemistry**: RDKit, Ketcher, Nmrium
+- **Testing**: Vitest, Playwright, Testing Library
+- **Build**: Vite, Tauri CLI
 
-The project uses TypeScript path aliases for cleaner imports:
+## 🤝 Contributing
 
-```typescript
-import ChemCanvas from '@components/ChemCanvas';
-import * as rdkit from '@lib/chemistry/rdkit';
-import { useKetcher } from '@hooks/useKetcher';
-```
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-### Configuration
+### Development Workflow
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
 
-Key configuration files:
+### Code Standards
+- TypeScript for type safety
+- ESLint and Prettier for code formatting
+- Conventional commits for commit messages
+- Comprehensive test coverage
 
-- `tauri.conf.json` - Window size, permissions, CSP headers
-- `vite.config.ts` - Build settings, code splitting
-- `tsconfig.json` - TypeScript & path aliases
-- `.npmrc` - Legacy peer deps for compatibility
+## 📋 Roadmap
 
-## Architecture
+### Phase 2 (Current)
+- ✅ Comprehensive toolbar and menu system
+- ✅ Batch import/export functionality
+- ✅ 3D structure viewer with PubChem integration
+- ✅ Reaction editor with validation
+- ✅ Advanced testing suite
 
-### Component Hierarchy
+### Phase 3 (Planned)
+- 🔄 Code signing and security
+- 🔄 MSI installer configuration
+- 🔄 Auto-update system
+- 🔄 Comprehensive documentation
+- 🔄 Performance optimizations
 
-```
-App (Theme Provider)
-└── AppLayout
-    ├── ChemCanvas (Ketcher)
-    ├── PubChemPanel
-    │   └── Compound Info Display
-    └── NMRViewer (NMRium)
-```
+### Future Features
+- AI-powered structure prediction
+- Collaborative editing
+- Cloud synchronization
+- Plugin system
+- Mobile companion app
 
-### Data Flow
+## 🐛 Bug Reports
 
-1. **Structure Drawing**: Ketcher → RDKit validation → Property calculation
-2. **PubChem Search**: Input → API throttler → Cache check → API request → IndexedDB
-3. **File Operations**: Dialog → Tauri command → Rust → File system
+Found a bug? Please report it on our [Issues page](https://github.com/glchemtec/glchemdraw/issues).
 
-### Security
+## 📄 License
 
-- **CSP Headers**: Restricts resource loading
-- **Input Validation**: Sanitizes SMILES, file paths
-- **File Permissions**: Scoped to specific directories
-- **API Throttling**: Prevents rate limiting
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## API Integration
+## 🙏 Acknowledgments
 
-### PubChem
+- [RDKit](https://www.rdkit.org/) - Chemical informatics toolkit
+- [Ketcher](https://lifescience.opensource.epam.com/ketcher/) - Chemical structure editor
+- [Nmrium](https://www.nmrium.org/) - NMR spectrum viewer
+- [PubChem](https://pubchem.ncbi.nlm.nih.gov/) - Chemical database
+- [Tauri](https://tauri.app/) - Desktop app framework
+- [Material-UI](https://mui.com/) - React component library
 
-```typescript
-import * as pubchem from '@lib/pubchem/cache';
+## 📞 Support
 
-// Search with automatic caching
-const result = await pubchem.searchCompoundByName('aspirin');
-
-// Offline mode
-pubchem.setOfflineMode(true);
-
-// Get cache stats
-const stats = await pubchem.getCacheStats();
-```
-
-### RDKit
-
-```typescript
-import * as rdkit from '@lib/chemistry/rdkit';
-
-// Initialize (only once)
-await rdkit.initRDKit();
-
-// Validate structure
-const validation = await rdkit.validateStructure('CCO', 'smiles');
-
-// Calculate properties
-const props = await rdkit.calculateProperties('CCO');
-```
-
-## Performance
-
-- **Initial Load**: < 3 seconds
-- **Structure Rendering**: < 100ms
-- **PubChem Search**: < 2 seconds (cached: < 50ms)
-- **Memory Usage**: < 500MB typical
-- **Bundle Size**: ~8MB (incl. RDKit WASM)
-
-## Offline Capabilities
-
-The application fully supports offline operation:
-
-- ✅ Structure drawing and editing
-- ✅ Property calculations (RDKit/OCL)
-- ✅ Cached PubChem results
-- ✅ File import/export
-- ❌ New PubChem searches (requires internet)
-- ❌ 2D structure images (requires internet)
-
-## Known Limitations
-
-1. **NMRium**: Requires data input (no auto-generation)
-2. **PubChem Images**: Only available online
-3. **3D Structures**: Not yet implemented
-4. **Batch Processing**: UI pending
-
-## Roadmap
-
-### Phase 2 (Future)
-- [ ] Toolbar and menu system
-- [ ] Batch import/export
-- [ ] 3D structure viewer
-- [ ] Reaction editor
-- [ ] Template library
-
-### Phase 3 (Future)
-- [ ] Automated testing suite
-- [ ] Code signing
-- [ ] MSI installer
-- [ ] Auto-update system
-- [ ] Comprehensive documentation
-
-## Contributing
-
-This is an enterprise application. For contribution guidelines, please contact the development team.
-
-## License
-
-Enterprise License - All rights reserved.
-
-## Credits
-
-### Open Source Libraries
-- **Ketcher** - EPAM Systems (Apache 2.0)
-- **RDKit** - RDKit Contributors (BSD 3-Clause)
-- **OpenChemLib** - Actelion Pharmaceuticals (BSD 3-Clause)
-- **NMRium** - Zakodium (MIT)
-- **Material-UI** - MUI Team (MIT)
-- **Tauri** - Tauri Programme (MIT/Apache 2.0)
-
-### Data Sources
-- **PubChem** - NCBI (Public Domain)
-
-## Support
-
-For technical support or inquiries:
-- **Email**: support@glchemtec.com
-- **Documentation**: [Coming Soon]
-- **Issue Tracker**: [Internal]
+- 📧 Email: support@glchemtec.com
+- 💬 Discussions: [GitHub Discussions](https://github.com/glchemtec/glchemdraw/discussions)
+- 🐛 Issues: [GitHub Issues](https://github.com/glchemtec/glchemdraw/issues)
+- 📖 Documentation: [Wiki](https://github.com/glchemtec/glchemdraw/wiki)
 
 ---
 
-**Built with ❤️ for the chemistry community**
+**Made with ❤️ by the GlChemTec Team**
 
-Version 0.1.0 | © 2025 GlChemTec | Enterprise Chemistry Solutions
+*Professional Chemistry Software for the Modern Era*

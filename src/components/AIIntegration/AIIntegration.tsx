@@ -123,63 +123,16 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // Mock AI analysis results
-      const mockAnalysis: AIAnalysis = {
-        iupacName: '2-acetoxybenzoic acid',
-        commonName: 'Aspirin',
-        predictedProperties: {
-          logP: 1.19,
-          tpsa: 63.6,
-          mw: 180.16,
-          hbd: 1,
-          hba: 4,
-          rotatableBonds: 3,
-          aromaticRings: 1,
-        },
-        drugLikeness: {
-          lipinskiViolations: 0,
-          veberViolations: 0,
-          overallScore: 85,
-          recommendations: [
-            'Good oral bioavailability potential',
-            'Consider improving solubility for better absorption',
-            'Molecular weight is within acceptable range'
-          ]
-        },
-        reactionPredictions: [
-          {
-            reaction: 'Hydrolysis',
-            probability: 0.85,
-            conditions: 'Aqueous acid, heat',
-            products: ['Salicylic acid', 'Acetic acid']
-          },
-          {
-            reaction: 'Esterification',
-            probability: 0.72,
-            conditions: 'H2SO4, heat',
-            products: ['Methyl aspirin']
-          },
-          {
-            reaction: 'Aromatic substitution',
-            probability: 0.45,
-            conditions: 'HNO3, H2SO4',
-            products: ['Nitro aspirin']
-          }
-        ],
-        safetyWarnings: [
-          'May cause gastrointestinal irritation',
-          'Avoid in patients with bleeding disorders',
-          'Monitor for allergic reactions'
-        ],
-        synthesisSuggestions: [
-          'Start with salicylic acid and acetic anhydride',
-          'Use sulfuric acid as catalyst',
-            'Purify by recrystallization from ethanol',
-            'Consider green chemistry alternatives'
-        ]
-      };
-
-      setAnalysis(mockAnalysis);
+      // TODO: Implement real AI analysis
+      // This would integrate with actual AI services for:
+      // - IUPAC naming
+      // - Property prediction
+      // - Drug-likeness analysis
+      // - Reaction prediction
+      // - Safety analysis
+      // - Synthesis suggestions
+      
+      setError('AI analysis not yet implemented - requires integration with AI services');
       
     } catch (err) {
       const errorMessage = (err as Error).message || 'AI analysis failed';
@@ -203,15 +156,10 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
     setError(null);
 
     try {
-      // Simulate AI name generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // TODO: Implement real AI name generation
+      // This would integrate with AI services for structure-to-name conversion
       
-      const mockName = '2-acetoxybenzoic acid (Aspirin)';
-      const mockSmiles = smiles || 'CC(=O)OC1=CC=CC=C1C(=O)O';
-      
-      if (onStructureGenerated) {
-        onStructureGenerated(mockSmiles, mockName);
-      }
+      setError('AI name generation not yet implemented - requires integration with AI services');
       
     } catch (err) {
       const errorMessage = (err as Error).message || 'Name generation failed';
@@ -231,11 +179,10 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
     setError(null);
 
     try {
-      // Simulate AI reaction prediction
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // TODO: Implement real AI reaction prediction
+      // This would integrate with AI services for reaction prediction
       
-      // Mock reaction predictions would be generated here
-      console.log('AI reaction prediction completed');
+      setError('AI reaction prediction not yet implemented - requires integration with AI services');
       
     } catch (err) {
       const errorMessage = (err as Error).message || 'Reaction prediction failed';

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GlChemDraw",
+  "version": "0.1.0",
+  "identifier": "com.glchemtec.glchemdraw",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "GlChemDraw - Chemistry Structure & NMR Analysis",
+        "width": 1600,
+        "height": 1000,
+        "minWidth": 1280,
+        "minHeight": 800,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "alwaysOnTop": false,
+        "center": true,
+        "transparent": false,
+        "skipTaskbar": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pubchem.ncbi.nlm.nih.gov; connect-src 'self' https://pubchem.ncbi.nlm.nih.gov; font-src 'self' data:; worker-src 'self' blob:;"
+    },
+    "withGlobalTauri": true
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "GlChemTec",
+    "copyright": "Copyright © 2025 GlChemTec. All rights reserved.",
+    "shortDescription": "Chemistry structure drawing and NMR spectroscopy analysis",
+    "longDescription": "GlChemDraw is a professional desktop application for drawing chemical structures and analyzing NMR spectroscopy data. Features molecular drawing tools, PubChem integration, NMR data visualization, peak integration, and advanced spectroscopy analysis capabilities.",
+    "category": "Science",
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "perMachine",
+        "displayLanguageSelector": false,
+        "languages": ["English"],
+        "customLanguageFiles": {},
+        "template": null,
+        "headerImage": null,
+        "sidebarImage": null,
+        "installerHooks": null,
+        "compression": "lzma"
+      }
+    }
+  }
+}

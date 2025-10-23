@@ -4,9 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
   create-release:
@@ -57,7 +55,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install Rust
@@ -77,27 +75,15 @@ jobs:
       - name: Build Tauri app
         run: npm run tauri build
 
-      - name: Upload Windows files
+      - name: Upload MSI
         run: |
-          # Find the actual files that were built
-          $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.msi" | Select-Object -First 1
-          $exeFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.exe" | Select-Object -First 1
-          
-          if ($msiFile) {
-            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/msi/$msiFile"
-            Write-Host "✅ MSI uploaded successfully: $msiFile"
-          } else {
-            Write-Host "❌ MSI file not found"
-            Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse
-          }
-          
-          if ($exeFile) {
-            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/nsis/$exeFile"
-            Write-Host "✅ NSIS uploaded successfully: $exeFile"
-          } else {
-            Write-Host "❌ NSIS file not found"
-            Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse
-          }
+          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/msi/GlChemDraw_${{ github.ref_name }}_x64_en-US.msi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload NSIS
+        run: |
+          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/nsis/GlChemDraw_${{ github.ref_name }}_x64-setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -112,7 +98,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install Rust
@@ -132,24 +118,15 @@ jobs:
       - name: Build Tauri app
         run: npm run tauri build
 
-      - name: Upload macOS files
+      - name: Upload DMG
         run: |
-          # Check if files exist before uploading
-          if [ -f "src-tauri/target/release/bundle/dmg/GlChemDraw_1.0.0_x64.dmg" ]; then
-            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/dmg/GlChemDraw_1.0.0_x64.dmg
-            echo "✅ DMG uploaded successfully"
-          else
-            echo "❌ DMG file not found"
-            find src-tauri/target/release/bundle -name "*.dmg" -type f
-          fi
-          
-          if [ -d "src-tauri/target/release/bundle/macos/GlChemDraw.app" ]; then
-            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/macos/GlChemDraw.app
-            echo "✅ APP uploaded successfully"
-          else
-            echo "❌ APP file not found"
-            find src-tauri/target/release/bundle -name "*.app" -type d
-          fi
+          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/dmg/GlChemDraw_${{ github.ref_name }}_x64.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APP
+        run: |
+          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/macos/GlChemDraw.app
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -164,7 +141,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install Rust
@@ -184,23 +161,14 @@ jobs:
       - name: Build Tauri app
         run: npm run tauri build
 
-      - name: Upload Linux files
+      - name: Upload DEB
         run: |
-          # Check if files exist before uploading
-          if [ -f "src-tauri/target/release/bundle/deb/glchemdraw_1.0.0_amd64.deb" ]; then
-            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/deb/glchemdraw_1.0.0_amd64.deb
-            echo "✅ DEB uploaded successfully"
-          else
-            echo "❌ DEB file not found"
-            find src-tauri/target/release/bundle -name "*.deb" -type f
-          fi
-          
-          if [ -f "src-tauri/target/release/bundle/appimage/glchemdraw_1.0.0_amd64.AppImage" ]; then
-            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/appimage/glchemdraw_1.0.0_amd64.AppImage
-            echo "✅ AppImage uploaded successfully"
-          else
-            echo "❌ AppImage file not found"
-            find src-tauri/target/release/bundle -name "*.AppImage" -type f
-          fi
+          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/deb/glchemdraw_${{ github.ref_name }}_amd64.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload AppImage
+        run: |
+          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/appimage/glchemdraw_${{ github.ref_name }}_amd64.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

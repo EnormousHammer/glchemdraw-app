@@ -1,4 +1,4 @@
-name: Simple Release
+name: Build and Release
 
 on:
   push:
@@ -12,15 +12,37 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Create Release
+        id: create_release
         run: |
           gh release create ${{ github.ref_name }} \
             --title "GlChemDraw ${{ github.ref_name }}" \
-            --notes "GlChemDraw ${{ github.ref_name }} - Cross-platform Chemistry Structure Drawing & NMR Analysis"
+            --notes "GlChemDraw ${{ github.ref_name }} - Cross-platform Chemistry Structure Drawing & NMR Analysis
+
+          What's New
+          - Fixed React Hooks Error: Resolved 'Invalid hook call' errors
+          - Fixed Structure Drawing Loading: Implemented dynamic loading
+          - Enhanced Error Handling: Added comprehensive error boundaries
+          - Cross-platform Support: Windows, Mac, and Linux builds
+
+          Downloads
+          - Windows: MSI and NSIS installers
+          - Mac: DMG and APP bundles
+          - Linux: DEB and AppImage packages
+
+          System Requirements
+          - Windows: Windows 10/11 (64-bit)
+          - Mac: macOS 10.15+ (64-bit)
+          - Linux: Ubuntu 18.04+ or equivalent
+          - Memory: 4GB RAM minimum, 8GB recommended
+          - Storage: 500MB free space
+          - Display: 1280x800 minimum resolution"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -57,7 +79,126 @@ jobs:
 
       - name: Upload Windows files
         run: |
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/msi/GlChemDraw_0.1.0_x64_en-US.msi
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/nsis/GlChemDraw_0.1.0_x64-setup.exe
+          # Find the actual files that were built
+          $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.msi" | Select-Object -First 1
+          $exeFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.exe" | Select-Object -First 1
+          
+          if ($msiFile) {
+            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/msi/$msiFile"
+            Write-Host "✅ MSI uploaded successfully: $msiFile"
+          } else {
+            Write-Host "❌ MSI file not found"
+          }
+          
+          if ($exeFile) {
+            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/nsis/$exeFile"
+            Write-Host "✅ NSIS uploaded successfully: $exeFile"
+          } else {
+            Write-Host "❌ NSIS file not found"
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    name: Build macOS
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Upload macOS files
+        run: |
+          # Check if files exist before uploading
+          if [ -f "src-tauri/target/release/bundle/dmg/GlChemDraw_1.0.0_x64.dmg" ]; then
+            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/dmg/GlChemDraw_1.0.0_x64.dmg
+            echo "✅ DMG uploaded successfully"
+          else
+            echo "❌ DMG file not found"
+            find src-tauri/target/release/bundle -name "*.dmg" -type f
+          fi
+          
+          if [ -d "src-tauri/target/release/bundle/macos/GlChemDraw.app" ]; then
+            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/macos/GlChemDraw.app
+            echo "✅ APP uploaded successfully"
+          else
+            echo "❌ APP file not found"
+            find src-tauri/target/release/bundle -name "*.app" -type d
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux:
+    name: Build Linux
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Upload Linux files
+        run: |
+          # Check if files exist before uploading
+          if [ -f "src-tauri/target/release/bundle/deb/glchemdraw_1.0.0_amd64.deb" ]; then
+            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/deb/glchemdraw_1.0.0_amd64.deb
+            echo "✅ DEB uploaded successfully"
+          else
+            echo "❌ DEB file not found"
+            find src-tauri/target/release/bundle -name "*.deb" -type f
+          fi
+          
+          if [ -f "src-tauri/target/release/bundle/appimage/glchemdraw_1.0.0_amd64.AppImage" ]; then
+            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/appimage/glchemdraw_1.0.0_amd64.AppImage
+            echo "✅ AppImage uploaded successfully"
+          else
+            echo "❌ AppImage file not found"
+            find src-tauri/target/release/bundle -name "*.AppImage" -type f
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

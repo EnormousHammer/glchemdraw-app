@@ -1,0 +1,75 @@
+name: Test Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  test-build:
+    name: Test Build
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@2.7.1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Validate Build
+        run: |
+          Write-Host "=== BUILD VALIDATION ==="
+          
+          # Check bundle directory
+          if (Test-Path "src-tauri/target/release/bundle") {
+            Write-Host "✅ Bundle directory exists"
+          } else {
+            Write-Host "❌ Bundle directory missing"
+            exit 1
+          }
+          
+          # List all files
+          Write-Host "`nAll files in bundle:"
+          Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse | ForEach-Object {
+            Write-Host "  $($_.Name) - $($_.Length) bytes"
+          }
+          
+          # Check for MSI
+          $msi = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.msi" | Select-Object -First 1
+          if ($msi) {
+            Write-Host "✅ MSI found: $msi"
+          } else {
+            Write-Host "❌ No MSI found"
+            exit 1
+          }
+          
+          # Check for EXE
+          $exe = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.exe" | Select-Object -First 1
+          if ($exe) {
+            Write-Host "✅ EXE found: $exe"
+          } else {
+            Write-Host "❌ No EXE found"
+            exit 1
+          }
+          
+          Write-Host "`n=== BUILD SUCCESS ==="

@@ -67,8 +67,10 @@ export default defineConfig({
     target: process.env.TAURI_PLATFORM == "windows" ? "chrome105" : "safari13",
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
+    // Increase memory limit for large builds
     rollupOptions: {
+      maxParallelFileOps: 2,
       output: {
         manualChunks: (id) => {
           // Force React into a single chunk
@@ -79,13 +81,23 @@ export default defineConfig({
           if (id.includes('@mui') || id.includes('@emotion')) {
             return 'vendor-mui';
           }
-          // Ketcher components
-          if (id.includes('ketcher')) {
-            return 'vendor-ketcher';
+          // Ketcher components - split into smaller chunks
+          if (id.includes('ketcher-core')) {
+            return 'vendor-ketcher-core';
+          }
+          if (id.includes('ketcher-react')) {
+            return 'vendor-ketcher-react';
+          }
+          if (id.includes('ketcher-standalone')) {
+            return 'vendor-ketcher-standalone';
           }
           // NMRium
           if (id.includes('nmrium')) {
             return 'vendor-nmrium';
+          }
+          // RDKit
+          if (id.includes('@rdkit')) {
+            return 'vendor-rdkit';
           }
           // Other large dependencies
           if (id.includes('node_modules')) {

@@ -68,6 +68,15 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@2.7.1
 
+      - name: Verify Environment
+        run: |
+          Write-Host "Node version: $(node --version)"
+          Write-Host "NPM version: $(npm --version)"
+          Write-Host "Rust version: $(rustc --version)"
+          Write-Host "Cargo version: $(cargo --version)"
+          Write-Host "Tauri CLI version: $(tauri --version)"
+          Write-Host "GitHub CLI version: $(gh --version)"
+
       - name: Install dependencies
         run: npm ci
 
@@ -86,24 +95,43 @@ jobs:
           Write-Host "Found MSI file: $msiFile"
           Write-Host "Found EXE file: $exeFile"
           
+          $uploadSuccess = $true
+          
           if ($msiFile) {
-            $msiPath = "src-tauri/target/release/bundle/msi/$msiFile"
+            $msiPath = "src-tauri/target/release/bundle/$msiFile"
             Write-Host "Uploading MSI from: $msiPath"
-            gh release upload ${{ github.ref_name }} $msiPath
-            Write-Host "✅ MSI uploaded successfully: $msiFile"
+            try {
+              gh release upload ${{ github.ref_name }} $msiPath
+              Write-Host "✅ MSI uploaded successfully: $msiFile"
+            } catch {
+              Write-Host "❌ MSI upload failed: $_"
+              $uploadSuccess = $false
+            }
           } else {
             Write-Host "❌ MSI file not found"
             Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse
+            $uploadSuccess = $false
           }
           
           if ($exeFile) {
-            $exePath = "src-tauri/target/release/bundle/nsis/$exeFile"
+            $exePath = "src-tauri/target/release/bundle/$exeFile"
             Write-Host "Uploading EXE from: $exePath"
-            gh release upload ${{ github.ref_name }} $exePath
-            Write-Host "✅ NSIS uploaded successfully: $exeFile"
+            try {
+              gh release upload ${{ github.ref_name }} $exePath
+              Write-Host "✅ NSIS uploaded successfully: $exeFile"
+            } catch {
+              Write-Host "❌ NSIS upload failed: $_"
+              $uploadSuccess = $false
+            }
           } else {
             Write-Host "❌ NSIS file not found"
             Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse
+            $uploadSuccess = $false
+          }
+          
+          if (-not $uploadSuccess) {
+            Write-Host "❌ Some uploads failed"
+            exit 1
           }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -130,6 +158,15 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@2.7.1
 
+      - name: Verify Environment
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Rust version: $(rustc --version)"
+          echo "Cargo version: $(cargo --version)"
+          echo "Tauri CLI version: $(tauri --version)"
+          echo "GitHub CLI version: $(gh --version)"
+
       - name: Install dependencies
         run: npm ci
 
@@ -141,21 +178,46 @@ jobs:
 
       - name: Upload macOS files
         run: |
-          # Check if files exist before uploading
-          if [ -f "src-tauri/target/release/bundle/dmg/GlChemDraw_1.0.0_x64.dmg" ]; then
-            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/dmg/GlChemDraw_1.0.0_x64.dmg
-            echo "✅ DMG uploaded successfully"
+          # Find the actual files that were built
+          DMG_FILE=$(find src-tauri/target/release/bundle -name "*.dmg" -type f | head -1)
+          APP_DIR=$(find src-tauri/target/release/bundle -name "*.app" -type d | head -1)
+          
+          echo "Found DMG file: $DMG_FILE"
+          echo "Found APP directory: $APP_DIR"
+          
+          UPLOAD_SUCCESS=true
+          
+          if [ -n "$DMG_FILE" ] && [ -f "$DMG_FILE" ]; then
+            echo "Uploading DMG from: $DMG_FILE"
+            if gh release upload ${{ github.ref_name }} "$DMG_FILE"; then
+              echo "✅ DMG uploaded successfully"
+            else
+              echo "❌ DMG upload failed"
+              UPLOAD_SUCCESS=false
+            fi
           else
             echo "❌ DMG file not found"
             find src-tauri/target/release/bundle -name "*.dmg" -type f
+            UPLOAD_SUCCESS=false
           fi
           
-          if [ -d "src-tauri/target/release/bundle/macos/GlChemDraw.app" ]; then
-            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/macos/GlChemDraw.app
-            echo "✅ APP uploaded successfully"
+          if [ -n "$APP_DIR" ] && [ -d "$APP_DIR" ]; then
+            echo "Uploading APP from: $APP_DIR"
+            if gh release upload ${{ github.ref_name }} "$APP_DIR"; then
+              echo "✅ APP uploaded successfully"
+            else
+              echo "❌ APP upload failed"
+              UPLOAD_SUCCESS=false
+            fi
           else
-            echo "❌ APP file not found"
+            echo "❌ APP directory not found"
             find src-tauri/target/release/bundle -name "*.app" -type d
+            UPLOAD_SUCCESS=false
+          fi
+          
+          if [ "$UPLOAD_SUCCESS" = false ]; then
+            echo "❌ Some uploads failed"
+            exit 1
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -182,6 +244,15 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@2.7.1
 
+      - name: Verify Environment
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Rust version: $(rustc --version)"
+          echo "Cargo version: $(cargo --version)"
+          echo "Tauri CLI version: $(tauri --version)"
+          echo "GitHub CLI version: $(gh --version)"
+
       - name: Install dependencies
         run: npm ci
 
@@ -193,21 +264,46 @@ jobs:
 
       - name: Upload Linux files
         run: |
-          # Check if files exist before uploading
-          if [ -f "src-tauri/target/release/bundle/deb/glchemdraw_1.0.0_amd64.deb" ]; then
-            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/deb/glchemdraw_1.0.0_amd64.deb
-            echo "✅ DEB uploaded successfully"
+          # Find the actual files that were built
+          DEB_FILE=$(find src-tauri/target/release/bundle -name "*.deb" -type f | head -1)
+          APPIMAGE_FILE=$(find src-tauri/target/release/bundle -name "*.AppImage" -type f | head -1)
+          
+          echo "Found DEB file: $DEB_FILE"
+          echo "Found AppImage file: $APPIMAGE_FILE"
+          
+          UPLOAD_SUCCESS=true
+          
+          if [ -n "$DEB_FILE" ] && [ -f "$DEB_FILE" ]; then
+            echo "Uploading DEB from: $DEB_FILE"
+            if gh release upload ${{ github.ref_name }} "$DEB_FILE"; then
+              echo "✅ DEB uploaded successfully"
+            else
+              echo "❌ DEB upload failed"
+              UPLOAD_SUCCESS=false
+            fi
           else
             echo "❌ DEB file not found"
             find src-tauri/target/release/bundle -name "*.deb" -type f
+            UPLOAD_SUCCESS=false
           fi
           
-          if [ -f "src-tauri/target/release/bundle/appimage/glchemdraw_1.0.0_amd64.AppImage" ]; then
-            gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/appimage/glchemdraw_1.0.0_amd64.AppImage
-            echo "✅ AppImage uploaded successfully"
+          if [ -n "$APPIMAGE_FILE" ] && [ -f "$APPIMAGE_FILE" ]; then
+            echo "Uploading AppImage from: $APPIMAGE_FILE"
+            if gh release upload ${{ github.ref_name }} "$APPIMAGE_FILE"; then
+              echo "✅ AppImage uploaded successfully"
+            else
+              echo "❌ AppImage upload failed"
+              UPLOAD_SUCCESS=false
+            fi
           else
             echo "❌ AppImage file not found"
             find src-tauri/target/release/bundle -name "*.AppImage" -type f
+            UPLOAD_SUCCESS=false
+          fi
+          
+          if [ "$UPLOAD_SUCCESS" = false ]; then
+            echo "❌ Some uploads failed"
+            exit 1
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

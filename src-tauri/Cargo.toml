@@ -1,6 +1,6 @@
 [package]
 name = "glchemdraw"
-version = "1.0.0"
+version = "0.1.0"
 description = "Enterprise Chemistry Drawing Application"
 authors = ["GlChemTec"]
 edition = "2021"

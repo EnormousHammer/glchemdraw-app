@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        id: create_release
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "GlChemDraw ${{ github.ref_name }}" \
+            --notes "GlChemDraw ${{ github.ref_name }} - Chemistry Structure Drawing & NMR Analysis"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-upload:
+    name: Build and Upload
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli@2.7.1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Upload Files
+        run: |
+          # Find files
+          $msi = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.msi" | Select-Object -First 1
+          $exe = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.exe" | Select-Object -First 1
+          
+          Write-Host "MSI: $msi"
+          Write-Host "EXE: $exe"
+          
+          # Upload MSI
+          if ($msi) {
+            $msiPath = "src-tauri/target/release/bundle/$msi"
+            Write-Host "Uploading MSI: $msiPath"
+            gh release upload ${{ github.ref_name }} $msiPath
+            Write-Host "✅ MSI uploaded"
+          }
+          
+          # Upload EXE
+          if ($exe) {
+            $exePath = "src-tauri/target/release/bundle/$exe"
+            Write-Host "Uploading EXE: $exePath"
+            gh release upload ${{ github.ref_name }} $exePath
+            Write-Host "✅ EXE uploaded"
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

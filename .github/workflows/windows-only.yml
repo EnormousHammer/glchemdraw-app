@@ -75,20 +75,46 @@ jobs:
           $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.msi" | Select-Object -First 1
           $exeFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.exe" | Select-Object -First 1
           
+          Write-Host "Found MSI file: $msiFile"
+          Write-Host "Found EXE file: $exeFile"
+          
+          $uploadSuccess = $true
+          
           if ($msiFile) {
-            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/msi/$msiFile"
-            Write-Host "✅ MSI uploaded successfully: $msiFile"
+            $msiPath = "src-tauri/target/release/bundle/$msiFile"
+            Write-Host "Uploading MSI from: $msiPath"
+            try {
+              gh release upload ${{ github.ref_name }} $msiPath
+              Write-Host "✅ MSI uploaded successfully: $msiFile"
+            } catch {
+              Write-Host "❌ MSI upload failed: $_"
+              $uploadSuccess = $false
+            }
           } else {
             Write-Host "❌ MSI file not found"
             Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse
+            $uploadSuccess = $false
           }
           
           if ($exeFile) {
-            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/nsis/$exeFile"
-            Write-Host "✅ NSIS uploaded successfully: $exeFile"
+            $exePath = "src-tauri/target/release/bundle/$exeFile"
+            Write-Host "Uploading EXE from: $exePath"
+            try {
+              gh release upload ${{ github.ref_name }} $exePath
+              Write-Host "✅ NSIS uploaded successfully: $exeFile"
+            } catch {
+              Write-Host "❌ NSIS upload failed: $_"
+              $uploadSuccess = $false
+            }
           } else {
             Write-Host "❌ NSIS file not found"
             Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse
+            $uploadSuccess = $false
+          }
+          
+          if (-not $uploadSuccess) {
+            Write-Host "❌ Some uploads failed"
+            exit 1
           }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

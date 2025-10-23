@@ -1,46 +1,26 @@
-name: Build and Release
+name: Simple Release
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Create Release
-        id: create_release
         run: |
           gh release create ${{ github.ref_name }} \
             --title "GlChemDraw ${{ github.ref_name }}" \
-            --notes "GlChemDraw ${{ github.ref_name }} - Cross-platform Chemistry Structure Drawing & NMR Analysis
-
-          What's New
-          - Fixed React Hooks Error: Resolved 'Invalid hook call' errors
-          - Fixed Structure Drawing Loading: Implemented dynamic loading
-          - Enhanced Error Handling: Added comprehensive error boundaries
-          - Cross-platform Support: Windows, Mac, and Linux builds
-
-          Downloads
-          - Windows: MSI and NSIS installers
-          - Mac: DMG and APP bundles
-          - Linux: DEB and AppImage packages
-
-          System Requirements
-          - Windows: Windows 10/11 (64-bit)
-          - Mac: macOS 10.15+ (64-bit)
-          - Linux: Ubuntu 18.04+ or equivalent
-          - Memory: 4GB RAM minimum, 8GB recommended
-          - Storage: 500MB free space
-          - Display: 1280x800 minimum resolution"
+            --notes "GlChemDraw ${{ github.ref_name }} - Cross-platform Chemistry Structure Drawing & NMR Analysis"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -75,100 +55,9 @@ jobs:
       - name: Build Tauri app
         run: npm run tauri build
 
-      - name: Upload MSI
+      - name: Upload Windows files
         run: |
           gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/msi/GlChemDraw_${{ github.ref_name }}_x64_en-US.msi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload NSIS
-        run: |
           gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/nsis/GlChemDraw_${{ github.ref_name }}_x64-setup.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-macos:
-    name: Build macOS
-    needs: create-release
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin
-
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build frontend
-        run: npm run build
-
-      - name: Build Tauri app
-        run: npm run tauri build
-
-      - name: Upload DMG
-        run: |
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/dmg/GlChemDraw_${{ github.ref_name }}_x64.dmg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload APP
-        run: |
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/macos/GlChemDraw.app
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-linux:
-    name: Build Linux
-    needs: create-release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-gnu
-
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build frontend
-        run: npm run build
-
-      - name: Build Tauri app
-        run: npm run tauri build
-
-      - name: Upload DEB
-        run: |
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/deb/glchemdraw_${{ github.ref_name }}_amd64.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload AppImage
-        run: |
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/appimage/glchemdraw_${{ github.ref_name }}_amd64.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

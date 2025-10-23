@@ -1,0 +1,94 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "GlChemDraw ${{ github.ref_name }}" \
+            --notes "GlChemDraw ${{ github.ref_name }} - Chemistry Structure Drawing & NMR Analysis
+
+          What's New
+          - Fixed React Hooks Error: Resolved 'Invalid hook call' errors
+          - Fixed Structure Drawing Loading: Implemented dynamic loading
+          - Enhanced Error Handling: Added comprehensive error boundaries
+
+          Downloads
+          - Windows: MSI and NSIS installers
+
+          System Requirements
+          - Windows: Windows 10/11 (64-bit)
+          - Memory: 4GB RAM minimum, 8GB recommended
+          - Storage: 500MB free space
+          - Display: 1280x800 minimum resolution"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    name: Build Windows
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri app
+        run: npm run tauri build
+
+      - name: Upload Windows files
+        run: |
+          # Find the actual files that were built
+          $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.msi" | Select-Object -First 1
+          $exeFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.exe" | Select-Object -First 1
+          
+          if ($msiFile) {
+            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/msi/$msiFile"
+            Write-Host "✅ MSI uploaded successfully: $msiFile"
+          } else {
+            Write-Host "❌ MSI file not found"
+            Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse
+          }
+          
+          if ($exeFile) {
+            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/nsis/$exeFile"
+            Write-Host "✅ NSIS uploaded successfully: $exeFile"
+          } else {
+            Write-Host "❌ NSIS file not found"
+            Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

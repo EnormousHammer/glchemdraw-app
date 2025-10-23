@@ -24,7 +24,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           release_name: 'GlChemDraw ${{ github.ref_name }}'
-          release_body: |
+          body: |
             GlChemDraw ${{ github.ref_name }} - Cross-platform Chemistry Structure Drawing & NMR Analysis
 
             What's New

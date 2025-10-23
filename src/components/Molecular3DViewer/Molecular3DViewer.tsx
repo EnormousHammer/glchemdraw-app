@@ -23,18 +23,6 @@ import {
   Alert,
   Paper,
   Divider,
-  Switch,
-  FormControlLabel,
-  Tabs,
-  Tab,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Badge,
 } from '@mui/material';
 import {
   RotateLeft as RotateLeftIcon,
@@ -49,18 +37,6 @@ import {
   Settings as SettingsIcon,
   Science as ChemistryIcon,
   ViewInAr as View3DIcon,
-  ExpandMore as ExpandMoreIcon,
-  Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon,
-  ColorLens as ColorIcon,
-  Straighten as MeasureIcon,
-  Speed as AnimationIcon,
-  CameraAlt as CameraIcon,
-  Download as DownloadIcon,
-  Share as ShareIcon,
-  Info as InfoIcon,
-  Warning as WarningIcon,
-  CheckCircle as CheckIcon,
 } from '@mui/icons-material';
 
 interface Molecular3DViewerProps {
@@ -75,35 +51,6 @@ interface Conformer {
   energy: number;
   smiles: string;
   isSelected: boolean;
-  properties?: {
-    dipoleMoment?: number;
-    volume?: number;
-    surfaceArea?: number;
-    polarizability?: number;
-  };
-}
-
-interface ViewSettings {
-  showHydrogens: boolean;
-  showBonds: boolean;
-  showAtoms: boolean;
-  showSurfaces: boolean;
-  showElectrostatic: boolean;
-  showHydrophobic: boolean;
-  atomSize: number;
-  bondThickness: number;
-  colorScheme: 'cpk' | 'jmol' | 'rasmol' | 'custom';
-  background: 'white' | 'black' | 'transparent';
-  lighting: 'standard' | 'soft' | 'dramatic';
-}
-
-interface Measurement {
-  id: string;
-  type: 'distance' | 'angle' | 'dihedral';
-  atoms: number[];
-  value: number;
-  unit: string;
-  color: string;
 }
 
 export const Molecular3DViewer: React.FC<Molecular3DViewerProps> = ({
@@ -121,41 +68,14 @@ export const Molecular3DViewer: React.FC<Molecular3DViewerProps> = ({
   const [conformers, setConformers] = useState<Conformer[]>([]);
   const [selectedConformer, setSelectedConformer] = useState<number>(0);
   const [showSettings, setShowSettings] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [isMeasuring, setIsMeasuring] = useState(false);
-  const [viewSettings, setViewSettings] = useState<ViewSettings>({
-    showHydrogens: true,
-    showBonds: true,
-    showAtoms: true,
-    showSurfaces: false,
-    showElectrostatic: false,
-    showHydrophobic: false,
-    atomSize: 1.0,
-    bondThickness: 1.0,
-    colorScheme: 'cpk',
-    background: 'white',
-    lighting: 'standard',
-  });
-  const [molecularProperties, setMolecularProperties] = useState<{
-    molecularWeight?: number;
-    logP?: number;
-    tpsa?: number;
-    hBondDonors?: number;
-    hBondAcceptors?: number;
-    rotatableBonds?: number;
-    aromaticRings?: number;
-    heavyAtoms?: number;
-  }>({});
   
   const viewerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
 
-  // Initialize 3D viewer with PubChem integration
+  // Mock 3D viewer implementation (replace with actual 3D library)
   const initialize3DViewer = useCallback(async () => {
     if (!smiles && !molfile) {
       setConformers([]);
-      setMolecularProperties({});
       return;
     }
 
@@ -163,61 +83,22 @@ export const Molecular3DViewer: React.FC<Molecular3DViewerProps> = ({
     setError(null);
 
     try {
-      // Get PubChem CID from SMILES
-      let cid: number | null = null;
+      // Simulate 3D structure generation and conformer analysis
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (smiles) {
-        const { getCIDBySMILES } = await import('../../lib/pubchem/api');
-        cid = await getCIDBySMILES(smiles);
-      }
+      // Mock conformers data
+      const mockConformers: Conformer[] = [
+        { id: 0, energy: -12.5, smiles: smiles || '', isSelected: true },
+        { id: 1, energy: -11.8, smiles: smiles || '', isSelected: false },
+        { id: 2, energy: -10.9, smiles: smiles || '', isSelected: false },
+        { id: 3, energy: -9.7, smiles: smiles || '', isSelected: false },
+      ];
       
-      if (cid) {
-        // Get molecular properties from PubChem
-        const { getPropertiesByCID } = await import('../../lib/pubchem/api');
-        const properties = await getPropertiesByCID(cid, [
-          'MolecularWeight', 'XLogP', 'TPSA', 'HBondDonorCount', 
-          'HBondAcceptorCount', 'RotatableBondCount', 'HeavyAtomCount'
-        ]);
-        
-        if (properties) {
-          setMolecularProperties({
-            molecularWeight: properties.MolecularWeight,
-            logP: properties.XLogP,
-            tpsa: properties.TPSA,
-            hBondDonors: properties.HBondDonorCount,
-            hBondAcceptors: properties.HBondAcceptorCount,
-            rotatableBonds: properties.RotatableBondCount,
-            heavyAtoms: properties.HeavyAtomCount,
-          });
-        }
-        
-        // Get 3D conformers from PubChem
-        const conformersResponse = await fetch(
-          `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/conformers/JSON`
-        );
-        
-        if (conformersResponse.ok) {
-          const conformersData = await conformersResponse.json();
-          if (conformersData.PC_Compounds) {
-            const pubchemConformers: Conformer[] = conformersData.PC_Compounds.map((compound: any, index: number) => ({
-              id: index,
-              energy: compound.props?.find((p: any) => p.urn?.label === 'Energy')?.value?.fval || 0,
-              smiles: smiles || '',
-              isSelected: index === 0,
-            }));
-            setConformers(pubchemConformers);
-            setSelectedConformer(0);
-          }
-        }
-      } else {
-        // If no CID found, clear data
-        setConformers([]);
-        setMolecularProperties({});
-        setError('No 3D structure data available for this compound');
-      }
+      setConformers(mockConformers);
+      setSelectedConformer(0);
       
     } catch (err) {
-      const errorMessage = (err as Error).message || 'Failed to load 3D structure data';
+      const errorMessage = (err as Error).message || 'Failed to generate 3D structure';
       setError(errorMessage);
       if (onError) {
         onError(new Error(errorMessage));
@@ -232,7 +113,7 @@ export const Molecular3DViewer: React.FC<Molecular3DViewerProps> = ({
   }, [initialize3DViewer]);
 
   const handleRotate = (direction: 'left' | 'right') => {
-    // TODO: Implement real 3D model rotation
+    // Mock rotation - in real implementation, this would rotate the 3D model
     console.log(`Rotating ${direction}`);
   };
 
@@ -244,7 +125,7 @@ export const Molecular3DViewer: React.FC<Molecular3DViewerProps> = ({
   };
 
   const handleCenter = () => {
-    // TODO: Implement real 3D model centering
+    // Mock center - in real implementation, this would center the 3D model
     console.log('Centering view');
   };
 
@@ -256,7 +137,7 @@ export const Molecular3DViewer: React.FC<Molecular3DViewerProps> = ({
       }
       setIsPlaying(false);
     } else {
-      // TODO: Implement real 3D model animation
+      // Mock animation - in real implementation, this would start rotating the model
       const animate = () => {
         console.log('Animating 3D model');
         if (isPlaying) {
@@ -357,7 +238,7 @@ export const Molecular3DViewer: React.FC<Molecular3DViewerProps> = ({
                 Interactive 3D molecular visualization
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                (TODO: integrate with 3D library)
+                (Mock implementation - integrate with 3D library)
               </Typography>
             </Box>
           )}

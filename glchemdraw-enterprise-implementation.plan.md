@@ -453,13 +453,13 @@ Create in `src-tauri/src/main.rs`:
 - [X] Add crash recovery with auto-save restore functionality
 
 #### 6. Testing Framework Setup
-- [ ] Configure Vitest for React component unit tests
-- [ ] Set up Playwright for E2E testing
-- [ ] Configure Rust test framework (`cargo test`)
-- [ ] Set up test coverage reporting
+- [X] Configure Vitest for React component unit tests
+- [X] Set up Playwright for E2E testing
+- [X] Configure Rust test framework (`cargo test`)
+- [X] Set up test coverage reporting
 
 #### 7. Write Comprehensive Tests
-- [ ] Unit tests for all React components
+- [ q] Unit tests for all React components
 - [ ] Integration tests for chemistry library interactions
 - [ ] E2E tests for user workflows (draw, search, save, load)
 - [ ] Rust backend tests for Tauri commands

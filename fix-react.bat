@@ -1,20 +1,20 @@
 @echo off
-echo Fixing React multiple instances error...
+echo Fixing React hooks error by clearing cache and reinstalling dependencies...
+
 echo.
+echo Clearing Vite cache...
+if exist "node_modules\.vite" rmdir /s /q "node_modules\.vite"
 
-echo Removing node_modules...
-rmdir /s /q node_modules 2>nul
-
-echo Removing .vite cache...
-rmdir /s /q .vite 2>nul
-
-echo Removing package-lock.json...
-del package-lock.json 2>nul
+echo.
+echo Clearing npm cache...
+npm cache clean --force
 
 echo.
 echo Reinstalling dependencies...
 npm install
 
 echo.
-echo Done! Now run: npm run dev
+echo Starting development server...
+npm run dev
+
 pause

@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "identifier": "com.glchemtec.glchemdraw",
   "build": {
-    "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
@@ -27,7 +26,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pubchem.ncbi.nlm.nih.gov; connect-src 'self' https://pubchem.ncbi.nlm.nih.gov; font-src 'self' data:; worker-src 'self' blob:;"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://pubchem.ncbi.nlm.nih.gov; connect-src 'self' https://pubchem.ncbi.nlm.nih.gov; font-src 'self' data:; worker-src 'self' blob:; object-src 'self'; media-src 'self' blob:;"
     },
     "withGlobalTauri": true
   },
@@ -45,7 +44,7 @@
     "copyright": "Copyright © 2025 GlChemTec. All rights reserved.",
     "shortDescription": "Chemistry structure drawing and NMR spectroscopy analysis",
     "longDescription": "GlChemDraw is a professional desktop application for drawing chemical structures and analyzing NMR spectroscopy data. Features molecular drawing tools, PubChem integration, NMR data visualization, peak integration, and advanced spectroscopy analysis capabilities.",
-    "category": "DeveloperTool",
+    "category": "Science",
     "windows": {
       "wix": {
         "language": "en-US"
@@ -61,24 +60,6 @@
         "sidebarImage": null,
         "installerHooks": null,
         "compression": "lzma"
-      },
-      "certificateThumbprint": null,
-      "digestAlgorithm": "sha256",
-      "timestampUrl": "http://timestamp.digicert.com"
-    },
-    "macOS": {
-      "entitlements": null,
-      "exceptionDomain": null,
-      "frameworks": [],
-      "providerShortName": null,
-      "signingIdentity": null
-    },
-    "linux": {
-      "deb": {
-        "depends": []
-      },
-      "appimage": {
-        "bundleMediaFramework": false
       }
     }
   }

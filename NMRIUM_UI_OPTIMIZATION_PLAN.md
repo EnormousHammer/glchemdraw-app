@@ -156,7 +156,7 @@ const optimizedPreferences = {
 
 **Solutions:**
 ```css
-/* Larger peak labels */
+/* Larger peak labels */T HE MEK                                                                    
 & [class*="peak-label"] {
   fontSize: '12px !important';
   fontWeight: '600 !important';

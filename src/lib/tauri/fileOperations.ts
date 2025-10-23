@@ -240,3 +240,34 @@ export function clearRecentFiles(): void {
   localStorage.removeItem(RECENT_FILES_KEY);
 }
 
+/**
+ * Read all files from a directory recursively (for drag and drop support)
+ */
+export async function readDirectoryFiles(
+  path: string, 
+  extensions?: string[]
+): Promise<Array<{
+  path: string;
+  name: string;
+  extension: string;
+  size: number;
+  is_readonly: boolean;
+  modified?: number;
+}>> {
+  try {
+    const files = await invoke<Array<{
+      path: string;
+      name: string;
+      extension: string;
+      size: number;
+      is_readonly: boolean;
+      modified?: number;
+    }>>('read_directory_files', { path, extensions });
+    
+    return files;
+  } catch (error) {
+    console.error('[FileOperations] Error reading directory files:', error);
+    throw new Error(`Failed to read directory files: ${(error as Error).message}`);
+  }
+}
+

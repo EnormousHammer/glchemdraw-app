@@ -42,6 +42,48 @@ const NMRium = React.lazy(() =>
 interface NMRViewerProps {}
 
 export const NMRViewer: React.FC<NMRViewerProps> = () => {
+  // Remove the blocking main-wrapper entirely
+  React.useEffect(() => {
+    const removeBlockingWrapper = () => {
+      const mainWrapper = document.getElementById('main-wrapper');
+      if (mainWrapper) {
+        console.log('[NMRViewer] 🔧 Removing blocking main-wrapper');
+        mainWrapper.remove();
+      }
+    };
+
+    // Remove immediately and keep checking
+    removeBlockingWrapper();
+    const interval = setInterval(removeBlockingWrapper, 100);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Optimize performance for spectra interaction - removed transforms that cause mouse offset
+  React.useEffect(() => {
+    // Just optimize canvas rendering without transforms
+    const canvasElements = document.querySelectorAll('canvas');
+    canvasElements.forEach(canvas => {
+      canvas.style.imageRendering = 'optimizeSpeed';
+    });
+  }, []);
+
+  // Simple fix for mouse offset - just reset any problematic styles
+  React.useEffect(() => {
+    const fixOffset = () => {
+      const nmriumContainer = document.querySelector('[data-testid="nmrium"]') as HTMLElement;
+      if (nmriumContainer) {
+        nmriumContainer.style.transform = 'none';
+        nmriumContainer.style.position = 'relative';
+      }
+    };
+
+    fixOffset();
+    const interval = setInterval(fixOffset, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Add comprehensive click debugging
   React.useEffect(() => {
     const handleClick = (e: MouseEvent) => {

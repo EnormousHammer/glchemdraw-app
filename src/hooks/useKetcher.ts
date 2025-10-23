@@ -1,4 +1,4 @@
-/**
+/**N
  * useKetcher Hook
  * Provides methods to interact with Ketcher editor instance
  */

@@ -60,10 +60,10 @@ import {
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
   Error as ErrorIcon,
-  ContentCopy as CopyIcon,
   ExpandMore as ExpandMoreIcon,
   Refresh as RefreshIcon,
   Settings as SettingsIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 
 interface CollaborationFeaturesProps {
@@ -130,12 +130,107 @@ export const CollaborationFeatures: React.FC<CollaborationFeaturesProps> = ({
   const [inviteRole, setInviteRole] = useState<'viewer' | 'editor'>('viewer');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  // Initialize empty state - data will be loaded from real sources
+  // Mock data initialization
   useEffect(() => {
-    // TODO: Load workspace data from API
-    // TODO: Load collaborators from API
-    // TODO: Load comments from API
-    // TODO: Load version history from API
+    // Simulate loading workspace data
+    const mockWorkspace: Workspace = {
+      id: 'ws-123',
+      name: 'My Chemistry Project',
+      description: 'Drug discovery research project',
+      isPublic: false,
+      owner: {
+        id: 'user-1',
+        name: 'John Doe',
+        email: 'john@example.com',
+        role: 'owner',
+        status: 'online',
+      },
+      collaborators: [
+        {
+          id: 'user-2',
+          name: 'Jane Smith',
+          email: 'jane@example.com',
+          role: 'editor',
+          status: 'online',
+        },
+        {
+          id: 'user-3',
+          name: 'Bob Wilson',
+          email: 'bob@example.com',
+          role: 'viewer',
+          status: 'away',
+        },
+      ],
+      lastModified: new Date(),
+      version: 15,
+    };
+
+    const mockComments: Comment[] = [
+      {
+        id: 'comment-1',
+        author: {
+          id: 'user-2',
+          name: 'Jane Smith',
+          email: 'jane@example.com',
+          role: 'editor',
+          status: 'online',
+        },
+        content: 'This structure looks promising for the target receptor',
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+        position: { x: 100, y: 200 },
+        resolved: false,
+      },
+      {
+        id: 'comment-2',
+        author: {
+          id: 'user-3',
+          name: 'Bob Wilson',
+          email: 'bob@example.com',
+          role: 'viewer',
+          status: 'away',
+        },
+        content: 'Consider adding a methyl group here for better stability',
+        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+        position: { x: 150, y: 300 },
+        resolved: true,
+      },
+    ];
+
+    const mockVersions: Version[] = [
+      {
+        id: 'v-15',
+        number: 15,
+        author: {
+          id: 'user-1',
+          name: 'John Doe',
+          email: 'john@example.com',
+          role: 'owner',
+          status: 'online',
+        },
+        timestamp: new Date(),
+        description: 'Added new reaction pathway',
+        changes: ['Added esterification reaction', 'Updated molecular properties'],
+      },
+      {
+        id: 'v-14',
+        number: 14,
+        author: {
+          id: 'user-2',
+          name: 'Jane Smith',
+          email: 'jane@example.com',
+          role: 'editor',
+          status: 'online',
+        },
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        description: 'Fixed stereochemistry issues',
+        changes: ['Corrected R/S configuration', 'Updated 3D structure'],
+      },
+    ];
+
+    setWorkspace(mockWorkspace);
+    setUsers([mockWorkspace.owner, ...mockWorkspace.collaborators]);
+    setComments(mockComments);
+    setVersions(mockVersions);
   }, []);
 
   const handleSyncToCloud = useCallback(async () => {
@@ -491,7 +586,7 @@ export const CollaborationFeatures: React.FC<CollaborationFeaturesProps> = ({
                 readOnly: true,
                 endAdornment: (
                   <IconButton onClick={() => navigator.clipboard.writeText(workspace?.id || '')}>
-                    <CopyIcon />
+                    <ContentCopyIcon />
                   </IconButton>
                 ),
               }}

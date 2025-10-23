@@ -264,6 +264,66 @@ async fn validate_mol_format(content: String) -> CommandResult<bool> {
     Ok(false)
 }
 
+/// Read multiple files from a directory (for drag and drop support)
+#[tauri::command]
+async fn read_directory_files(path: String, extensions: Option<Vec<String>>) -> CommandResult<Vec<serde_json::Value>> {
+    let dir_path = Path::new(&path);
+    
+    if !dir_path.exists() {
+        return Err(CommandError::InvalidPath(format!("Directory not found: {}", path)));
+    }
+    
+    if !dir_path.is_dir() {
+        return Err(CommandError::InvalidPath(format!("Not a directory: {}", path)));
+    }
+    
+    let mut files = Vec::new();
+    let allowed_extensions = extensions.unwrap_or_else(|| vec![
+        "dx".to_string(), "jdx".to_string(), "jcamp".to_string(), 
+        "zip".to_string(), "nmr".to_string(), "fid".to_string(),
+        "pdata".to_string(), "acqus".to_string()
+    ]);
+    
+    // Recursively read directory
+    fn read_dir_recursive(dir: &Path, allowed_exts: &[String], files: &mut Vec<serde_json::Value>) -> std::io::Result<()> {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                // Recursively read subdirectories
+                read_dir_recursive(&path, allowed_exts, files)?;
+            } else if path.is_file() {
+                // Check if file has allowed extension
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    if allowed_exts.iter().any(|allowed| allowed.eq_ignore_ascii_case(ext)) {
+                        let metadata = fs::metadata(&path)?;
+                        let file_name = path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("unknown");
+                        
+                        files.push(serde_json::json!({
+                            "path": path.to_string_lossy(),
+                            "name": file_name,
+                            "extension": ext,
+                            "size": metadata.len(),
+                            "is_readonly": metadata.permissions().readonly(),
+                            "modified": metadata.modified()
+                                .ok()
+                                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                                .map(|d| d.as_secs()),
+                        }));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    
+    read_dir_recursive(dir_path, &allowed_extensions, &mut files)?;
+    Ok(files)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -278,6 +338,7 @@ pub fn run() {
             file_exists,
             get_file_info,
             read_directory,
+            read_directory_files,
             validate_mol_format,
         ])
         .run(tauri::generate_context!())

@@ -2,6 +2,35 @@
  * Global Styles with Accessibility Support
  */
 
+/* Import Blueprint.js CSS for NMRium */
+@import '@blueprintjs/core/lib/css/blueprint.css';
+@import '@blueprintjs/icons/lib/css/blueprint-icons.css';
+
+/* Import react-science CSS for NMRium */
+@import 'react-science/styles/preflight.css';
+
+/* Fix the main-wrapper blocking clicks - override inline style */
+#main-wrapper[style*="pointer-events: none"] {
+  pointer-events: auto !important;
+}
+
+/* Also target any element with pointer-events: none */
+[style*="pointer-events: none"] {
+  pointer-events: auto !important;
+}
+
+/* Optimize NMRium performance - removed transforms that cause mouse offset */
+[data-testid="nmrium"] {
+  will-change: auto;
+}
+
+canvas {
+  image-rendering: optimizeSpeed;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
 /* NO desktop-specific overrides - desktop should match web exactly */
 
 /* Ketcher Canvas: Proper sizing to fit under header */
@@ -83,7 +112,12 @@
 
 /* Fix main-wrapper blocking clicks - ensure it passes through */
 #main-wrapper {
-  pointer-events: none !important;
+  pointer-events: auto !important; /* Allow drag and drop events */
+}
+
+/* Override inline styles that might be set by JavaScript */
+#main-wrapper[style*="pointer-events: none"] {
+  pointer-events: auto !important; /* Force override inline styles */
 }
 
 /* Hide NMRium logo/info button (i icon) completely */

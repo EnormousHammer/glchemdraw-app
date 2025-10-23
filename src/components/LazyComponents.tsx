@@ -8,10 +8,10 @@ import { Box, CircularProgress, Typography } from '@mui/material';
 
 // Lazy load heavy components
 export const LazyNMRViewer = lazy(() => 
-  import('./NMRViewer/NMRViewer').then(module => ({ default: module.NMRViewer }))
+  import('./NMRViewer/NMRViewer')
 );
 export const LazySimplifiedNMRViewer = lazy(() => 
-  import('./NMRViewer/SimplifiedNMRViewer').then(module => ({ default: module.SimplifiedNMRViewer }))
+  import('./NMRViewer/SimplifiedNMRViewer')
 );
 export const LazyBatchProcessor = lazy(() => import('./BatchProcessor'));
 

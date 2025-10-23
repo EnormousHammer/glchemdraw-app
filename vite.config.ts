@@ -21,14 +21,23 @@ export default defineConfig({
       "@lib": resolve(__dirname, "./src/lib"),
       "@hooks": resolve(__dirname, "./src/hooks"),
       "@types": resolve(__dirname, "./src/types"),
-      // Force single React instance - critical for Vite 7.1.11
+      // Force single React instance - critical for preventing hook errors
       "react": resolve(__dirname, "node_modules/react"),
       "react-dom": resolve(__dirname, "node_modules/react-dom"),
       "@emotion/react": resolve(__dirname, "node_modules/@emotion/react"),
       "@emotion/styled": resolve(__dirname, "node_modules/@emotion/styled"),
+      // Force ketcher to use our React instance
+      "ketcher-react": resolve(__dirname, "node_modules/ketcher-react"),
     },
-    // Force single React instance and Emotion
-    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled'],
+    // Force single React instance and Emotion - more comprehensive
+    dedupe: [
+      'react', 
+      'react-dom', 
+      '@emotion/react', 
+      '@emotion/styled',
+      'ketcher-react',
+      'ketcher-core'
+    ],
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -61,11 +70,27 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-mui': ['@mui/material', '@emotion/react', '@emotion/styled'],
-          'vendor-ketcher': ['ketcher-core', 'ketcher-react'],
-          'vendor-nmrium': ['nmrium'],
+        manualChunks: (id) => {
+          // Force React into a single chunk
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'vendor-react';
+          }
+          // MUI and Emotion together
+          if (id.includes('@mui') || id.includes('@emotion')) {
+            return 'vendor-mui';
+          }
+          // Ketcher components
+          if (id.includes('ketcher')) {
+            return 'vendor-ketcher';
+          }
+          // NMRium
+          if (id.includes('nmrium')) {
+            return 'vendor-nmrium';
+          }
+          // Other large dependencies
+          if (id.includes('node_modules')) {
+            return 'vendor-other';
+          }
         },
       },
       external: [],

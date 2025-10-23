@@ -57,7 +57,7 @@ jobs:
 
       - name: Upload Windows files
         run: |
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/msi/GlChemDraw_${{ github.ref_name }}_x64_en-US.msi
-          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/nsis/GlChemDraw_${{ github.ref_name }}_x64-setup.exe
+          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/msi/GlChemDraw_0.1.0_x64_en-US.msi
+          gh release upload ${{ github.ref_name }} src-tauri/target/release/bundle/nsis/GlChemDraw_0.1.0_x64-setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

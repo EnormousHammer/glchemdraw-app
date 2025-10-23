@@ -83,8 +83,13 @@ jobs:
           $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.msi" | Select-Object -First 1
           $exeFile = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Name "*.exe" | Select-Object -First 1
           
+          Write-Host "Found MSI file: $msiFile"
+          Write-Host "Found EXE file: $exeFile"
+          
           if ($msiFile) {
-            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/msi/$msiFile"
+            $msiPath = "src-tauri/target/release/bundle/msi/$msiFile"
+            Write-Host "Uploading MSI from: $msiPath"
+            gh release upload ${{ github.ref_name }} $msiPath
             Write-Host "✅ MSI uploaded successfully: $msiFile"
           } else {
             Write-Host "❌ MSI file not found"
@@ -92,7 +97,9 @@ jobs:
           }
           
           if ($exeFile) {
-            gh release upload ${{ github.ref_name }} "src-tauri/target/release/bundle/nsis/$exeFile"
+            $exePath = "src-tauri/target/release/bundle/nsis/$exeFile"
+            Write-Host "Uploading EXE from: $exePath"
+            gh release upload ${{ github.ref_name }} $exePath
             Write-Host "✅ NSIS uploaded successfully: $exeFile"
           } else {
             Write-Host "❌ NSIS file not found"

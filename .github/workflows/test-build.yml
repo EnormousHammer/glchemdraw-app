@@ -2,8 +2,9 @@ name: Test Build
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+  # Disabled automatic builds - only run manually when needed
+  # push:
+  #   branches: [main]
 
 jobs:
   test-build:

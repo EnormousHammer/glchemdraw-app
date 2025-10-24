@@ -5,10 +5,9 @@
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Editor } from 'ketcher-react';
+import { StandaloneStructServiceProvider } from 'ketcher-standalone';
+import 'ketcher-react/dist/index.css';
 import { Box, CircularProgress, Alert } from '@mui/material';
-
-// Dynamic import for ketcher-standalone to handle potential loading issues
-let StandaloneStructServiceProvider: any = null;
 
 interface ChemCanvasProps {
   onStructureChange?: (molfile: string, smiles: string) => void;
@@ -29,83 +28,25 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isMountedRef = useRef(true);
   
-  // State to track when StandaloneStructServiceProvider is loaded
-  const [isKetcherStandaloneLoaded, setIsKetcherStandaloneLoaded] = useState(false);
-
-  // Create service provider when StandaloneStructServiceProvider becomes available
-  const structServiceProvider = useMemo(() => {
-    try {
-      console.log('[ChemCanvas] Creating StandaloneStructServiceProvider...');
-      
-      // Try to use the cached provider first
-      if (StandaloneStructServiceProvider) {
-        const provider = new StandaloneStructServiceProvider() as any;
-        console.log('[ChemCanvas] StandaloneStructServiceProvider created successfully');
-        return provider;
-      }
-      
-      // If not cached, return null
-      console.log('[ChemCanvas] StandaloneStructServiceProvider not available, returning null');
-      return null;
-    } catch (err) {
-      console.error('[ChemCanvas] Failed to create struct service provider:', err);
-      setError(`Failed to initialize chemical editor: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      return null;
-    }
-  }, [isKetcherStandaloneLoaded]);
+  // Create service provider once and never recreate
+  const structServiceProvider = useMemo(() => new StandaloneStructServiceProvider() as any, []);
   
   // Static resources URL - memoized to prevent changes
   const staticResourcesUrl = useMemo(() => process.env.PUBLIC_URL || window.location.origin, []);
 
   useEffect(() => {
-    // Dynamically load ketcher-standalone
-    const loadKetcherStandalone = async () => {
-      try {
-        console.log('[ChemCanvas] Loading ketcher-standalone...');
-        const ketcherStandalone = await import('ketcher-standalone');
-        StandaloneStructServiceProvider = ketcherStandalone.StandaloneStructServiceProvider;
-        console.log('[ChemCanvas] ketcher-standalone loaded successfully');
-        
-        if (isMountedRef.current) {
-          setIsKetcherStandaloneLoaded(true);
-        }
-      } catch (err) {
-        console.error('[ChemCanvas] Failed to load ketcher-standalone:', err);
-        if (isMountedRef.current) {
-          setError('Failed to load chemical editor dependencies. Please refresh the page.');
-        }
-      }
-    };
-
-    loadKetcherStandalone();
-
     // Only run once on mount
     const timer = setTimeout(() => {
-      if (isMountedRef.current) {
-        console.log('[ChemCanvas] Loading timeout reached, setting loading to false');
-        setIsLoading(false);
-      }
-    }, 3000); // Increased timeout to 3 seconds
-    
-    return () => {
-      clearTimeout(timer);
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  // Additional effect to handle service provider initialization
-  useEffect(() => {
-    if (structServiceProvider && isLoading) {
-      console.log('[ChemCanvas] Service provider ready, stopping loading');
       setIsLoading(false);
-    }
-  }, [structServiceProvider, isLoading]);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Handle structure changes with 300ms debouncing for performance
   const handleStructureChange = useCallback(async () => {
-    if (!editorRef.current || !onStructureChange || !isMountedRef.current) {
+    if (!editorRef.current || !onStructureChange) {
       return;
     }
 
@@ -116,23 +57,16 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
 
     // Debounce: Wait 300ms after last change before processing
     debounceTimerRef.current = setTimeout(async () => {
-      if (!isMountedRef.current) return;
-      
       try {
         const molfile = await editorRef.current.getMolfile();
         const smiles = await editorRef.current.getSmiles();
         
-        if (isMountedRef.current && onStructureChange) {
-          onStructureChange(molfile, smiles);
-        }
+        onStructureChange(molfile, smiles);
       } catch (err) {
         console.error('[ChemCanvas] Error getting structure:', err);
-        if (isMountedRef.current && onError) {
-          onError(err as Error);
-        }
       }
     }, 300);
-  }, [onStructureChange, onError]);
+  }, [onStructureChange]);
 
   if (error) {
     return (
@@ -165,7 +99,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
         bgcolor: 'background.paper',
       }}
     >
-      {(isLoading || !isKetcherStandaloneLoaded || !structServiceProvider) && (
+      {isLoading && (
         <Box
           sx={{
             position: 'absolute',
@@ -178,14 +112,9 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
             justifyContent: 'center',
             bgcolor: 'background.paper',
             zIndex: 1000,
-            flexDirection: 'column',
-            gap: 2,
           }}
         >
           <CircularProgress />
-          <Box sx={{ textAlign: 'center', color: 'text.secondary' }}>
-            {!isKetcherStandaloneLoaded ? 'Loading chemical editor...' : !structServiceProvider ? 'Initializing chemical editor...' : 'Loading...'}
-          </Box>
         </Box>
       )}
       
@@ -212,49 +141,35 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
           },
         }}
       >
-        {structServiceProvider && (
-          <Editor
-            staticResourcesUrl={staticResourcesUrl}
-            structServiceProvider={structServiceProvider}
+        <Editor
+          staticResourcesUrl={staticResourcesUrl}
+          structServiceProvider={structServiceProvider}
           onInit={(ketcher) => {
+            editorRef.current = ketcher;
+            console.log('[ChemCanvas] Ketcher initialized');
+            
+            // Ensure proper layout
+            setTimeout(() => {
+              const ketcherRoot = document.querySelector('.Ketcher-root');
+              if (ketcherRoot) {
+                (ketcherRoot as HTMLElement).style.height = '100%';
+                (ketcherRoot as HTMLElement).style.display = 'flex';
+                (ketcherRoot as HTMLElement).style.flexDirection = 'column';
+              }
+              
+            }, 100);
+            
+            // Subscribe to change events
             try {
-              editorRef.current = ketcher;
-              console.log('[ChemCanvas] Ketcher initialized successfully');
-              
-              // Stop loading immediately when Ketcher is ready
-              if (isMountedRef.current) {
-                setIsLoading(false);
+              if (ketcher?.editor?.subscribe) {
+                ketcher.editor.subscribe('change', handleStructureChange);
               }
-              
-              // Ensure proper layout
-              setTimeout(() => {
-                const ketcherRoot = document.querySelector('.Ketcher-root');
-                if (ketcherRoot) {
-                  (ketcherRoot as HTMLElement).style.height = '100%';
-                  (ketcherRoot as HTMLElement).style.display = 'flex';
-                  (ketcherRoot as HTMLElement).style.flexDirection = 'column';
-                }
-              }, 100);
-              
-              // Subscribe to change events
-              try {
-                if (ketcher?.editor?.subscribe) {
-                  ketcher.editor.subscribe('change', handleStructureChange);
-                  console.log('[ChemCanvas] Change handler subscribed');
-                }
-              } catch (e) {
-                console.warn('[ChemCanvas] Failed to subscribe change handler:', e);
-              }
-              
-              // Expose instance to parent
-              if (onKetcherInit) {
-                onKetcherInit(ketcher);
-              }
-            } catch (err) {
-              console.error('[ChemCanvas] Error in Ketcher onInit:', err);
-              if (isMountedRef.current) {
-                setError(`Failed to initialize Ketcher: ${err instanceof Error ? err.message : 'Unknown error'}`);
-              }
+            } catch (e) {
+              console.warn('[ChemCanvas] Failed to subscribe change handler:', e);
+            }
+            // Expose instance to parent
+            if (onKetcherInit) {
+              onKetcherInit(ketcher);
             }
           }}
           errorHandler={(error: string) => {
@@ -263,8 +178,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
               onError(new Error(error));
             }
           }}
-          />
-        )}
+        />
       </Box>
     </Box>
   );

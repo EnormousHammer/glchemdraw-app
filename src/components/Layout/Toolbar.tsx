@@ -30,6 +30,9 @@ import {
   Keyboard as KeyboardIcon,
   Help as HelpIcon,
   ExpandMore as ExpandMoreIcon,
+  AccountTree as MoleculeIcon,
+  Timeline as SpectraIcon,
+  Hexagon as BenzeneIcon,
 } from '@mui/icons-material';
 
 interface AppToolbarProps {
@@ -74,6 +77,10 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showShortcuts, setShowShortcuts] = React.useState(false);
 
+  // Debug logging
+  console.log('[Toolbar] onViewChange:', onViewChange);
+  console.log('[Toolbar] activeView:', activeView);
+
   const handleSearch = () => {
     if (onSearchByName && searchQuery.trim()) {
       onSearchByName(searchQuery.trim());
@@ -91,118 +98,130 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
       position="fixed" 
       elevation={0}
       sx={{
-        bgcolor: 'background.paper',
-        borderBottom: 1,
-        borderColor: 'divider',
-        zIndex: 9999, // HIGHEST Z-INDEX TO STAY ABOVE KETCHER
+        bgcolor: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+        zIndex: 9999,
         top: 0,
         left: 0,
         right: 0,
-        height: '56px', // Reduced height for desktop
-        position: 'fixed', // FORCE FIXED POSITION
+        height: '56px',
+        position: 'fixed',
       }}
     >
       <MuiToolbar 
         sx={{ 
           py: 0,
-          px: 2,
+          px: 3,
           minHeight: '56px !important',
           maxHeight: '56px',
         }}
       >
-        {/* Logo - Compact */}
+        {/* Logo - Premium */}
         <Box
           sx={{
-            width: 32,
-            height: 32,
-            borderRadius: 1.5,
-            bgcolor: 'primary.main',
+            width: 36,
+            height: 36,
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: 1,
-            mr: 1.5,
+            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+            mr: 2,
           }}
         >
-          <ScienceIcon sx={{ fontSize: 20, color: 'white' }} />
+          <ScienceIcon sx={{ fontSize: 22, color: 'white' }} />
         </Box>
 
-        {/* View Switcher - TOP LEFT - ALWAYS SHOW - BIG AND VISIBLE */}
-        <Box sx={{ display: 'flex', gap: 1, mr: 3, alignItems: 'center' }}>
+        {/* View Switcher - Premium Pills */}
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 0.5, 
+          mr: 3, 
+          alignItems: 'center',
+          bgcolor: 'rgba(0, 0, 0, 0.04)',
+          borderRadius: 2,
+          p: 0.5,
+        }}>
           <Box
             onClick={() => onViewChange?.('structure')}
             sx={{
-              bgcolor: activeView === 'structure' ? 'primary.main' : 'grey.200',
-              color: activeView === 'structure' ? 'white' : 'text.primary',
+              bgcolor: activeView === 'structure' ? 'white' : 'transparent',
+              color: activeView === 'structure' ? 'primary.main' : 'text.secondary',
               px: 2,
-              py: 1,
-              borderRadius: 2,
+              py: 0.75,
+              borderRadius: 1.5,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 1,
-              border: '2px solid',
-              borderColor: activeView === 'structure' ? 'primary.main' : 'grey.300',
+              boxShadow: activeView === 'structure' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
+              transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: activeView === 'structure' ? 'primary.dark' : 'grey.300',
+                bgcolor: activeView === 'structure' ? 'white' : 'rgba(0, 0, 0, 0.04)',
               },
-              fontWeight: 'bold',
-              fontSize: '0.9rem',
+              fontWeight: 600,
             }}
           >
-            <DrawIcon fontSize="small" />
-            <Typography variant="button" sx={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
+            <BenzeneIcon fontSize="small" />
+            <Typography variant="button" sx={{ fontWeight: 600, fontSize: '0.875rem', textTransform: 'none' }}>
               Structure
             </Typography>
           </Box>
           <Box
             onClick={() => onViewChange?.('nmr')}
             sx={{
-              bgcolor: activeView === 'nmr' ? 'primary.main' : 'grey.200',
-              color: activeView === 'nmr' ? 'white' : 'text.primary',
+              bgcolor: activeView === 'nmr' ? 'white' : 'transparent',
+              color: activeView === 'nmr' ? 'primary.main' : 'text.secondary',
               px: 2,
-              py: 1,
-              borderRadius: 2,
+              py: 0.75,
+              borderRadius: 1.5,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 1,
-              border: '2px solid',
-              borderColor: activeView === 'nmr' ? 'primary.main' : 'grey.300',
+              boxShadow: activeView === 'nmr' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
+              transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: activeView === 'nmr' ? 'primary.dark' : 'grey.300',
+                bgcolor: activeView === 'nmr' ? 'white' : 'rgba(0, 0, 0, 0.04)',
               },
-              fontWeight: 'bold',
-              fontSize: '0.9rem',
+              fontWeight: 600,
             }}
           >
-            <SpectrumIcon fontSize="small" />
-            <Typography variant="button" sx={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
+            <SpectraIcon fontSize="small" />
+            <Typography variant="button" sx={{ fontWeight: 600, fontSize: '0.875rem', textTransform: 'none' }}>
               NMR
             </Typography>
           </Box>
         </Box>
 
-        {/* Brand - Compact */}
-        <Box sx={{ mr: 2 }}>
+        {/* Brand - Premium */}
+        <Box sx={{ mr: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography 
-            variant="subtitle1" 
+            variant="h6" 
             sx={{ 
-              fontWeight: 600,
-              color: 'text.primary',
-              lineHeight: 1.2,
-              fontSize: '1rem'
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontSize: '1.1rem',
+              letterSpacing: '-0.02em',
+              whiteSpace: 'nowrap',
             }}
           >
-            GlChemDraw
+            GL-ChemDraw -
           </Typography>
           <Typography 
             variant="caption" 
             sx={{ 
               color: 'text.secondary',
-              fontSize: '0.65rem',
+              fontSize: '0.85rem',
               fontWeight: 500,
-              lineHeight: 1,
+              letterSpacing: '0.02em',
+              whiteSpace: 'nowrap',
             }}
           >
             Structure Drawing & NMR Analysis
@@ -211,50 +230,50 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
 
         {activeView === 'structure' && (
         <>
-        {/* Name to Structure Search */}
+        {/* Name to Structure Search - Premium */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 3 }}>
-          <TextField
-            size="small"
+          <input
+            type="text"
             placeholder="Search compound name..."
             value={searchQuery}
-            onChange={(e) => {
-              console.log('[Toolbar] Search input changed:', e.target.value);
-              setSearchQuery(e.target.value);
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={handleKeyPress}
+            style={{
+              width: '220px',
+              height: '38px',
+              padding: '0 16px',
+              fontSize: '0.875rem',
+              border: '1px solid rgba(0, 0, 0, 0.12)',
+              borderRadius: '8px',
+              outline: 'none',
+              backgroundColor: 'rgba(0, 0, 0, 0.02)',
+              transition: 'all 0.2s ease',
             }}
-            onKeyPress={(e) => {
-              console.log('[Toolbar] Key pressed:', e.key);
-              handleKeyPress(e);
+            onFocus={(e) => {
+              e.target.style.backgroundColor = 'white';
+              e.target.style.borderColor = '#667eea';
+              e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
             }}
-            onClick={() => console.log('[Toolbar] Search input clicked')}
-            onFocus={() => console.log('[Toolbar] Search input focused')}
-            sx={{ 
-              width: 200,
-              '& .MuiOutlinedInput-root': {
-                height: '36px',
-                fontSize: '0.875rem',
-                pointerEvents: 'auto !important',
-                zIndex: 10000,
-              },
-              '& .MuiInputBase-input': {
-                pointerEvents: 'auto !important',
-                zIndex: 10001,
-              }
+            onBlur={(e) => {
+              e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+              e.target.style.borderColor = 'rgba(0, 0, 0, 0.12)';
+              e.target.style.boxShadow = 'none';
             }}
           />
           <IconButton 
             size="small"
-            onClick={() => {
-              console.log('[Toolbar] Search button clicked');
-              handleSearch();
-            }}
+            onClick={handleSearch}
             sx={{ 
-              bgcolor: 'primary.main',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
-              '&:hover': { bgcolor: 'primary.dark' },
-              height: '36px',
-              width: '36px',
-              pointerEvents: 'auto !important',
-              zIndex: 10000,
+              '&:hover': { 
+                background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+              },
+              height: '38px',
+              width: '38px',
+              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+              transition: 'all 0.2s ease',
             }}
           >
             <SearchIcon />
@@ -265,58 +284,18 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
 
         <Box sx={{ flexGrow: 1 }} />
 
-
-
-
-
-        <Divider orientation="vertical" flexItem sx={{ mx: 0.75, bgcolor: 'divider' }} />
-
-        {/* Clear Button - Only essential button */}
-        {activeView === 'structure' && (
-        <>
-        <Tooltip title="Clear Canvas" arrow>
-          <IconButton 
-            onClick={onClear} 
-            size="small"
-            aria-label="Clear canvas"
-            sx={{ 
-              color: 'text.secondary',
-              '&:hover': { 
-                bgcolor: 'action.hover',
-                color: 'text.primary'
-              },
-            }}
-          >
-            <ClearIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        </>
-        )}
-
-        {/* NMR Keyboard Shortcuts - Integrated into Main Toolbar */}
+        {/* NMR Keyboard Shortcuts - show when in NMR view */}
         {activeView === 'nmr' && (
-          <>
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.5, bgcolor: 'divider' }} />
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 0.5,
-              px: 0.5,
-              py: 0.25,
-              bgcolor: 'action.hover',
-              borderRadius: 0.5,
-              minWidth: 'fit-content'
-            }}>
-              <KeyboardIcon sx={{ color: 'primary.main', fontSize: 14 }} />
-              <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
-                <Chip label="R" size="small" sx={{ mx: 0.25, fontWeight: 'bold', fontSize: '0.6rem', height: 14, minWidth: 16 }} />Ranges
-                <Chip label="P" size="small" sx={{ mx: 0.25, fontWeight: 'bold', fontSize: '0.6rem', height: 14, minWidth: 16 }} />Peaks
-                <Chip label="Z" size="small" sx={{ mx: 0.25, fontWeight: 'bold', fontSize: '0.6rem', height: 14, minWidth: 16 }} />Zoom
-                <Chip label="I" size="small" sx={{ mx: 0.25, fontWeight: 'bold', fontSize: '0.6rem', height: 14, minWidth: 16 }} />Integrate
-                <Chip label="Shift+Drag" size="small" sx={{ mx: 0.25, fontWeight: 'bold', fontSize: '0.6rem', height: 14, minWidth: 16, bgcolor: 'primary.main', color: 'white' }} />
-              </Typography>
-            </Box>
-          </>
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mr: 3 }}>
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', opacity: 0.8 }}>
+              Shortcuts:
+            </Typography>
+            <Chip label="R - Ranges" size="small" color="primary" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
+            <Chip label="P - Peak Picking" size="small" color="secondary" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
+            <Chip label="Z - Zoom" size="small" color="success" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
+            <Chip label="I - Integral" size="small" color="warning" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
+            <Chip label="Shift+Drag - Pan View" size="small" color="info" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
+          </Box>
         )}
 
         {/* Theme Toggle */}

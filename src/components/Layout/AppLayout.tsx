@@ -9,14 +9,20 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Button,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CloseIcon from '@mui/icons-material/Close';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
 import ChemCanvas from '../ChemCanvas/ChemCanvas';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import { LazyNMRViewer } from '../LazyComponents';
+import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readDir, readFile } from '@tauri-apps/plugin-fs';
 // StructureData interface for chemical structure information
@@ -41,6 +47,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('info');
+  const [show3DViewer, setShow3DViewer] = useState(false);
   
   // View mode state - switch between structure drawing and NMR analyzer
   const [activeView, setActiveView] = useState<'structure' | 'nmr'>('structure');
@@ -319,10 +326,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         
         if (properties) {
           console.log('[AppLayout] Found properties for name!');
-          console.log('[AppLayout] Available properties:', Object.keys(properties));
-          console.log('[AppLayout] CanonicalSMILES:', properties.CanonicalSMILES);
-          console.log('[AppLayout] IsomericSMILES:', properties.IsomericSMILES);
-          console.log('[AppLayout] SMILES:', properties.SMILES);
           
           // Set the recognized compound
           setRecognizedCompound({
@@ -401,82 +404,20 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           });
           
           // Load the structure into the canvas if we have SMILES
-          const smilesToUse = properties.CanonicalSMILES || properties.IsomericSMILES || properties.SMILES;
-          console.log('[AppLayout] SMILES to use:', smilesToUse);
+          const smilesToUse = properties.CanonicalSMILES || properties.SMILES;
           
           if (smilesToUse && ketcherRef.current) {
             try {
-              console.log('[AppLayout] Attempting to load structure into canvas...');
-              console.log('[AppLayout] Using SMILES:', smilesToUse);
-              console.log('[AppLayout] Ketcher ref:', ketcherRef.current);
-              console.log('[AppLayout] Available Ketcher methods:', Object.getOwnPropertyNames(ketcherRef.current));
-              
               const { convertSmilesToMol } = await import('../../lib/chemistry/smilesToMol');
               const molContent = await convertSmilesToMol(smilesToUse);
-              console.log('[AppLayout] MOL content:', molContent ? 'Generated' : 'Failed');
               
               if (molContent) {
-                // Wait a bit for Ketcher to be fully ready
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Test with a simple structure first
-                console.log('[AppLayout] Testing with simple benzene structure first...');
-                try {
-                  const simpleBenzene = `
-  Mrv2014 12232412342D          
-
-  6  6  0  0  0  0            999 V2000
-    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    1.2124    0.7000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    2.4248    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    2.4248   -1.4000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    1.2124   -2.1000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-    0.0000   -1.4000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  2  0  0  0  0
-  2  3  1  0  0  0  0
-  3  4  2  0  0  0  0
-  4  5  1  0  0  0  0
-  5  6  2  0  0  0  0
-  6  1  1  0  0  0  0
-M  END
-`;
-                  await ketcherRef.current.setMolecule(simpleBenzene);
-                  console.log('[AppLayout] ✅ Simple benzene test successful - Ketcher is working!');
-                  
-                  // Now try the actual structure
-                  setTimeout(async () => {
-                    try {
-                      console.log('[AppLayout] Now loading actual structure...');
-                      console.log('[AppLayout] MOL content preview:', molContent.substring(0, 200));
-                      await ketcherRef.current.setMolecule(molContent);
-                      console.log('[AppLayout] ✅ Structure loaded successfully!');
-                      
-                      // Force redraw
-                      if (ketcherRef.current && ketcherRef.current.editor) {
-                        ketcherRef.current.editor.render();
-                        console.log('[AppLayout] Forced redraw completed');
-                      }
-                    } catch (e) {
-                      console.error('[AppLayout] ❌ Failed to load structure:', e);
-                      console.log('[AppLayout] MOL content that failed:', molContent);
-                    }
-                  }, 1000);
-                  
-                } catch (e) {
-                  console.error('[AppLayout] ❌ Simple benzene test failed:', e);
-                }
-              } else {
-                console.log('[AppLayout] ❌ Failed to generate MOL content from SMILES');
+                await ketcherRef.current.setMolecule(molContent);
+                console.log('[AppLayout] Loaded structure into canvas');
               }
             } catch (error) {
-              console.error('[AppLayout] ❌ Error loading structure into canvas:', error);
+              console.error('[AppLayout] Error loading structure into canvas:', error);
             }
-          } else {
-            console.log('[AppLayout] Cannot load structure - missing SMILES or Ketcher ref');
-            console.log('[AppLayout] CanonicalSMILES available:', !!properties.CanonicalSMILES);
-            console.log('[AppLayout] IsomericSMILES available:', !!properties.IsomericSMILES);
-            console.log('[AppLayout] SMILES available:', !!properties.SMILES);
-            console.log('[AppLayout] Ketcher ref available:', !!ketcherRef.current);
           }
           
           setSnackbarMessage(`Found compound: ${properties.IUPACName || name}`);
@@ -561,8 +502,10 @@ M  END
           flex: 1,
           display: 'flex', 
           marginTop: '56px', // Push content below fixed header
-          overflow: 'hidden',
-          width: '100%'
+          height: 'calc(100vh - 56px)', // Exact height: viewport minus header
+          overflow: 'hidden', // Prevent any scrolling
+          width: '100%',
+          position: 'relative'
         }}>
           {(() => {
             console.log('[AppLayout] Rendering view:', activeView);
@@ -654,82 +597,205 @@ M  END
               {/* Compound Identification */}
               {recognizedCompound && (
                 <Box sx={{ p: 1.25, bgcolor: 'background.default', borderRadius: 1 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    🧪 Compound
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      🔬 Molecular Identifiers
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setShow3DViewer(true)}
+                      sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
+                    >
+                      View 3D
+                    </Button>
+                  </Box>
                   <Stack spacing={0.5}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                    <Box 
+                      onClick={() => handleCopy(recognizedCompound.name, 'Name')}
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        gap: 1,
+                        p: 0.75,
+                        borderRadius: 1,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                          transform: 'translateX(2px)',
+                        }
+                      }}
+                    >
                       <Typography variant="caption" color="text.secondary">Name:</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                           {recognizedCompound.name}
                         </Typography>
-                        <Tooltip title="Copy Name">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleCopy(recognizedCompound.name, 'Name')}
-                            sx={{ p: 0.25 }}
-                          >
-                            <ContentCopyIcon sx={{ fontSize: 12 }} />
-                          </IconButton>
-                        </Tooltip>
-            </Box>
-          </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
+                      </Box>
+                    </Box>
+                    <Box 
+                      onClick={() => recognizedCompound.properties?.IUPACName && handleCopy(recognizedCompound.properties.IUPACName, 'IUPAC Name')}
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        gap: 1,
+                        p: 0.75,
+                        borderRadius: 1,
+                        cursor: recognizedCompound.properties?.IUPACName ? 'pointer' : 'default',
+                        transition: 'all 0.2s',
+                        '&:hover': recognizedCompound.properties?.IUPACName ? {
+                          bgcolor: 'action.hover',
+                          transform: 'translateX(2px)',
+                        } : {}
+                      }}
+                    >
                       <Typography variant="caption" color="text.secondary">IUPAC Name:</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                           {recognizedCompound.properties?.IUPACName || 'N/A'}
                         </Typography>
                         {recognizedCompound.properties?.IUPACName && (
-                          <Tooltip title="Copy IUPAC Name">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleCopy(recognizedCompound.properties.IUPACName, 'IUPAC Name')}
-                              sx={{ p: 0.25 }}
-                            >
-                              <ContentCopyIcon sx={{ fontSize: 12 }} />
-                            </IconButton>
-                          </Tooltip>
+                          <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                         )}
                       </Box>
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                    <Box 
+                      onClick={() => handleCopy(String(recognizedCompound.cid), 'CID')}
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        gap: 1,
+                        p: 0.75,
+                        borderRadius: 1,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                          transform: 'translateX(2px)',
+                        }
+                      }}
+                    >
                       <Typography variant="caption" color="text.secondary">PubChem CID:</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                           {recognizedCompound.cid}
                         </Typography>
-                        <Tooltip title="Copy CID">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleCopy(String(recognizedCompound.cid), 'CID')}
-                            sx={{ p: 0.25 }}
-                          >
-                            <ContentCopyIcon sx={{ fontSize: 12 }} />
-                          </IconButton>
-                        </Tooltip>
+                        <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                       </Box>
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                    <Box 
+                      onClick={() => chemicalData.regulatory?.casNumber && handleCopy(chemicalData.regulatory.casNumber, 'CAS Number')}
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        gap: 1,
+                        p: 0.75,
+                        borderRadius: 1,
+                        cursor: chemicalData.regulatory?.casNumber ? 'pointer' : 'default',
+                        transition: 'all 0.2s',
+                        '&:hover': chemicalData.regulatory?.casNumber ? {
+                          bgcolor: 'action.hover',
+                          transform: 'translateX(2px)',
+                        } : {}
+                      }}
+                    >
                       <Typography variant="caption" color="text.secondary">CAS Number:</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                           {chemicalData.regulatory?.casNumber || 'N/A'}
-              </Typography>
+                        </Typography>
                         {chemicalData.regulatory?.casNumber && (
-                          <Tooltip title="Copy CAS Number">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleCopy(chemicalData.regulatory.casNumber, 'CAS Number')}
-                              sx={{ p: 0.25 }}
-                            >
-                              <ContentCopyIcon sx={{ fontSize: 12 }} />
-                            </IconButton>
-                          </Tooltip>
+                          <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                         )}
                       </Box>
                     </Box>
+                    {chemicalData.regulatory?.inchiKey && (
+                      <Box 
+                        onClick={() => handleCopy(chemicalData.regulatory.inchiKey, 'InChI Key')}
+                        sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          gap: 1,
+                          p: 0.75,
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            transform: 'translateX(2px)',
+                          }
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary">InChI Key:</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {chemicalData.regulatory.inchiKey}
+                          </Typography>
+                          <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
+                        </Box>
+                      </Box>
+                    )}
+                    {chemicalData.regulatory?.smiles && (
+                      <Box 
+                        onClick={() => handleCopy(chemicalData.regulatory.smiles, 'SMILES')}
+                        sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          gap: 1,
+                          p: 0.75,
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            transform: 'translateX(2px)',
+                          }
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary">SMILES:</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {chemicalData.regulatory.smiles}
+                          </Typography>
+                          <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
+                        </Box>
+                      </Box>
+                    )}
+                    {chemicalData.regulatory?.inchi && (
+                      <Box 
+                        onClick={() => handleCopy(chemicalData.regulatory.inchi, 'InChI')}
+                        sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          gap: 1,
+                          p: 0.75,
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            transform: 'translateX(2px)',
+                          }
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary">InChI:</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {chemicalData.regulatory.inchi}
+                          </Typography>
+                          <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
+                        </Box>
+                      </Box>
+                    )}
                   </Stack>
                 </Box>
               )}
@@ -749,7 +815,28 @@ M  END
                     </Typography>
                     <Stack spacing={0.5}>
                       {chemicalData.physicalProperties.molecularWeight && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(
+                            `${typeof chemicalData.physicalProperties.molecularWeight === 'number' 
+                              ? chemicalData.physicalProperties.molecularWeight.toFixed(2)
+                              : parseFloat(chemicalData.physicalProperties.molecularWeight).toFixed(2)} g/mol`, 
+                            'Molecular Weight'
+                          )}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Molecular Weight:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
@@ -757,44 +844,60 @@ M  END
                                 ? chemicalData.physicalProperties.molecularWeight.toFixed(2)
                                 : parseFloat(chemicalData.physicalProperties.molecularWeight).toFixed(2)} g/mol
                             </Typography>
-                            <Tooltip title="Copy Molecular Weight">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(
-                                  `${typeof chemicalData.physicalProperties.molecularWeight === 'number' 
-                                    ? chemicalData.physicalProperties.molecularWeight.toFixed(2)
-                                    : parseFloat(chemicalData.physicalProperties.molecularWeight).toFixed(2)} g/mol`, 
-                                  'Molecular Weight'
-                                )}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.physicalProperties.molecularFormula && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(chemicalData.physicalProperties.molecularFormula, 'Molecular Formula')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Molecular Formula:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.75rem' }}>
                               {chemicalData.physicalProperties.molecularFormula}
                             </Typography>
-                            <Tooltip title="Copy Molecular Formula">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(chemicalData.physicalProperties.molecularFormula, 'Molecular Formula')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.physicalProperties.exactMass && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(
+                            `${typeof chemicalData.physicalProperties.exactMass === 'number' 
+                              ? chemicalData.physicalProperties.exactMass.toFixed(4)
+                              : parseFloat(chemicalData.physicalProperties.exactMass).toFixed(4)} Da`,
+                            'Exact Mass'
+                          )}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Exact Mass:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
@@ -802,25 +905,33 @@ M  END
                                 ? chemicalData.physicalProperties.exactMass.toFixed(4)
                                 : parseFloat(chemicalData.physicalProperties.exactMass).toFixed(4)} Da
                             </Typography>
-                            <Tooltip title="Copy Exact Mass">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(
-                                  `${typeof chemicalData.physicalProperties.exactMass === 'number' 
-                                    ? chemicalData.physicalProperties.exactMass.toFixed(4)
-                                    : parseFloat(chemicalData.physicalProperties.exactMass).toFixed(4)} Da`,
-                                  'Exact Mass'
-                                )}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.physicalProperties.monoIsotopicMass && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(
+                            `${typeof chemicalData.physicalProperties.monoIsotopicMass === 'number' 
+                              ? chemicalData.physicalProperties.monoIsotopicMass.toFixed(4)
+                              : parseFloat(chemicalData.physicalProperties.monoIsotopicMass).toFixed(4)} Da`,
+                            'Monoisotopic Mass'
+                          )}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Monoisotopic Mass:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
@@ -828,77 +939,88 @@ M  END
                                 ? chemicalData.physicalProperties.monoIsotopicMass.toFixed(4)
                                 : parseFloat(chemicalData.physicalProperties.monoIsotopicMass).toFixed(4)} Da
                             </Typography>
-                            <Tooltip title="Copy Monoisotopic Mass">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(
-                                  `${typeof chemicalData.physicalProperties.monoIsotopicMass === 'number' 
-                                    ? chemicalData.physicalProperties.monoIsotopicMass.toFixed(4)
-                                    : parseFloat(chemicalData.physicalProperties.monoIsotopicMass).toFixed(4)} Da`,
-                                  'Monoisotopic Mass'
-                                )}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.physicalProperties.density && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(chemicalData.physicalProperties.density, 'Density')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Density:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                               {chemicalData.physicalProperties.density}
                             </Typography>
-                            <Tooltip title="Copy Density">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(chemicalData.physicalProperties.density, 'Density')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.physicalProperties.meltingPoint && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(chemicalData.physicalProperties.meltingPoint, 'Melting Point')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Melting Point:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                               {chemicalData.physicalProperties.meltingPoint}
                             </Typography>
-                            <Tooltip title="Copy Melting Point">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(chemicalData.physicalProperties.meltingPoint, 'Melting Point')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.physicalProperties.boilingPoint && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(chemicalData.physicalProperties.boilingPoint, 'Boiling Point')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Boiling Point:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                               {chemicalData.physicalProperties.boilingPoint}
                             </Typography>
-                            <Tooltip title="Copy Boiling Point">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(chemicalData.physicalProperties.boilingPoint, 'Boiling Point')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
@@ -923,7 +1045,28 @@ M  END
                     </Typography>
                     <Stack spacing={0.5}>
                       {chemicalData.descriptors.logP !== undefined && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(
+                            String(typeof chemicalData.descriptors.logP === 'number' 
+                              ? chemicalData.descriptors.logP.toFixed(2)
+                              : parseFloat(chemicalData.descriptors.logP).toFixed(2)),
+                            'LogP'
+                          )}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">LogP (Lipophilicity):</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
@@ -931,25 +1074,33 @@ M  END
                                 ? chemicalData.descriptors.logP.toFixed(2)
                                 : parseFloat(chemicalData.descriptors.logP).toFixed(2)}
                             </Typography>
-                            <Tooltip title="Copy LogP">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(
-                                  String(typeof chemicalData.descriptors.logP === 'number' 
-                                    ? chemicalData.descriptors.logP.toFixed(2)
-                                    : parseFloat(chemicalData.descriptors.logP).toFixed(2)),
-                                  'LogP'
-                                )}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.descriptors.tpsa !== undefined && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(
+                            `${typeof chemicalData.descriptors.tpsa === 'number' 
+                              ? chemicalData.descriptors.tpsa.toFixed(2)
+                              : parseFloat(chemicalData.descriptors.tpsa).toFixed(2)} Å²`,
+                            'TPSA'
+                          )}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">TPSA (Polar Surface Area):</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
@@ -957,82 +1108,114 @@ M  END
                                 ? chemicalData.descriptors.tpsa.toFixed(2)
                                 : parseFloat(chemicalData.descriptors.tpsa).toFixed(2)} Å²
                             </Typography>
-                            <Tooltip title="Copy TPSA">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(
-                                  `${typeof chemicalData.descriptors.tpsa === 'number' 
-                                    ? chemicalData.descriptors.tpsa.toFixed(2)
-                                    : parseFloat(chemicalData.descriptors.tpsa).toFixed(2)} Å²`,
-                                  'TPSA'
-                                )}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.descriptors.hBondDonors !== undefined && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(String(chemicalData.descriptors.hBondDonors), 'H-Bond Donors')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">H-Bond Donors:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                               {chemicalData.descriptors.hBondDonors}
                             </Typography>
-                            <Tooltip title="Copy H-Bond Donors">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(String(chemicalData.descriptors.hBondDonors), 'H-Bond Donors')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.descriptors.hBondAcceptors !== undefined && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(String(chemicalData.descriptors.hBondAcceptors), 'H-Bond Acceptors')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">H-Bond Acceptors:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                               {chemicalData.descriptors.hBondAcceptors}
                             </Typography>
-                            <Tooltip title="Copy H-Bond Acceptors">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(String(chemicalData.descriptors.hBondAcceptors), 'H-Bond Acceptors')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.descriptors.rotatableBonds !== undefined && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(String(chemicalData.descriptors.rotatableBonds), 'Rotatable Bonds')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Rotatable Bonds:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                               {chemicalData.descriptors.rotatableBonds}
                             </Typography>
-                            <Tooltip title="Copy Rotatable Bonds">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(String(chemicalData.descriptors.rotatableBonds), 'Rotatable Bonds')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.descriptors.complexity !== undefined && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(
+                            String(typeof chemicalData.descriptors.complexity === 'number' 
+                              ? chemicalData.descriptors.complexity.toFixed(1)
+                              : parseFloat(chemicalData.descriptors.complexity).toFixed(1)),
+                            'Complexity'
+                          )}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Complexity:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
@@ -1040,58 +1223,61 @@ M  END
                                 ? chemicalData.descriptors.complexity.toFixed(1)
                                 : parseFloat(chemicalData.descriptors.complexity).toFixed(1)}
                             </Typography>
-                            <Tooltip title="Copy Complexity">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(
-                                  String(typeof chemicalData.descriptors.complexity === 'number' 
-                                    ? chemicalData.descriptors.complexity.toFixed(1)
-                                    : parseFloat(chemicalData.descriptors.complexity).toFixed(1)),
-                                  'Complexity'
-                                )}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.descriptors.heavyAtomCount !== undefined && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(String(chemicalData.descriptors.heavyAtomCount), 'Heavy Atom Count')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Heavy Atom Count:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                               {chemicalData.descriptors.heavyAtomCount}
                             </Typography>
-                            <Tooltip title="Copy Heavy Atom Count">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(String(chemicalData.descriptors.heavyAtomCount), 'Heavy Atom Count')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
                       {chemicalData.descriptors.formalCharge !== undefined && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                          onClick={() => handleCopy(String(chemicalData.descriptors.formalCharge), 'Formal Charge')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              transform: 'translateX(2px)',
+                            }
+                          }}
+                        >
                           <Typography variant="caption" color="text.secondary">Formal Charge:</Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
                               {chemicalData.descriptors.formalCharge}
                             </Typography>
-                            <Tooltip title="Copy Formal Charge">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(String(chemicalData.descriptors.formalCharge), 'Formal Charge')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
+                            <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
                         </Box>
                       )}
@@ -1100,93 +1286,6 @@ M  END
                 )
               )}
 
-              {/* Regulatory Information */}
-              {chemicalData.regulatory && (
-                (chemicalData.regulatory.casNumber || 
-                 chemicalData.regulatory.pubchemCID || 
-                 chemicalData.regulatory.iupacName || 
-                 chemicalData.regulatory.inchiKey || 
-                 chemicalData.regulatory.smiles || 
-                 chemicalData.regulatory.inchi) && (
-                  <Box sx={{ p: 1.25, bgcolor: 'background.default', borderRadius: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                      📋 Regulatory Information
-                    </Typography>
-                    <Stack spacing={0.5}>
-                      {chemicalData.regulatory.casNumber && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="caption" color="text.secondary">CAS Number:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
-                            {chemicalData.regulatory.casNumber}
-                          </Typography>
-                        </Box>
-                      )}
-                      {chemicalData.regulatory.pubchemCID && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="caption" color="text.secondary">PubChem CID:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
-                            {chemicalData.regulatory.pubchemCID}
-                          </Typography>
-                        </Box>
-                      )}
-                      {chemicalData.regulatory.iupacName && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="caption" color="text.secondary">IUPAC Name:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
-                            {chemicalData.regulatory.iupacName}
-                          </Typography>
-                        </Box>
-                      )}
-                      {chemicalData.regulatory.inchiKey && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="caption" color="text.secondary">InChI Key:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                              {chemicalData.regulatory.inchiKey}
-                            </Typography>
-                            <Tooltip title="Copy InChI Key">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(chemicalData.regulatory.inchiKey, 'InChI Key')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </Box>
-                      )}
-                      {chemicalData.regulatory.smiles && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="caption" color="text.secondary">SMILES:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                              {chemicalData.regulatory.smiles}
-                            </Typography>
-                            <Tooltip title="Copy SMILES">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleCopy(chemicalData.regulatory.smiles, 'SMILES')}
-                                sx={{ p: 0.25 }}
-                              >
-                                <ContentCopyIcon sx={{ fontSize: 12 }} />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </Box>
-                      )}
-                      {chemicalData.regulatory.inchi && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="caption" color="text.secondary">InChI:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                            {chemicalData.regulatory.inchi}
-                </Typography>
-                        </Box>
-                      )}
-                    </Stack>
-                  </Box>
-                )
-              )}
 
               {/* Spectral Data */}
               {chemicalData.spectral && (
@@ -1304,6 +1403,65 @@ M  END
             {snackbarMessage}
           </Alert>
         </Snackbar>
+
+        {/* 3D Viewer Dialog */}
+        <Dialog
+          open={show3DViewer}
+          onClose={() => setShow3DViewer(false)}
+          maxWidth="md"
+          sx={{
+            '& .MuiDialog-paper': {
+              maxHeight: 'calc(100vh - 100px)',
+              marginTop: '80px'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            pr: 1,
+            py: 1.5,
+            bgcolor: 'primary.main',
+            color: 'white'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: '0.9rem', fontWeight: 600, opacity: 0.9 }}>
+                3D Structure Viewer
+              </Typography>
+              <Typography sx={{ fontSize: '0.75rem', opacity: 0.7 }}>•</Typography>
+              <Typography 
+                sx={{ 
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flex: 1,
+                  minWidth: 0
+                }}
+                title={recognizedCompound?.name}
+              >
+                {recognizedCompound?.name}
+              </Typography>
+            </Box>
+            <IconButton
+              onClick={() => setShow3DViewer(false)}
+              size="small"
+              sx={{ 
+                color: 'white',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ height: '450px', width: '600px', p: 0 }}>
+            {recognizedCompound && (
+              <PubChem3DViewer cid={recognizedCompound.cid} />
+            )}
+          </DialogContent>
+        </Dialog>
       </Box>
     </ThemeProvider>
   );

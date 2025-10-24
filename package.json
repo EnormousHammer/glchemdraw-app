@@ -1,5 +1,6 @@
 {
   "name": "glchemdraw",
+  "description": "Professional chemistry structure drawing and NMR spectroscopy analysis platform",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -29,16 +30,16 @@
     "@tauri-apps/plugin-dialog": "^2.4.0",
     "@tauri-apps/plugin-fs": "^2.4.2",
     "@tauri-apps/plugin-opener": "^2",
+    "3dmol": "^2.5.3",
     "axios": "^1.12.2",
     "idb": "^8.0.3",
     "immutable": "^5.1.4",
-    "jquery": "^3.7.1",
     "jszip": "^3.10.1",
     "ketcher-core": "^3.10.0-build.1",
     "ketcher-react": "^3.10.0-build.1",
     "ketcher-standalone": "^3.8.0",
     "lodash": "^4.17.21",
-    "nmrium": "^1.5.0",
+    "nmrium": "^1.6.1",
     "openchemlib": "^9.12.0",
     "openchemlib-utils": "^8.6.0",
     "react": "^18.3.1",
@@ -65,14 +66,5 @@
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
     "vitest": "^3.2.4"
-  },
-  "overrides": {
-    "ketcher-react": {
-      "@mui/material": "^7.3.4",
-      "@mui/system": "^7.3.3",
-      "@mui/utils": "^7.3.3",
-      "@mui/styled-engine": "^7.3.3",
-      "@mui/private-theming": "^7.3.3"
-    }
   }
 }

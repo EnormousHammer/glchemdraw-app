@@ -94,10 +94,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
         <Typography variant="h2" sx={{ 
           mb: 1.5, 
           fontWeight: 700,
-          letterSpacing: 1,
+          letterSpacing: 2,
           textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
         }}>
-          GlChemDraw
+          GL-ChemDraw
         </Typography>
 
         {/* Subtitle */}

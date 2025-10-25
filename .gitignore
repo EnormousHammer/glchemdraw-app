@@ -58,3 +58,14 @@ jspm_packages/
 
 # Tauri
 src-tauri/target/
+
+# Test and development files
+*.bat
+*.ps1
+test-*.html
+*.txt
+release/
+*.zip
+*.msi
+*.exe
+.vercel

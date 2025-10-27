@@ -3,15 +3,16 @@
  * Simple 5-second loading screen
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
-import { AccountTree as MoleculeIcon } from '@mui/icons-material';
 
 interface LoadingScreenProps {
   onComplete: () => void;
 }
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   useEffect(() => {
     // Simple 5-second timer
     const timer = setTimeout(() => {
@@ -20,6 +21,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
 
     return () => clearTimeout(timer);
   }, [onComplete]);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(err => console.error('Video play failed:', err));
+    }
+  }, []);
 
   return (
     <Box
@@ -61,15 +68,25 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
         />
       ))}
       
-      {/* Hexagonal pattern background */}
-      <Box sx={{
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        opacity: 0.05,
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(255,255,255,0.1) 30px, rgba(255,255,255,0.1) 60px)',
-        backgroundSize: '30px 60px'
-      }} />
+      {/* Background video */}
+      <Box
+        component="video"
+        ref={videoRef}
+        autoPlay
+        muted
+        loop
+        playsInline
+        sx={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          opacity: 0.3,
+          zIndex: 0
+        }}
+      >
+        <source src="/brv1.mp4" type="video/mp4" />
+      </Box>
 
       {/* Main content */}
       <Box sx={{

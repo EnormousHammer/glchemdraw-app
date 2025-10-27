@@ -214,30 +214,20 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         <Box sx={{ flexGrow: 1 }} />
 
         {/* Selection Tool Help */}
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1.5, 
-          mr: 1,
-          bgcolor: 'success.main',
-          px: 2.5,
-          py: 1,
-          borderRadius: 3,
-          border: '2px solid',
-          borderColor: 'success.dark',
-          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
-        }}>
-          <SelectAllIcon sx={{ fontSize: 20, color: 'white' }} />
-          <Typography variant="body2" sx={{ 
-            fontSize: '0.8rem', 
-            color: 'white', 
-            whiteSpace: 'nowrap',
-            fontWeight: 700,
-            letterSpacing: 0.5
-          }}>
-            HOW TO COPY: 1. Click Selection Tool → 2. Select structure → 3. Press Ctrl + L Shift + C
-          </Typography>
-        </Box>
+        <Chip
+          icon={<SelectAllIcon sx={{ fontSize: 16 }} />}
+          label="Copy: Selection Tool → Select → Ctrl+LShift+C"
+          size="small"
+          color="success"
+          sx={{
+            fontSize: '0.7rem',
+            fontWeight: 600,
+            height: 28,
+            '& .MuiChip-label': {
+              px: 1
+            }
+          }}
+        />
 
         <Box sx={{ width: 8 }} />
 

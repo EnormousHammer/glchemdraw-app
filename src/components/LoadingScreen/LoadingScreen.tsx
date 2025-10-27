@@ -107,7 +107,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
           fontWeight: 400,
           textAlign: 'center'
         }}>
-          Structure Drawing & NMR Analysis
+          Structure Drawing & Analysis
         </Typography>
 
         {/* Progress indicator */}

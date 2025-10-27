@@ -214,20 +214,42 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         <Box sx={{ flexGrow: 1 }} />
 
         {/* Selection Tool Help */}
-        <Chip
-          icon={<SelectAllIcon sx={{ fontSize: 16 }} />}
-          label="Copy: Selection Tool → Select → Ctrl+LShift+C"
-          size="small"
-          color="success"
-          sx={{
-            fontSize: '0.7rem',
-            fontWeight: 600,
-            height: 28,
-            '& .MuiChip-label': {
-              px: 1
-            }
-          }}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mr: 1 }}>
+          <Tooltip 
+            title="Quick copy instructions"
+            arrow
+            placement="bottom"
+          >
+            <Chip
+              icon={<SelectAllIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+              label="How to copy"
+              size="small"
+              variant="outlined"
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                height: 26,
+                bgcolor: 'transparent',
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                  borderColor: 'primary.dark'
+                }
+              }}
+            />
+          </Tooltip>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              fontSize: '0.7rem', 
+              color: 'text.secondary',
+              fontWeight: 500 
+            }}
+          >
+            Ctrl+LShift+C
+          </Typography>
+        </Box>
 
         <Box sx={{ width: 8 }} />
 

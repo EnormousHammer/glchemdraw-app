@@ -217,21 +217,25 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: 1, 
+          gap: 1.5, 
           mr: 1,
-          bgcolor: 'primary.main',
-          px: 2,
-          py: 0.5,
-          borderRadius: 2,
+          bgcolor: 'success.main',
+          px: 2.5,
+          py: 1,
+          borderRadius: 3,
+          border: '2px solid',
+          borderColor: 'success.dark',
+          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
         }}>
-          <SelectAllIcon fontSize="small" sx={{ color: 'white' }} />
-          <Typography variant="caption" sx={{ 
-            fontSize: '0.75rem', 
+          <SelectAllIcon sx={{ fontSize: 20, color: 'white' }} />
+          <Typography variant="body2" sx={{ 
+            fontSize: '0.8rem', 
             color: 'white', 
             whiteSpace: 'nowrap',
-            fontWeight: 600
+            fontWeight: 700,
+            letterSpacing: 0.5
           }}>
-            1. Selection Tool | 2. Select structure | 3. Ctrl + L Shift + C
+            HOW TO COPY: 1. Click Selection Tool → 2. Select structure → 3. Press Ctrl + L Shift + C
           </Typography>
         </Box>
 

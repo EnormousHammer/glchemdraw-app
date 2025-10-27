@@ -106,22 +106,16 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
         <Box sx={{
           position: 'relative',
           mb: 3,
+          fontSize: '6rem',
+          color: 'white',
+          filter: 'drop-shadow(0 0 30px rgba(255, 255, 255, 0.7))',
           animation: 'pulse 2s ease-in-out infinite',
           '@keyframes pulse': {
             '0%, 100%': { transform: 'scale(1)' },
             '50%': { transform: 'scale(1.1)' }
           }
         }}>
-          <MoleculeIcon sx={{ 
-            fontSize: 90, 
-            color: 'white',
-            filter: 'drop-shadow(0 0 30px rgba(255, 255, 255, 0.7))',
-            animation: 'rotate 8s linear infinite',
-            '@keyframes rotate': {
-              '0%': { transform: 'rotate(0deg)' },
-              '100%': { transform: 'rotate(360deg)' }
-            }
-          }} />
+          ⚛️
         </Box>
 
         {/* App name */}

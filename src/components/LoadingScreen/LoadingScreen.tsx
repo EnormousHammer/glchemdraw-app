@@ -94,12 +94,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        bgcolor: 'rgba(255, 255, 255, 0.15)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: 4,
+        bgcolor: 'transparent',
         padding: 6,
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
         minWidth: '400px'
       }}>
         {/* Icon with glow effect and pulse */}

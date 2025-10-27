@@ -1278,22 +1278,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
               {/* Spectral Data */}
               {chemicalData.spectral && (
-                (chemicalData.spectral.nmrAvailable || 
-                 chemicalData.spectral.irSpectrum || 
+                (chemicalData.spectral.irSpectrum || 
                  chemicalData.spectral.massSpectrum) && (
                   <Box sx={{ p: 1.25, bgcolor: 'background.default', borderRadius: 1 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
                       📊 Spectral Data
                     </Typography>
                     <Stack spacing={0.5}>
-                      {chemicalData.spectral.nmrAvailable && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="caption" color="text.secondary">NMR Available:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
-                            {chemicalData.spectral.nmrAvailable}
-                          </Typography>
-                        </Box>
-                      )}
                       {chemicalData.spectral.irSpectrum && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="caption" color="text.secondary">IR Spectrum:</Typography>

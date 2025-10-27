@@ -5,7 +5,7 @@
 
 import React, { useEffect } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
-import { Science as ChemistryIcon } from '@mui/icons-material';
+import { AccountTree as MoleculeIcon } from '@mui/icons-material';
 
 interface LoadingScreenProps {
   onComplete: () => void;
@@ -83,7 +83,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
           position: 'relative',
           mb: 3,
         }}>
-          <ChemistryIcon sx={{ 
+          <MoleculeIcon sx={{ 
             fontSize: 90, 
             color: 'white',
             filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.5))',
@@ -153,14 +153,6 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
         </Typography>
       </Box>
 
-      {/* Footer copyright */}
-      <Typography variant="caption" sx={{ 
-        position: 'absolute',
-        bottom: 30,
-        opacity: 0.6
-      }}>
-        © 2025 GlChemTec. All rights reserved.
-      </Typography>
     </Box>
   );
 };

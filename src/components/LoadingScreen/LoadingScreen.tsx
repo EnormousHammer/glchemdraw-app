@@ -36,32 +36,39 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
         justifyContent: 'center',
         zIndex: 9999,
         color: 'white',
+        overflow: 'hidden'
       }}
     >
-      {/* Animated background circles */}
+      {/* Animated floating particles */}
+      {[...Array(12)].map((_, i) => (
+        <Box
+          key={i}
+          sx={{
+            position: 'absolute',
+            width: 20 + Math.random() * 30,
+            height: 20 + Math.random() * 30,
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.15)',
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animation: `float ${4 + Math.random() * 4}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 2}s`,
+            '@keyframes float': {
+              '0%, 100%': { transform: 'translateY(0px) scale(1)' },
+              '50%': { transform: 'translateY(-30px) scale(1.1)' }
+            }
+          }}
+        />
+      ))}
+      
+      {/* Hexagonal pattern background */}
       <Box sx={{
         position: 'absolute',
-        top: '10%',
-        left: '10%',
-        width: '300px',
-        height: '300px',
-        borderRadius: '50%',
-        background: 'rgba(255, 255, 255, 0.1)',
-        animation: 'float 6s ease-in-out infinite',
-        '@keyframes float': {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-20px)' }
-        }
-      }} />
-      <Box sx={{
-        position: 'absolute',
-        bottom: '15%',
-        right: '15%',
-        width: '200px',
-        height: '200px',
-        borderRadius: '50%',
-        background: 'rgba(255, 255, 255, 0.1)',
-        animation: 'float 8s ease-in-out infinite',
+        width: '100%',
+        height: '100%',
+        opacity: 0.05,
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(255,255,255,0.1) 30px, rgba(255,255,255,0.1) 60px)',
+        backgroundSize: '30px 60px'
       }} />
 
       {/* Main content */}
@@ -78,15 +85,25 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
         border: '1px solid rgba(255, 255, 255, 0.2)',
         minWidth: '400px'
       }}>
-        {/* Icon with glow effect */}
+        {/* Icon with glow effect and pulse */}
         <Box sx={{
           position: 'relative',
           mb: 3,
+          animation: 'pulse 2s ease-in-out infinite',
+          '@keyframes pulse': {
+            '0%, 100%': { transform: 'scale(1)' },
+            '50%': { transform: 'scale(1.1)' }
+          }
         }}>
           <MoleculeIcon sx={{ 
             fontSize: 90, 
             color: 'white',
-            filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.5))',
+            filter: 'drop-shadow(0 0 30px rgba(255, 255, 255, 0.7))',
+            animation: 'rotate 8s linear infinite',
+            '@keyframes rotate': {
+              '0%': { transform: 'rotate(0deg)' },
+              '100%': { transform: 'rotate(360deg)' }
+            }
           }} />
         </Box>
 
@@ -133,14 +150,26 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
           </Box>
         </Box>
 
-        {/* Loading text */}
+        {/* Loading text with animated dots */}
         <Typography variant="body1" sx={{ 
           mt: 2, 
           opacity: 0.9,
           fontWeight: 300,
           letterSpacing: 2
         }}>
-          LOADING...
+          LOADING
+          <Box component="span" sx={{
+            display: 'inline-block',
+            animation: 'dots 1.5s steps(4, end) infinite',
+            '@keyframes dots': {
+              '0%, 20%': { content: '""' },
+              '40%': { content: '"."' },
+              '60%': { content: '".."' },
+              '80%, 100%': { content: '"..."' }
+            }
+          }}>
+            ...
+          </Box>
         </Typography>
 
         {/* Version or tagline */}

@@ -33,6 +33,7 @@ import {
   AccountTree as MoleculeIcon,
   Timeline as SpectraIcon,
   Hexagon as BenzeneIcon,
+  SelectAll as SelectAllIcon,
 } from '@mui/icons-material';
 
 interface AppToolbarProps {
@@ -211,6 +212,53 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         </>
 
         <Box sx={{ flexGrow: 1 }} />
+
+        {/* Selection Tool Help */}
+        <Tooltip 
+          title={
+            <Box sx={{ p: 0.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, mb: 0.5, display: 'block' }}>
+                Copy Structure as Image:
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block' }}>
+                Select structure with selection tool, then press
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#fff' }}>
+                Ctrl + Left Shift + C
+              </Typography>
+            </Box>
+          }
+          arrow
+          placement="bottom"
+          componentsProps={{
+            tooltip: {
+              sx: {
+                bgcolor: 'rgba(0, 0, 0, 0.8)',
+                fontSize: '0.75rem',
+                maxWidth: 250
+              }
+            }
+          }}
+        >
+          <Chip 
+            icon={<SelectAllIcon fontSize="small" />}
+            label="Selection Tool"
+            size="small"
+            color="info"
+            sx={{ 
+              height: 32, 
+              fontSize: '0.75rem', 
+              fontWeight: 600,
+              cursor: 'pointer',
+              '&:hover': {
+                bgcolor: 'primary.main',
+                color: 'white'
+              }
+            }}
+          />
+        </Tooltip>
+
+        <Box sx={{ width: 8 }} />
 
         {/* Theme Toggle */}
         {onToggleDarkMode && (

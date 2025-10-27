@@ -50,8 +50,6 @@ interface AppToolbarProps {
   onSearchByName?: (name: string) => void;
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
-  activeView?: 'structure' | 'nmr';
-  onViewChange?: (view: 'structure' | 'nmr') => void;
   rightContent?: React.ReactNode;
 }
 
@@ -70,16 +68,10 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onSearchByName,
   darkMode,
   onToggleDarkMode,
-  activeView,
-  onViewChange,
   rightContent,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showShortcuts, setShowShortcuts] = React.useState(false);
-
-  // Debug logging
-  console.log('[Toolbar] onViewChange:', onViewChange);
-  console.log('[Toolbar] activeView:', activeView);
 
   const handleSearch = () => {
     if (onSearchByName && searchQuery.trim()) {
@@ -135,68 +127,6 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
           <ScienceIcon sx={{ fontSize: 22, color: 'white' }} />
         </Box>
 
-        {/* View Switcher - Premium Pills */}
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 0.5, 
-          mr: 3, 
-          alignItems: 'center',
-          bgcolor: 'rgba(0, 0, 0, 0.04)',
-          borderRadius: 2,
-          p: 0.5,
-        }}>
-          <Box
-            onClick={() => onViewChange?.('structure')}
-            sx={{
-              bgcolor: activeView === 'structure' ? 'white' : 'transparent',
-              color: activeView === 'structure' ? 'primary.main' : 'text.secondary',
-              px: 2,
-              py: 0.75,
-              borderRadius: 1.5,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              boxShadow: activeView === 'structure' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: activeView === 'structure' ? 'white' : 'rgba(0, 0, 0, 0.04)',
-              },
-              fontWeight: 600,
-            }}
-          >
-            <BenzeneIcon fontSize="small" />
-            <Typography variant="button" sx={{ fontWeight: 600, fontSize: '0.875rem', textTransform: 'none' }}>
-              Structure
-            </Typography>
-          </Box>
-          <Box
-            onClick={() => onViewChange?.('nmr')}
-            sx={{
-              bgcolor: activeView === 'nmr' ? 'white' : 'transparent',
-              color: activeView === 'nmr' ? 'primary.main' : 'text.secondary',
-              px: 2,
-              py: 0.75,
-              borderRadius: 1.5,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              boxShadow: activeView === 'nmr' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: activeView === 'nmr' ? 'white' : 'rgba(0, 0, 0, 0.04)',
-              },
-              fontWeight: 600,
-            }}
-          >
-            <SpectraIcon fontSize="small" />
-            <Typography variant="button" sx={{ fontWeight: 600, fontSize: '0.875rem', textTransform: 'none' }}>
-              NMR
-            </Typography>
-          </Box>
-        </Box>
-
         {/* Brand - Premium */}
         <Box sx={{ mr: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography 
@@ -224,11 +154,10 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
               whiteSpace: 'nowrap',
             }}
           >
-            Structure Drawing & NMR Analysis
+            Structure Drawing & Analysis
           </Typography>
         </Box>
 
-        {activeView === 'structure' && (
         <>
         {/* Name to Structure Search - Premium */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 3 }}>
@@ -280,23 +209,8 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
           </IconButton>
         </Box>
         </>
-        )}
 
         <Box sx={{ flexGrow: 1 }} />
-
-        {/* NMR Keyboard Shortcuts - show when in NMR view */}
-        {activeView === 'nmr' && (
-          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mr: 3 }}>
-            <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'text.secondary', opacity: 0.8 }}>
-              Shortcuts:
-            </Typography>
-            <Chip label="R - Ranges" size="small" color="primary" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
-            <Chip label="P - Peak Picking" size="small" color="secondary" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
-            <Chip label="Z - Zoom" size="small" color="success" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
-            <Chip label="I - Integral" size="small" color="warning" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
-            <Chip label="Shift+Drag - Pan View" size="small" color="info" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
-          </Box>
-        )}
 
         {/* Theme Toggle */}
         {onToggleDarkMode && (

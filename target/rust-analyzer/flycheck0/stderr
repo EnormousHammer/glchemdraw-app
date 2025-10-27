@@ -1,0 +1,7 @@
+    Updating crates.io index
+error: failed to select a version for the requirement `tauri-build = "^2.8"`
+candidate versions found which didn't match: 2.5.1, 2.5.0, 2.4.1, ...
+location searched: crates.io index
+required by package `glchemdraw v0.1.0 (C:\APPLICATIONS MADE BY ME\WINDOWS\Glchemdraw\src-tauri)`
+if you are looking for the prerelease package it needs to be specified explicitly
+    tauri-build = { version = "2.0.0-rc.13" }

@@ -21,7 +21,6 @@ import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
 import ChemCanvas from '../ChemCanvas/ChemCanvas';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
-import { LazyNMRViewer } from '../LazyComponents';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readDir, readFile } from '@tauri-apps/plugin-fs';
@@ -49,14 +48,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('info');
   const [show3DViewer, setShow3DViewer] = useState(false);
   
-  // View mode state - switch between structure drawing and NMR analyzer
-  const [activeView, setActiveView] = useState<'structure' | 'nmr'>('structure');
-  
-  // Debug view changes
-  React.useEffect(() => {
-    console.log('[AppLayout] View changed to:', activeView);
-    console.log('[AppLayout] Current activeView state:', activeView);
-  }, [activeView]);
+  // Removed NMR functionality - structure drawing only
   
   // Chemical data state for comprehensive information
   const [chemicalData, setChemicalData] = useState<{
@@ -493,8 +485,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onRedo={() => {}}
           onClear={handleClear}
           onSearchByName={handleSearchByName}
-          activeView={activeView}
-          onViewChange={setActiveView}
         />
 
         {/* Main Content - Conditional View */}
@@ -508,11 +498,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           position: 'relative'
         }}>
           {(() => {
-            console.log('[AppLayout] Rendering view:', activeView);
-            if (activeView === 'structure') {
-              return (
-                <>
-                  {/* Left Panel - Drawing Canvas */}
+            // Structure-only view - removed NMR functionality
+            return (
+              <>
+                {/* Left Panel - Drawing Canvas */}
               <Box
                 sx={{
                   width: '75%', // Increased from 65% for more drawing space
@@ -1339,52 +1328,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
               </Box>
                 </>
               );
-            } else {
-              console.log('[AppLayout] Rendering NMR Analyzer mode');
-              return (
-                <Suspense 
-                  fallback={
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      height: '100%',
-                      width: '100%',
-                      flexDirection: 'column',
-                      gap: 3,
-                      bgcolor: 'background.default'
-                    }}>
-                      <Box sx={{ position: 'relative' }}>
-                        <CircularProgress 
-                          size={60} 
-                          thickness={4}
-                          sx={{ color: 'primary.main' }}
-                        />
-                        <Box sx={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          fontSize: '1.5rem'
-                        }}>
-                          📊
-                        </Box>
-                      </Box>
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mb: 0.5 }}>
-                          Loading NMR Analyzer
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Preparing spectroscopy tools...
-                        </Typography>
-                      </Box>
-                    </Box>
-                  }
-                >
-                  <LazyNMRViewer />
-                </Suspense>
-              );
-            }
           })()}
         </Box>
 

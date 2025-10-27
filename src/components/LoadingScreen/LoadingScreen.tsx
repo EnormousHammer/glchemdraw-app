@@ -36,7 +36,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'black',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -81,7 +81,6 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          opacity: 0.3,
           zIndex: 0
         }}
       >

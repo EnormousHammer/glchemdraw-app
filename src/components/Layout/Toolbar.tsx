@@ -215,19 +215,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
 
         {/* Selection Tool Help */}
         <Tooltip 
-          title={
-            <Box sx={{ p: 0.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, mb: 0.5, display: 'block' }}>
-                Copy Structure as Image:
-              </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block' }}>
-                Select structure with selection tool, then press
-              </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#fff' }}>
-                Ctrl + Left Shift + C
-              </Typography>
-            </Box>
-          }
+          title="Copy Structure as Image: 1. Selection Tool | 2. Select structure | 3. Ctrl + L Shift + C"
           arrow
           placement="bottom"
           componentsProps={{

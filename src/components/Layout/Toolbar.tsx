@@ -214,37 +214,12 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         <Box sx={{ flexGrow: 1 }} />
 
         {/* Selection Tool Help */}
-        <Tooltip 
-          title="Copy Structure as Image: 1. Selection Tool | 2. Select structure | 3. Ctrl + L Shift + C"
-          arrow
-          placement="bottom"
-          componentsProps={{
-            tooltip: {
-              sx: {
-                bgcolor: 'rgba(0, 0, 0, 0.8)',
-                fontSize: '0.75rem',
-                maxWidth: 250
-              }
-            }
-          }}
-        >
-          <Chip 
-            icon={<SelectAllIcon fontSize="small" />}
-            label="Selection Tool"
-            size="small"
-            color="info"
-            sx={{ 
-              height: 32, 
-              fontSize: '0.75rem', 
-              fontWeight: 600,
-              cursor: 'pointer',
-              '&:hover': {
-                bgcolor: 'primary.main',
-                color: 'white'
-              }
-            }}
-          />
-        </Tooltip>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
+          <SelectAllIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+          <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+            1. Selection Tool | 2. Select structure | 3. Ctrl + L Shift + C
+          </Typography>
+        </Box>
 
         <Box sx={{ width: 8 }} />
 

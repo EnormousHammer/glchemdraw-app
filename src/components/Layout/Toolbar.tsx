@@ -214,9 +214,23 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         <Box sx={{ flexGrow: 1 }} />
 
         {/* Selection Tool Help */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
-          <SelectAllIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-          <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          mr: 1,
+          bgcolor: 'primary.main',
+          px: 2,
+          py: 0.5,
+          borderRadius: 2,
+        }}>
+          <SelectAllIcon fontSize="small" sx={{ color: 'white' }} />
+          <Typography variant="caption" sx={{ 
+            fontSize: '0.75rem', 
+            color: 'white', 
+            whiteSpace: 'nowrap',
+            fontWeight: 600
+          }}>
             1. Selection Tool | 2. Select structure | 3. Ctrl + L Shift + C
           </Typography>
         </Box>

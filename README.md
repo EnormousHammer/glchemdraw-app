@@ -293,3 +293,5 @@ For technical support or inquiries:
 **Built with ❤️ for the chemistry community**
 
 Version 0.1.0 | © 2025 GlChemTec | Enterprise Chemistry Solutions
+
+<!-- Vercel GitHub connection re-authenticated 2026-02-15 -->

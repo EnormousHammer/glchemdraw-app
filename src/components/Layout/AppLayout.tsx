@@ -20,6 +20,8 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
@@ -50,6 +52,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('info');
   const [show3DViewer, setShow3DViewer] = useState(false);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   
   // Removed NMR functionality - structure drawing only
@@ -153,6 +156,38 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
     setSnackbarOpen(true);
   }, [currentStructure]);
+
+  // Layout: fixes bond lengths & angles (Issue #3 - use Layout not Clean for geometry)
+  const handleLayout = useCallback(async () => {
+    if (!ketcherRef.current?.layout) return;
+    try {
+      await ketcherRef.current.layout();
+      setSnackbarMessage('Layout applied (bond lengths/angles adjusted)');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('[AppLayout] Layout failed:', err);
+      setSnackbarMessage('Layout failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  // Align descriptors (R1, R2 labels) - Issue #7 partial
+  const handleAlignDescriptors = useCallback(() => {
+    if (!ketcherRef.current?.editor?.alignDescriptors) return;
+    try {
+      ketcherRef.current.editor.alignDescriptors();
+      setSnackbarMessage('R-group labels aligned');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('[AppLayout] Align descriptors failed:', err);
+      setSnackbarMessage('Align failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, []);
 
   // Handle structure changes from the canvas (full canvas)
   const handleStructureChange = useCallback(async (molfile: string, smiles: string) => {
@@ -550,6 +585,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onRedo={() => {}}
           onClear={handleClear}
           onSearchByName={handleSearchByName}
+          onShortcutsClick={() => setShowShortcutsDialog(true)}
         />
 
         {/* Main Content - Conditional View */}
@@ -612,8 +648,30 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
                       Chemical Info
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                       {isSearching && <CircularProgress size={16} />}
+                      <Tooltip title="Layout: fix bond lengths & angles (Ctrl+L). Clean only standardizes structure.">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={handleLayout}
+                          startIcon={<AccountTreeIcon />}
+                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                        >
+                          Layout
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Align R-group labels (R1, R2, etc.)">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={handleAlignDescriptors}
+                          startIcon={<FormatAlignLeftIcon />}
+                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                        >
+                          Align
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="Export structure (MOL, SDF, SMILES)">
                         <Button
                           size="small"
@@ -1484,6 +1542,56 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
             {recognizedCompound && (
               <PubChem3DViewer cid={recognizedCompound.cid} />
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Shortcuts / Help Dialog */}
+        <Dialog
+          open={showShortcutsDialog}
+          onClose={() => setShowShortcutsDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">Keyboard Shortcuts & Actions</Typography>
+            <IconButton onClick={() => setShowShortcutsDialog(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2}>
+              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Copy & Paste</Typography>
+              <Stack spacing={0.75}>
+                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+C</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary">Copy structure as image (paste into Word, presentations)</Typography>
+                </Box>
+                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Shift+C</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary">Copy structure data (paste within canvas)</Typography>
+                </Box>
+              </Stack>
+
+              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Structure</Typography>
+              <Stack spacing={0.75}>
+                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+L</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary">Layout – fix bond lengths & angles</Typography>
+                </Box>
+                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Shift+L</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary">Clean – standardize structure (aromatize, etc.)</Typography>
+                </Box>
+              </Stack>
+
+              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Panel Buttons</Typography>
+              <Stack spacing={0.5}>
+                <Typography variant="body2"><strong>Layout</strong> – Fix bond lengths and angles for a cleaner look</Typography>
+                <Typography variant="body2"><strong>Align</strong> – Align R-group labels (R1, R2, etc.)</Typography>
+                <Typography variant="body2"><strong>Export</strong> – Save as MOL, SDF, or SMILES</Typography>
+              </Stack>
+
+              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Selection</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                Select a structure to see its chemical info only. Click empty canvas to show full canvas info.
+              </Typography>
+            </Stack>
           </DialogContent>
         </Dialog>
       </Box>

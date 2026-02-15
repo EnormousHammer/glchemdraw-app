@@ -8,10 +8,10 @@
 ## Issue 1: Bottom toolbar disappears when switching molecules ↔ macromolecules mode
 
 ### What we know
-- The bottom toolbar (ring templates, structure library) is **Ketcher's internal UI**
-- Mode switching (molecules ↔ macromolecules) is **Ketcher's built-in feature**
-- Our CSS styles `.Ketcher-root [class*="bottom"]` but does not hide it
-- Ketcher 3.7.0 unified toolbars; mode switching may have regressions
+- **Macromolecules mode** uses different UI: monomer library, RNA builder, etc. The ring templates/structure library are for **molecules mode** only – macromolecules don't need them (you work with monomers, not benzene rings).
+- **By design**: When in macromolecules mode, the bottom toolbar may be hidden or replaced – that's expected.
+- **The bug**: When switching **back** to molecules mode, the toolbar should reappear but doesn't – that's a Ketcher regression.
+- Ketcher 3.7.0 unified toolbars; mode switching has known issues (e.g. Layout/Clean removing macromolecules when switching).
 
 ### Can we fix it?
 | Approach | Feasible? | Notes |
@@ -48,10 +48,10 @@
 ## Issue 3: Clean-up – improve bond lengths and angles
 
 ### What we know
-- Ketcher has **Clean** and **Layout** actions
-- **ketcher-standalone** includes `layout()` and `clean()` in `standaloneStructService` (Indigo WASM)
-- Known issues: Clean can move molecules to top-left corner; Layout can change R-group definitions
-- The Clean button exists in Ketcher's toolbar – user says it "doesn't do much"
+- **Clean** (Ctrl+Shift+L) = structure standardization (aromatize, normalize) – does **NOT** fix bond lengths/angles.
+- **Layout** (Ctrl+L) = 2D coordinate generation – **THIS** fixes bond lengths and angles for good-looking structures.
+- User was likely using Clean and expecting geometry fixes – they need **Layout** instead.
+- We added a **Layout** button in the Chemical Info panel.
 
 ### Can we fix it?
 | Approach | Feasible? | Notes |
@@ -108,9 +108,9 @@
 ## Issue 6: Copy/paste within canvas – inconsistent for complex structures
 
 ### What we know
-- Copy/paste **within** Ketcher is Ketcher's internal clipboard (Ctrl+C/Ctrl+V for structure data)
-- We implemented **copy as image** (Ctrl+C) for pasting into Word – different from in-canvas copy
-- Complex structures (e.g. CpU amidite) may hit **Ketcher limits** – size, fragment handling, or clipboard format
+- **Copy as image** (Ctrl+C) – ✅ FIXED. Pastes into Word/documents. Uses Tauri clipboard when in desktop.
+- **Copy structure data** (Ctrl+Shift+C) – for in-canvas paste. Ketcher's internal clipboard.
+- Complex structures (e.g. CpU amidite) may hit **Ketcher limits** for in-canvas paste – that's upstream.
 
 ### Can we fix it?
 | Approach | Feasible? | Notes |
@@ -127,10 +127,10 @@
 ## Issue 7: Align selected figures (ChemDraw-style)
 
 ### What we know
-- **ChemDraw** has explicit align tools (left, right, top, bottom, center)
-- **Ketcher** has `MonomersAlignment` (horizontal/vertical) for **macromolecules** – not general structure alignment
-- **Ketcher** has `fromDescriptorsAlign` in ketcher-core – may align descriptors, not arbitrary structures
-- No direct "align selected structures" like ChemDraw in Ketcher's public API
+- **ChemDraw** has explicit align tools (left, right, top, bottom, center) for multiple structures.
+- **Ketcher** has `alignDescriptors()` – aligns R-group labels (R1, R2, etc.) – we added an Align button for this.
+- **Ketcher** has `MonomersAlignment` for macromolecules only – not general small-molecule alignment.
+- No ChemDraw-style "align multiple structures" (left/right/top/bottom) in Ketcher's public API – would need custom implementation.
 
 ### Can we fix it?
 | Approach | Feasible? | Notes |
@@ -150,11 +150,11 @@
 |---|-------|-------------|-------------|
 | 1 | Bottom toolbar disappears | ❌ Unlikely | Report to Ketcher; try CSS workaround |
 | 2 | Chemical info – selected only | ✅ Yes | Implement selection-aware logic |
-| 3 | Clean-up – bond lengths/angles | ⚠️ Limited | Report to Ketcher; try Layout button |
+| 3 | Bond lengths/angles | ✅ Fixed | Use Layout (Ctrl+L), not Clean |
 | 4 | Functional groups OMe/MeO | ❌ Unlikely | Report to Ketcher |
 | 5 | File formats / FindMolecule | ✅ Yes | Add export formats; document compatibility |
-| 6 | Copy/paste within canvas | ❌ No | Report to Ketcher |
-| 7 | Align selected figures | ⚠️ Unknown | Report to Ketcher; explore custom API |
+| 6 | Copy image to Word | ✅ Fixed | Ctrl+C = image; in-canvas paste limits = Ketcher |
+| 7 | Align selected figures | ⚠️ Partial | Align R-groups added; full align not in API |
 
 ---
 
@@ -162,9 +162,10 @@
 
 1. **#2 – Chemical info for selected structure** – ✅ DONE – selection-aware logic wired
 2. **#5 – Export formats** – ✅ DONE – MOL, SDF, SMILES export in Chemical Info panel
-3. **#3 – Layout button** – Quick experiment if Layout helps
-4. **#1 – CSS workaround** – Experimental if user needs it urgently
-5. **#7 – Align** – Investigate Ketcher API if time permits
+3. **#6 – Copy image** – ✅ DONE – Ctrl+C copies as image (Word), Ctrl+Shift+C copies data
+4. **#3 – Layout button** – ✅ DONE – Layout button added (fixes bond lengths/angles; Clean does not)
+5. **#7 – Align** – ✅ PARTIAL – Align button for R-group labels; full structure align not in Ketcher API
+6. **#1 – CSS workaround** – Experimental if user needs it urgently
 
 ---
 

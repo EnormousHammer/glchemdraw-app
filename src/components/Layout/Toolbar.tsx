@@ -51,6 +51,7 @@ interface AppToolbarProps {
   onSearchByName?: (name: string) => void;
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
+  onShortcutsClick?: () => void;
   rightContent?: React.ReactNode;
 }
 
@@ -69,6 +70,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onSearchByName,
   darkMode,
   onToggleDarkMode,
+  onShortcutsClick,
   rightContent,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -213,18 +215,15 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
 
         <Box sx={{ flexGrow: 1 }} />
 
-        {/* Selection Tool Help */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mr: 1 }}>
-          <Tooltip 
-            title="Quick copy instructions"
-            arrow
-            placement="bottom"
-          >
+        {/* Shortcuts / Help */}
+        {onShortcutsClick && (
+          <Tooltip title="View all shortcuts" arrow placement="bottom">
             <Chip
-              icon={<SelectAllIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
-              label="How to copy"
+              icon={<KeyboardIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+              label="Shortcuts"
               size="small"
               variant="outlined"
+              onClick={onShortcutsClick}
               sx={{
                 fontSize: '0.7rem',
                 fontWeight: 500,
@@ -232,6 +231,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
                 bgcolor: 'transparent',
                 borderColor: 'primary.main',
                 color: 'primary.main',
+                cursor: 'pointer',
                 '&:hover': {
                   bgcolor: 'action.hover',
                   borderColor: 'primary.dark'
@@ -239,17 +239,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
               }}
             />
           </Tooltip>
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              fontSize: '0.7rem', 
-              color: 'text.secondary',
-              fontWeight: 500 
-            }}
-          >
-            Ctrl+C (image) · Ctrl+Shift+C (data)
-          </Typography>
-        </Box>
+        )}
 
         <Box sx={{ width: 8 }} />
 

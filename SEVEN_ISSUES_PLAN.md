@@ -22,7 +22,7 @@
 | **Report upstream** | ✅ Yes | File issue at [epam/ketcher](https://github.com/epam/ketcher) – likely a Ketcher bug |
 
 ### Recommendation
-**Report to Ketcher** first. If urgent, try a **CSS workaround** to force the bottom toolbar visible after mode switch (experimental).
+**CSS workaround implemented** – force `[data-testid="bottom-toolbar"]` visible. No reporting.
 
 ---
 
@@ -82,7 +82,7 @@
 | **Report upstream** | ✅ Yes | File issue at epam/ketcher – this is a chemistry correctness issue |
 
 ### Recommendation
-**Report to Ketcher** first. If they have custom FG definitions, we could try providing corrected ones. Patching Ketcher's label logic is possible but non-trivial.
+**No reporting.** Would require patching ketcher's functional group SDF data or rendering logic – attachment order defines OMe vs MeO. Non-trivial; needs ketcher-fg-tmpls.sdf or similar.
 
 ---
 
@@ -120,7 +120,7 @@
 | **Report upstream** | ✅ Yes | File issue at epam/ketcher with repro (CpU amidite) |
 
 ### Recommendation
-**Report to Ketcher** with a reproducible example. We cannot fix Ketcher's internal copy/paste from our app. Note: Our Ctrl+C **image** copy is separate and works for pasting into Word.
+**No reporting.** Ctrl+C image copy works. In-canvas paste limits are Ketcher internal – we cannot fix from our app.
 
 ---
 
@@ -140,7 +140,7 @@
 | **Feature request** | ✅ Yes | Request upstream – this is a significant ChemDraw feature Ketcher lacks |
 
 ### Recommendation
-**Report as feature request** to Ketcher. We could **explore** a custom implementation (move selected structures to align) if Ketcher exposes the right APIs – would need investigation.
+**No reporting.** Align button for R-groups added. Full structure align would need custom implementation using AtomMove – possible but complex.
 
 ---
 
@@ -148,10 +148,10 @@
 
 | # | Issue | We can fix? | Best action |
 |---|-------|-------------|-------------|
-| 1 | Bottom toolbar disappears | ❌ Unlikely | Report to Ketcher; try CSS workaround |
+| 1 | Bottom toolbar disappears | ✅ CSS workaround | Force bottom-toolbar visible |
 | 2 | Chemical info – selected only | ✅ Yes | Implement selection-aware logic |
 | 3 | Bond lengths/angles | ✅ Fixed | Use Layout (Ctrl+L), not Clean |
-| 4 | Functional groups OMe/MeO | ❌ Unlikely | Report to Ketcher |
+| 4 | Functional groups OMe/MeO | ❌ No | Would need ketcher SDF/render patch |
 | 5 | File formats / FindMolecule | ✅ Yes | Add export formats; document compatibility |
 | 6 | Copy image to Word | ✅ Fixed | Ctrl+C = image; in-canvas paste limits = Ketcher |
 | 7 | Align selected figures | ⚠️ Partial | Align R-groups added; full align not in API |
@@ -165,14 +165,10 @@
 3. **#6 – Copy image** – ✅ DONE – Ctrl+C copies as image (Word), Ctrl+Shift+C copies data
 4. **#3 – Layout button** – ✅ DONE – Layout button added (fixes bond lengths/angles; Clean does not)
 5. **#7 – Align** – ✅ PARTIAL – Align button for R-group labels; full structure align not in Ketcher API
-6. **#1 – CSS workaround** – Experimental if user needs it urgently
+6. **#1 – Bottom toolbar** – ✅ DONE – CSS workaround forces bottom-toolbar visible
 
 ---
 
-## Upstream issues to file
+## No upstream reporting (per user request)
 
-- [ ] Issue 1: Bottom toolbar disappears on mode switch
-- [ ] Issue 3: Clean-up doesn't improve bond lengths/angles well
-- [ ] Issue 4: Functional groups display wrong order (OMe vs MeO, CN vs NC)
-- [ ] Issue 6: Copy/paste fails for complex structures (CpU amidite)
-- [ ] Issue 7: Align selected structures (ChemDraw-style)
+All fixes done in-app. Remaining: Issue 4 (functional groups) would need ketcher data/render patch.

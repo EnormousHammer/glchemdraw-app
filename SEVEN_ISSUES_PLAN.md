@@ -160,8 +160,8 @@
 
 ## Implementation Priority (for what we CAN do)
 
-1. **#2 – Chemical info for selected structure** – High impact, fully in our control
-2. **#5 – Export formats** – Add MOL/SDF if missing; document FindMolecule
+1. **#2 – Chemical info for selected structure** – ✅ DONE – selection-aware logic wired
+2. **#5 – Export formats** – ✅ DONE – MOL, SDF, SMILES export in Chemical Info panel
 3. **#3 – Layout button** – Quick experiment if Layout helps
 4. **#1 – CSS workaround** – Experimental if user needs it urgently
 5. **#7 – Align** – Investigate Ketcher API if time permits

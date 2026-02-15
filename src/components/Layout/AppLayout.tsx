@@ -13,17 +13,20 @@ import {
   DialogTitle,
   DialogContent,
   Button,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CloseIcon from '@mui/icons-material/Close';
+import DownloadIcon from '@mui/icons-material/Download';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
 import ChemCanvas from '../ChemCanvas/ChemCanvas';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
-import { open } from '@tauri-apps/plugin-dialog';
-import { readDir, readFile } from '@tauri-apps/plugin-fs';
+import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
 // StructureData interface for chemical structure information
 interface StructureData {
   molfile: string;
@@ -47,6 +50,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('info');
   const [show3DViewer, setShow3DViewer] = useState(false);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   
   // Removed NMR functionality - structure drawing only
   
@@ -67,6 +71,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
   // Refs
   const ketcherRef = useRef<any>(null);
+  const fullCanvasRef = useRef<StructureData | null>(null);
+  const hasSelectionRef = useRef(false);
 
   // Copy to clipboard function
   const handleCopy = useCallback((text: string, label: string) => {
@@ -120,24 +126,83 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     });
   }, [recognizedCompound, chemicalData, currentStructure]);
 
-  // Handle structure changes from the canvas
+  // Export structure (Issue #5: MOL, SDF, SMILES formats)
+  const handleExport = useCallback(async (format: 'mol' | 'sdf' | 'smiles') => {
+    setExportMenuAnchor(null);
+    const struct = currentStructure;
+    if (!struct) {
+      setSnackbarMessage('No structure to export');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+      return;
+    }
+    let result: { success: boolean; error?: string };
+    if (format === 'mol') {
+      result = await exportAsMol(struct.molfile, 'structure.mol');
+    } else if (format === 'sdf') {
+      result = await exportAsSdf(struct.molfile, 'structure.sdf');
+    } else {
+      result = await exportAsSmiles(struct.smiles, 'structure.smi');
+    }
+    if (result.success) {
+      setSnackbarMessage(`Exported as ${format.toUpperCase()}`);
+      setSnackbarSeverity('success');
+    } else {
+      setSnackbarMessage(result.error || 'Export failed');
+      setSnackbarSeverity('error');
+    }
+    setSnackbarOpen(true);
+  }, [currentStructure]);
+
+  // Handle structure changes from the canvas (full canvas)
   const handleStructureChange = useCallback(async (molfile: string, smiles: string) => {
     console.log('[AppLayout] Structure changed:', { molfile, smiles });
     const structure: StructureData = { molfile, smiles };
-    setCurrentStructure(structure);
-    
-    if (smiles) {
+    fullCanvasRef.current = structure;
+    // If no selection active, full canvas is what we display
+    if (!hasSelectionRef.current) {
+      setCurrentStructure(structure);
+      if (smiles) {
+        await fetchComprehensiveData(smiles);
+      } else {
+        setRecognizedCompound(null);
+        setChemicalData({
+          physicalProperties: null,
+          safetyData: null,
+          descriptors: null,
+          regulatory: null,
+          spectral: null,
+        });
+      }
+    }
+  }, []);
+
+  // Handle selection change (Issue #2: show chemical info for selected structure only)
+  const handleSelectionChange = useCallback(async (molfile: string | null, smiles: string | null) => {
+    if (molfile && smiles) {
+      hasSelectionRef.current = true;
+      setCurrentStructure({ molfile, smiles });
       await fetchComprehensiveData(smiles);
     } else {
-      // Clear data if no SMILES
-      setRecognizedCompound(null);
-      setChemicalData({
-        physicalProperties: null,
-        safetyData: null,
-        descriptors: null,
-        regulatory: null,
-        spectral: null,
-      });
+      hasSelectionRef.current = false;
+      // Fall back to full canvas when nothing selected
+      const full = fullCanvasRef.current;
+      if (full) {
+        setCurrentStructure(full);
+        if (full.smiles) {
+          await fetchComprehensiveData(full.smiles);
+        }
+      } else {
+        setCurrentStructure(null);
+        setRecognizedCompound(null);
+        setChemicalData({
+          physicalProperties: null,
+          safetyData: null,
+          descriptors: null,
+          regulatory: null,
+          spectral: null,
+        });
+      }
     }
   }, []);
 
@@ -522,6 +587,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 }}>
                   <ChemCanvas
                     onStructureChange={handleStructureChange}
+                    onSelectionChange={handleSelectionChange}
                     onError={(error) => console.error('[AppLayout] ChemCanvas error:', error)}
                     onKetcherInit={(instance) => (ketcherRef.current = instance)}
                   />
@@ -548,6 +614,30 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {isSearching && <CircularProgress size={16} />}
+                      <Tooltip title="Export structure (MOL, SDF, SMILES)">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={(e) => setExportMenuAnchor(e.currentTarget)}
+                          disabled={!currentStructure?.molfile}
+                          startIcon={<DownloadIcon />}
+                          endIcon={<ExpandMoreIcon />}
+                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                        >
+                          Export
+                        </Button>
+                      </Tooltip>
+                      <Menu
+                        anchorEl={exportMenuAnchor}
+                        open={!!exportMenuAnchor}
+                        onClose={() => setExportMenuAnchor(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                      >
+                        <MenuItem onClick={() => handleExport('mol')}>Save as MOL</MenuItem>
+                        <MenuItem onClick={() => handleExport('sdf')}>Save as SDF</MenuItem>
+                        <MenuItem onClick={() => handleExport('smiles')}>Save as SMILES</MenuItem>
+                      </Menu>
                       {recognizedCompound && !isSearching && (
                         <>
                           <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>

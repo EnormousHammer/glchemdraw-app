@@ -12,6 +12,7 @@ import { useCopyImageToClipboard } from '../../hooks/useCopyImageToClipboard';
 
 interface ChemCanvasProps {
   onStructureChange?: (molfile: string, smiles: string) => void;
+  onSelectionChange?: (molfile: string | null, smiles: string | null) => void;
   onError?: (error: Error) => void;
   initialStructure?: string;
   readonly?: boolean;
@@ -20,6 +21,7 @@ interface ChemCanvasProps {
 
 export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   onStructureChange,
+  onSelectionChange,
   onError,
   initialStructure,
   readonly = false,
@@ -170,6 +172,41 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
               }
             } catch (e) {
               console.warn('[ChemCanvas] Failed to subscribe change handler:', e);
+            }
+
+            // Subscribe to selection change (for chemical info of selected structure only)
+            // Ketcher types may not include events; use runtime check
+            try {
+              const editorEvents = (ketcher?.editor as any)?.events;
+              if (editorEvents?.selectionChange && onSelectionChange) {
+                editorEvents.selectionChange.add(async () => {
+                  const editor = ketcher.editor;
+                  if (!editor?.structSelected) return;
+                  try {
+                    const struct = editor.structSelected();
+                    if (!struct || struct.isBlank?.()) {
+                      onSelectionChange(null, null);
+                      return;
+                    }
+                    const { getStructure } = await import('ketcher-core');
+                    const { SupportedFormat } = await import('ketcher-core');
+                    const molfile = await getStructure(
+                      ketcher.id,
+                      SupportedFormat.molAuto,
+                      ketcher.formatterFactory,
+                      struct
+                    );
+                    const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
+                    const smiles = await molfileToSmiles(molfile);
+                    onSelectionChange(molfile, smiles || null);
+                  } catch (err) {
+                    console.warn('[ChemCanvas] Selection to SMILES failed:', err);
+                    onSelectionChange(null, null);
+                  }
+                });
+              }
+            } catch (e) {
+              console.warn('[ChemCanvas] Failed to subscribe selection handler:', e);
             }
             // Expose instance to parent
             if (onKetcherInit) {

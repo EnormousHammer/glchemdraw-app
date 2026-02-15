@@ -12,14 +12,20 @@ export function useCopyImageToClipboard(ketcherRef: React.RefObject<any>) {
 
   const copyImage = useCallback(async () => {
     const ketcher = ketcherRef.current;
-    if (!ketcher?.editor?.structSelected || !ketcher.generateImage) return;
+    if (!ketcher?.generateImage) return;
 
     try {
-      const struct = ketcher.editor.structSelected();
-      if (!struct || struct.isBlank?.()) return;
+      let structStr: string;
+      const struct = ketcher.editor?.structSelected?.();
+      if (struct && !struct.isBlank?.()) {
+        const ketSerializer = new KetSerializer();
+        structStr = ketSerializer.serialize(struct);
+      } else {
+        // No selection: use full canvas (getKet returns entire structure)
+        structStr = await ketcher.getKet();
+        if (!structStr?.trim()) return;
+      }
 
-      const ketSerializer = new KetSerializer();
-      const structStr = ketSerializer.serialize(struct);
       const blob = await ketcher.generateImage(structStr, {
         outputFormat: 'png',
         backgroundColor: '255, 255, 255',
@@ -48,13 +54,6 @@ export function useCopyImageToClipboard(ketcherRef: React.RefObject<any>) {
 
       const ketcher = ketcherRef.current;
       if (!ketcher?.editor) return;
-
-      try {
-        const struct = ketcher.editor.structSelected?.();
-        if (!struct || struct.isBlank?.()) return;
-      } catch {
-        return;
-      }
 
       e.preventDefault();
       e.stopPropagation();

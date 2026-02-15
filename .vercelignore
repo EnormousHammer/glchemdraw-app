@@ -1,0 +1,36 @@
+# Vercel Ignore File
+# Files/folders to exclude from deployment
+
+# Tauri/Desktop app files
+src-tauri/
+target/
+release/
+
+# Development files
+*.log
+*.pid
+server/
+
+# Test files
+test/
+*.test.ts
+*.test.tsx
+*.spec.ts
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Build artifacts
+dist/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+

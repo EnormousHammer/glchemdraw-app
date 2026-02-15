@@ -21,9 +21,14 @@ export default defineConfig({
       "@lib": resolve(__dirname, "./src/lib"),
       "@hooks": resolve(__dirname, "./src/hooks"),
       "@types": resolve(__dirname, "./src/types"),
+      // Force Ketcher to use the same React as the main app
+      'react': resolve(__dirname, 'node_modules/react'),
+      'react-dom': resolve(__dirname, 'node_modules/react-dom'),
+      '@emotion/react': resolve(__dirname, 'node_modules/@emotion/react'),
+      '@emotion/styled': resolve(__dirname, 'node_modules/@emotion/styled'),
     },
     // Force single React instance and Emotion
-    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled'],
+    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled', 'react/jsx-runtime'],
   },
 
   // Force Vite to optimize these dependencies and dedupe React
@@ -31,13 +36,20 @@ export default defineConfig({
     include: [
       'react',
       'react-dom',
+      'react/jsx-runtime',
       '@emotion/react',
       '@emotion/styled',
       'ketcher-react',
       'ketcher-core',
       'ketcher-standalone',
     ],
-    force: true, // Force re-optimization on every start
+    exclude: [],
+    esbuildOptions: {
+      // Ensure single React instance
+      define: {
+        global: 'globalThis',
+      },
+    },
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -59,6 +71,40 @@ export default defineConfig({
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
+    },
+    // Proxy for NMR API in web mode
+    proxy: {
+      '/api/nmr-proxy': {
+        target: 'https://www.nmrdb.org',
+        changeOrigin: true,
+        secure: true,
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // Extract target URL from query params
+            const url = new URL(req.url || '', `http://${req.headers.host}`);
+            const targetUrl = url.searchParams.get('url');
+            
+            if (targetUrl) {
+              try {
+                const target = new URL(targetUrl);
+                proxyReq.path = target.pathname + target.search;
+                proxyReq.setHeader('host', target.host);
+                proxyReq.setHeader('referer', target.origin);
+                console.log('[Vite Proxy] Proxying to:', targetUrl);
+              } catch (e) {
+                console.error('[Vite Proxy] Invalid URL:', targetUrl);
+              }
+            }
+          });
+          
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            // Add CORS headers
+            proxyRes.headers['access-control-allow-origin'] = '*';
+            proxyRes.headers['access-control-allow-methods'] = 'GET, POST, OPTIONS';
+            proxyRes.headers['access-control-allow-headers'] = 'Content-Type';
+          });
+        },
+      },
     },
   },
 

@@ -247,7 +247,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
               fontWeight: 500 
             }}
           >
-            Ctrl+LShift+F
+            Ctrl+C (image) · Ctrl+Shift+C (data)
           </Typography>
         </Box>
 

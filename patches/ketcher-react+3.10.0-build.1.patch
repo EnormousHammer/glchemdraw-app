@@ -1,0 +1,44 @@
+diff --git a/node_modules/ketcher-react/dist/cjs/index.js b/node_modules/ketcher-react/dist/cjs/index.js
+index 42bef7f..a951ca9 100644
+--- a/node_modules/ketcher-react/dist/cjs/index.js
++++ b/node_modules/ketcher-react/dist/cjs/index.js
+@@ -4198,7 +4198,7 @@ var config = {
+     }
+   },
+   copy: {
+-    shortcut: 'Mod+c',
++    shortcut: 'Mod+Shift+c',
+     enabledInViewOnly: true,
+     title: 'Copy',
+     action: {
+@@ -4217,7 +4217,7 @@ var config = {
+     }
+   },
+   'copy-image': {
+-    shortcut: 'Mod+Shift+f',
++    shortcut: 'Mod+c',
+     enabledInViewOnly: true,
+     title: 'Copy Image',
+     action: function action() {
+diff --git a/node_modules/ketcher-react/dist/index.js b/node_modules/ketcher-react/dist/index.js
+index 2e5fcdd..7a0ea22 100644
+--- a/node_modules/ketcher-react/dist/index.js
++++ b/node_modules/ketcher-react/dist/index.js
+@@ -4135,7 +4135,7 @@ var config = {
+     }
+   },
+   copy: {
+-    shortcut: 'Mod+c',
++    shortcut: 'Mod+Shift+c',
+     enabledInViewOnly: true,
+     title: 'Copy',
+     action: {
+@@ -4154,7 +4154,7 @@ var config = {
+     }
+   },
+   'copy-image': {
+-    shortcut: 'Mod+Shift+f',
++    shortcut: 'Mod+c',
+     enabledInViewOnly: true,
+     title: 'Copy Image',
+     action: function action() {

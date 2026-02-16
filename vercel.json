@@ -13,13 +13,8 @@
     }
   },
   "rewrites": [
-    {
-      "source": "/api/nmr-proxy",
-      "destination": "/api/nmr-proxy.js"
-    },
-    {
-      "source": "/((?!api).*)",
-      "destination": "/index.html"
-    }
+    {"source": "/api/nmr-proxy", "destination": "/api/nmr-proxy.js"},
+    {"source": "/api/ocsr", "destination": "/api/ocsr.js"},
+    {"source": "/((?!api).*)", "destination": "/index.html"}
   ]
 }

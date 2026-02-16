@@ -1,16 +1,18 @@
 /**
  * Handles pasting images into the Ketcher sketch canvas.
- * - Ctrl+V: intercepts paste when focused on canvas, adds image if clipboard has one
- * - Can be called from Paste button (user gesture allows clipboard read)
+ * - Ctrl+V: intercepts paste when focused on canvas
+ * - If clipboard has image: tries OCSR recognition first → structure if recognized, else image
+ * - If no image: Ketcher paste (structure data)
  *
  * Ketcher supports images via fromImageCreation(ctab, dataUrl, center, halfSize).
- * Web: navigator.clipboard.read() for image/png. Tauri: readImage() from plugin.
+ * OCSR via /api/ocsr (naturalproducts.net) returns SMILES → setMolecule for editable structure.
  */
 
 import { useEffect, useCallback } from 'react';
 import { fromImageCreation, Vec2, Scale } from 'ketcher-core';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+const OCSR_API = '/api/ocsr';
 const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/webp'];
 const MIN_DIMENSION = 16;
 
@@ -75,6 +77,26 @@ async function getImageFromClipboard(): Promise<string | null> {
 }
 
 /**
+ * Call OCSR API to recognize structure from image. Returns SMILES or null.
+ */
+async function recognizeImageToStructure(dataUrl: string): Promise<string | null> {
+  const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1]! : dataUrl;
+  try {
+    const res = await fetch(typeof window !== 'undefined' ? window.location.origin + OCSR_API : OCSR_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64 }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { struct?: string; smiles?: string };
+    const struct = data.struct ?? data.smiles;
+    return struct && typeof struct === 'string' ? struct : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Add image to Ketcher canvas at view center.
  */
 function addImageToCanvas(ketcher: any, dataUrl: string): Promise<boolean> {
@@ -117,7 +139,8 @@ export type ImagePasteResult = { success: true; type: 'image' } | { success: tru
 
 /**
  * Try to paste image from clipboard into Ketcher. Returns result for UI feedback.
- * Call from Paste button (user gesture) or from Ctrl+V handler.
+ * 1. If image: try OCSR recognition → load structure if recognized, else add as image
+ * 2. Call from Paste button (user gesture) or from Ctrl+V handler.
  */
 export async function pasteImageIntoSketch(ketcherRef: React.RefObject<any>): Promise<ImagePasteResult> {
   const ketcher = ketcherRef?.current;
@@ -125,6 +148,17 @@ export async function pasteImageIntoSketch(ketcherRef: React.RefObject<any>): Pr
 
   const dataUrl = await getImageFromClipboard();
   if (dataUrl) {
+    // Try OCSR recognition first → editable structure
+    const smiles = await recognizeImageToStructure(dataUrl);
+    if (smiles && typeof ketcher.setMolecule === 'function') {
+      try {
+        await ketcher.setMolecule(smiles);
+        return { success: true, type: 'structure' };
+      } catch {
+        // Fall through to add as image
+      }
+    }
+    // Recognition failed or not available: add image to canvas
     const ok = await addImageToCanvas(ketcher, dataUrl);
     return ok ? { success: true, type: 'image' } : { success: false };
   }
@@ -133,8 +167,8 @@ export async function pasteImageIntoSketch(ketcherRef: React.RefObject<any>): Pr
 
 /**
  * Hook: intercepts paste event when Ketcher is focused.
- * - If clipboard has image: adds image to canvas at view center
- * - If not: dispatches Ketcher's pasteFromClipboard so structure data is pasted
+ * - If clipboard has image: tries OCSR → structure if recognized, else image
+ * - If no image: dispatches Ketcher's pasteFromClipboard so structure data is pasted
  */
 export function useImagePasteIntoSketch(ketcherRef: React.RefObject<any>) {
   const handlePaste = useCallback(
@@ -150,8 +184,8 @@ export function useImagePasteIntoSketch(ketcherRef: React.RefObject<any>) {
       e.stopPropagation();
 
       const result = await pasteImageIntoSketch(ketcherRef);
-      if (result.success && result.type === 'image') {
-        return;
+      if (result.success) {
+        return; // image or structure pasted
       }
       // No image: let Ketcher paste structure data (clipboard still has content)
       const editor = ketcher.editor;

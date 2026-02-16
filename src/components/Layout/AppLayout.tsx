@@ -193,12 +193,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, []);
 
-  // Paste from clipboard: image first, then structure (MOL/SMILES)
+  // Paste from clipboard: image → OCSR recognition first, else image; or structure (MOL/SMILES)
   const handlePasteFromClipboard = useCallback(async () => {
     try {
       const result = await pasteImageIntoSketch(ketcherRef);
+      if (result.success && result.type === 'structure') {
+        setSnackbarMessage('Structure recognized from image');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        return;
+      }
       if (result.success && result.type === 'image') {
-        setSnackbarMessage('Image pasted into sketch');
+        setSnackbarMessage('Image pasted (recognition failed or not a structure)');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         return;

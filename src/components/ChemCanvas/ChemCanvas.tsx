@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Editor } from 'ketcher-react';
-import { StandaloneStructServiceProvider } from 'ketcher-standalone';
+import { OcsrStructServiceProvider } from '../../lib/chemistry/OcsrStructServiceProvider';
 import 'ketcher-react/dist/index.css';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { useCopyImageToClipboard } from '../../hooks/useCopyImageToClipboard';
@@ -38,8 +38,8 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   // Paste: image or structure (Ctrl+V and Paste button)
   useImagePasteIntoSketch(editorRef);
   
-  // Create service provider once and never recreate
-  const structServiceProvider = useMemo(() => new StandaloneStructServiceProvider() as any, []);
+  // Create service provider once: standalone + OCSR via /api/ocsr (Vercel)
+  const structServiceProvider = useMemo(() => new OcsrStructServiceProvider() as any, []);
   
   // Static resources URL - memoized to prevent changes
   const staticResourcesUrl = useMemo(() => process.env.PUBLIC_URL || window.location.origin, []);

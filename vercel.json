@@ -7,6 +7,9 @@
     "api/nmr-proxy.js": {
       "maxDuration": 60,
       "memory": 3008
+    },
+    "api/ocsr.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
@@ -20,4 +23,3 @@
     }
   ]
 }
-

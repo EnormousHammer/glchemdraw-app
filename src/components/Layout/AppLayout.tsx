@@ -33,6 +33,7 @@ import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
+import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 // StructureData interface for chemical structure information
 interface StructureData {
   molfile: string;
@@ -59,8 +60,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [alignMenuAnchor, setAlignMenuAnchor] = useState<null | HTMLElement>(null);
-  
-  // Removed NMR functionality - structure drawing only
   
   // Chemical data state for comprehensive information
   const [chemicalData, setChemicalData] = useState<{
@@ -194,18 +193,31 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, []);
 
-  // Paste from clipboard fallback (Issue #6) - when Ctrl+V fails for complex structures
+  // Paste from clipboard: image first, then structure (MOL/SMILES)
   const handlePasteFromClipboard = useCallback(async () => {
     try {
+      const result = await pasteImageIntoSketch(ketcherRef);
+      if (result.success && result.type === 'image') {
+        setSnackbarMessage('Image pasted into sketch');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        return;
+      }
+      // No image: try structure paste
       const text = await navigator.clipboard.readText();
-      if (!text?.trim() || !ketcherRef.current?.setMolecule) return;
+      if (!text?.trim() || !ketcherRef.current?.setMolecule) {
+        setSnackbarMessage('Paste failed – clipboard has no image or structure (MOL/SMILES)');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
       await ketcherRef.current.setMolecule(text.trim());
       setSnackbarMessage('Structure pasted from clipboard');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (err) {
       console.error('[AppLayout] Paste from clipboard failed:', err);
-      setSnackbarMessage('Paste failed – try Ctrl+V or ensure clipboard has MOL/SMILES');
+      setSnackbarMessage('Paste failed – try Ctrl+V or ensure clipboard has image or MOL/SMILES');
       setSnackbarSeverity('warning');
       setSnackbarOpen(true);
     }
@@ -632,7 +644,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           position: 'relative'
         }}>
           {(() => {
-            // Structure-only view - removed NMR functionality
             return (
               <>
                 {/* Left Panel - Drawing Canvas */}
@@ -683,7 +694,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                       {isSearching && <CircularProgress size={16} />}
-                      <Tooltip title="Paste structure from clipboard (fallback when Ctrl+V fails for complex structures)">
+                      <Tooltip title="Paste image or structure from clipboard (PNG/screenshot or MOL/SMILES)">
                         <Button
                           size="small"
                           variant="outlined"

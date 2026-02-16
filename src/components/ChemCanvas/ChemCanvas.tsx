@@ -9,6 +9,7 @@ import { StandaloneStructServiceProvider } from 'ketcher-standalone';
 import 'ketcher-react/dist/index.css';
 import { Box, CircularProgress, Alert } from '@mui/material';
 import { useCopyImageToClipboard } from '../../hooks/useCopyImageToClipboard';
+import { useImagePasteIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 
 interface ChemCanvasProps {
   onStructureChange?: (molfile: string, smiles: string) => void;
@@ -34,6 +35,8 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
 
   // Ctrl+C copies structure as image (uses Tauri native clipboard when in desktop app)
   useCopyImageToClipboard(editorRef);
+  // Paste: image or structure (Ctrl+V and Paste button)
+  useImagePasteIntoSketch(editorRef);
   
   // Create service provider once and never recreate
   const structServiceProvider = useMemo(() => new StandaloneStructServiceProvider() as any, []);

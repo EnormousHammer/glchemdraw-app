@@ -1,0 +1,30 @@
+diff --git a/node_modules/ketcher-core/dist/index.js b/node_modules/ketcher-core/dist/index.js
+index 6a130a4..242dc0a 100644
+--- a/node_modules/ketcher-core/dist/index.js
++++ b/node_modules/ketcher-core/dist/index.js
+@@ -5049,7 +5049,9 @@ var FunctionalGroup = function () {
+   _createClass__default["default"](FunctionalGroup, [{
+     key: "name",
+     get: function get() {
+-      return _classPrivateFieldGet__default["default"](this, _sgroup).data.name;
++      var name = _classPrivateFieldGet__default["default"](this, _sgroup).data.name;
++      var corrected = { "MeO": "OMe", "EtO": "OEt", "NC": "CN", "MeS": "SMe", "EtS": "SEt" }[name];
++      return corrected !== undefined ? corrected : name;
+     }
+   }, {
+     key: "relatedSGroupId",
+diff --git a/node_modules/ketcher-core/dist/index.modern.js b/node_modules/ketcher-core/dist/index.modern.js
+index f6ddea9..2c4c02e 100644
+--- a/node_modules/ketcher-core/dist/index.modern.js
++++ b/node_modules/ketcher-core/dist/index.modern.js
+@@ -5002,7 +5002,9 @@ var FunctionalGroup = function () {
+   _createClass(FunctionalGroup, [{
+     key: "name",
+     get: function get() {
+-      return _classPrivateFieldGet(this, _sgroup).data.name;
++      var name = _classPrivateFieldGet(this, _sgroup).data.name;
++      var corrected = { "MeO": "OMe", "EtO": "OEt", "NC": "CN", "MeS": "SMe", "EtS": "SEt" }[name];
++      return corrected !== undefined ? corrected : name;
+     }
+   }, {
+     key: "relatedSGroupId",

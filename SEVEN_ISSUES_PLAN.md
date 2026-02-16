@@ -151,10 +151,10 @@
 | 1 | Bottom toolbar disappears | ✅ CSS workaround | Force bottom-toolbar visible |
 | 2 | Chemical info – selected only | ✅ Yes | Implement selection-aware logic |
 | 3 | Bond lengths/angles | ✅ Fixed | Use Layout (Ctrl+L), not Clean |
-| 4 | Functional groups OMe/MeO | ❌ No | Would need ketcher SDF/render patch |
+| 4 | Functional groups OMe/MeO | ✅ Patch | ketcher-core patch corrects MeO→OMe, NC→CN, etc. |
 | 5 | File formats / FindMolecule | ✅ Yes | Add export formats; document compatibility |
-| 6 | Copy image to Word | ✅ Fixed | Ctrl+C = image; in-canvas paste limits = Ketcher |
-| 7 | Align selected figures | ⚠️ Partial | Align R-groups added; full align not in API |
+| 6 | Copy image / paste | ✅ Fixed | Ctrl+C = image; Paste button fallback when Ctrl+V fails |
+| 7 | Align selected figures | ✅ Full | Align left/right/top/bottom + R-groups |
 
 ---
 
@@ -164,11 +164,11 @@
 2. **#5 – Export formats** – ✅ DONE – MOL, SDF, SMILES export in Chemical Info panel
 3. **#6 – Copy image** – ✅ DONE – Ctrl+C copies as image (Word), Ctrl+Shift+C copies data
 4. **#3 – Layout button** – ✅ DONE – Layout button added (fixes bond lengths/angles; Clean does not)
-5. **#7 – Align** – ✅ PARTIAL – Align button for R-group labels; full structure align not in Ketcher API
+5. **#7 – Align** – ✅ DONE – Full ChemDraw-style align (left/right/top/bottom) + R-group labels
 6. **#1 – Bottom toolbar** – ✅ DONE – CSS workaround forces bottom-toolbar visible
 
 ---
 
 ## No upstream reporting (per user request)
 
-All fixes done in-app. Remaining: Issue 4 (functional groups) would need ketcher data/render patch.
+All fixes done in-app. Issue 4 fixed via ketcher-core patch (MeO→OMe, NC→CN). Issue 6: Paste fallback button added when Ctrl+V fails.

@@ -22,6 +22,9 @@ import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
+import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
+import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
+import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
@@ -29,6 +32,7 @@ import ChemCanvas from '../ChemCanvas/ChemCanvas';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
+import { alignStructures, type AlignMode } from '@lib/alignStructures';
 // StructureData interface for chemical structure information
 interface StructureData {
   molfile: string;
@@ -54,6 +58,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [show3DViewer, setShow3DViewer] = useState(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
+  const [alignMenuAnchor, setAlignMenuAnchor] = useState<null | HTMLElement>(null);
   
   // Removed NMR functionality - structure drawing only
   
@@ -187,6 +192,34 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
+  }, []);
+
+  // Paste from clipboard fallback (Issue #6) - when Ctrl+V fails for complex structures
+  const handlePasteFromClipboard = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text?.trim() || !ketcherRef.current?.setMolecule) return;
+      await ketcherRef.current.setMolecule(text.trim());
+      setSnackbarMessage('Structure pasted from clipboard');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('[AppLayout] Paste from clipboard failed:', err);
+      setSnackbarMessage('Paste failed – try Ctrl+V or ensure clipboard has MOL/SMILES');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  // Align structures (ChemDraw-style left/right/top/bottom) - Issue #7 full
+  const handleAlignStructures = useCallback((mode: AlignMode) => {
+    setAlignMenuAnchor(null);
+    const editor = ketcherRef.current?.editor;
+    if (!editor) return;
+    const result = alignStructures(editor, mode);
+    setSnackbarMessage(result.message);
+    setSnackbarSeverity(result.success ? 'success' : 'warning');
+    setSnackbarOpen(true);
   }, []);
 
   // Handle structure changes from the canvas (full canvas)
@@ -650,6 +683,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                       {isSearching && <CircularProgress size={16} />}
+                      <Tooltip title="Paste structure from clipboard (fallback when Ctrl+V fails for complex structures)">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={handlePasteFromClipboard}
+                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                        >
+                          Paste
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="Layout: fix bond lengths & angles (Ctrl+L). Clean only standardizes structure.">
                         <Button
                           size="small"
@@ -661,17 +704,41 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           Layout
                         </Button>
                       </Tooltip>
-                      <Tooltip title="Align R-group labels (R1, R2, etc.)">
+                      <Tooltip title="Align structures or R-group labels">
                         <Button
                           size="small"
                           variant="outlined"
-                          onClick={handleAlignDescriptors}
+                          onClick={(e) => setAlignMenuAnchor(e.currentTarget)}
                           startIcon={<FormatAlignLeftIcon />}
+                          endIcon={<ExpandMoreIcon />}
                           sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
                         >
                           Align
                         </Button>
                       </Tooltip>
+                      <Menu
+                        anchorEl={alignMenuAnchor}
+                        open={!!alignMenuAnchor}
+                        onClose={() => setAlignMenuAnchor(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                      >
+                        <MenuItem onClick={handleAlignDescriptors}>
+                          <FormatAlignLeftIcon sx={{ mr: 1, fontSize: 18 }} /> R-group labels
+                        </MenuItem>
+                        <MenuItem onClick={() => handleAlignStructures('left')}>
+                          <FormatAlignLeftIcon sx={{ mr: 1, fontSize: 18 }} /> Align left
+                        </MenuItem>
+                        <MenuItem onClick={() => handleAlignStructures('right')}>
+                          <FormatAlignRightIcon sx={{ mr: 1, fontSize: 18 }} /> Align right
+                        </MenuItem>
+                        <MenuItem onClick={() => handleAlignStructures('top')}>
+                          <VerticalAlignTopIcon sx={{ mr: 1, fontSize: 18 }} /> Align top
+                        </MenuItem>
+                        <MenuItem onClick={() => handleAlignStructures('bottom')}>
+                          <VerticalAlignBottomIcon sx={{ mr: 1, fontSize: 18 }} /> Align bottom
+                        </MenuItem>
+                      </Menu>
                       <Tooltip title="Export structure (MOL, SDF, SMILES)">
                         <Button
                           size="small"
@@ -1582,8 +1649,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
               <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Panel Buttons</Typography>
               <Stack spacing={0.5}>
+                <Typography variant="body2"><strong>Paste</strong> – Paste structure from clipboard (fallback when Ctrl+V fails)</Typography>
                 <Typography variant="body2"><strong>Layout</strong> – Fix bond lengths and angles for a cleaner look</Typography>
-                <Typography variant="body2"><strong>Align</strong> – Align R-group labels (R1, R2, etc.)</Typography>
+                <Typography variant="body2"><strong>Align</strong> – R-group labels, or Align left/right/top/bottom for selected structures</Typography>
                 <Typography variant="body2"><strong>Export</strong> – Save as MOL, SDF, or SMILES</Typography>
               </Stack>
 

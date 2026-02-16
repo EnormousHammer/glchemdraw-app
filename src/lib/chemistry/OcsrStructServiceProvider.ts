@@ -31,9 +31,11 @@ export class OcsrStructServiceProvider {
   mode = standalone.mode;
 
   createStructService(options?: unknown): unknown {
-    const standalonePromise = (standalone as { createStructService: (o?: unknown) => unknown }).createStructService(options) as Promise<Record<string, unknown>>;
-
-    return standalonePromise.then((svc) => {
+    // StandaloneStructServiceProvider.createStructService returns synchronously (IndigoService),
+    // but Ketcher expects a thenable. Wrap in Promise.resolve so .then() works.
+    const create = (standalone as { createStructService: (o?: unknown) => Record<string, unknown> }).createStructService;
+    const svc = create(options);
+    return Promise.resolve(svc).then((svc) => {
       const wrapped = {
         ...svc,
         imagoVersions: ['1'] as string[],

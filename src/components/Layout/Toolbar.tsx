@@ -71,6 +71,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   darkMode,
   onToggleDarkMode,
   onShortcutsClick,
+  onFaqClick,
   rightContent,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -215,15 +216,43 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
 
         <Box sx={{ flexGrow: 1 }} />
 
-        {/* Shortcuts / Help */}
+        {/* Shortcuts */}
         {onShortcutsClick && (
-          <Tooltip title="View all shortcuts" arrow placement="bottom">
+          <Tooltip title="Keyboard shortcuts" arrow placement="bottom">
             <Chip
               icon={<KeyboardIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
               label="Shortcuts"
               size="small"
               variant="outlined"
               onClick={onShortcutsClick}
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                height: 26,
+                bgcolor: 'transparent',
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                  borderColor: 'primary.dark'
+                }
+              }}
+            />
+          </Tooltip>
+        )}
+
+        <Box sx={{ width: 8 }} />
+
+        {/* FAQ / How to Use */}
+        {onFaqClick && (
+          <Tooltip title="How to use GL-Chemdraw" arrow placement="bottom">
+            <Chip
+              icon={<HelpIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+              label="FAQ"
+              size="small"
+              variant="outlined"
+              onClick={onFaqClick}
               sx={{
                 fontSize: '0.7rem',
                 fontWeight: 500,

@@ -3,12 +3,20 @@
  * Uses Tauri's native writeImage when in Tauri (WebView clipboard doesn't support images).
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { KetSerializer } from 'ketcher-core';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
-export function useCopyImageToClipboard(ketcherRef: React.RefObject<any>) {
+export interface UseCopyImageToClipboardOptions {
+  onCopySuccess?: () => void;
+}
+
+export function useCopyImageToClipboard(
+  ketcherRef: React.RefObject<any>,
+  options?: UseCopyImageToClipboardOptions
+) {
+  const onCopySuccess = options?.onCopySuccess;
 
   const copyImage = useCallback(async () => {
     const ketcher = ketcherRef.current;
@@ -28,7 +36,7 @@ export function useCopyImageToClipboard(ketcherRef: React.RefObject<any>) {
 
       const blob = await ketcher.generateImage(structStr, {
         outputFormat: 'png',
-        backgroundColor: '255, 255, 255',
+        backgroundColor: 'transparent',
       });
 
       if (isTauri) {
@@ -40,10 +48,11 @@ export function useCopyImageToClipboard(ketcherRef: React.RefObject<any>) {
           new ClipboardItem({ [blob.type]: blob }),
         ]);
       }
+      onCopySuccess?.();
     } catch (err) {
       console.error('[useCopyImageToClipboard] Failed:', err);
     }
-  }, [ketcherRef]);
+  }, [ketcherRef, onCopySuccess]);
 
   useEffect(() => {
     const handler = async (e: KeyboardEvent) => {

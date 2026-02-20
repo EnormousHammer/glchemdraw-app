@@ -18,6 +18,7 @@ interface ChemCanvasProps {
   initialStructure?: string;
   readonly?: boolean;
   onKetcherInit?: (instance: any) => void;
+  onCopyImageSuccess?: () => void;
 }
 
 export const ChemCanvas: React.FC<ChemCanvasProps> = ({
@@ -27,6 +28,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   initialStructure,
   readonly = false,
   onKetcherInit,
+  onCopyImageSuccess,
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ctrl+C copies structure as image (uses Tauri native clipboard when in desktop app)
-  useCopyImageToClipboard(editorRef);
+  useCopyImageToClipboard(editorRef, { onCopySuccess: onCopyImageSuccess });
   // Paste: image or structure (Ctrl+V and Paste button)
   useImagePasteIntoSketch(editorRef);
   

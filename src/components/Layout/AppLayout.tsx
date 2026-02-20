@@ -3,6 +3,7 @@ import {
   Box,
   Typography,
   Stack,
+  Grid,
   Chip,
   CircularProgress,
   Snackbar,
@@ -751,6 +752,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onClear={handleClear}
           onSearchByName={handleSearchByName}
           onShortcutsClick={() => setShowShortcutsDialog(true)}
+          onFaqClick={() => window.open('/GL_Chemdraw_How_To_Use.html', '_blank', 'noopener,noreferrer')}
         />
 
         {/* Main Content - Conditional View */}
@@ -790,6 +792,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     onSelectionChange={handleSelectionChange}
                     onError={(error) => console.error('[AppLayout] ChemCanvas error:', error)}
                     onKetcherInit={(instance) => (ketcherRef.current = instance)}
+                    onCopyImageSuccess={() => {
+                      setSnackbarMessage('Structure copied to clipboard!');
+                      setSnackbarSeverity('success');
+                      setSnackbarOpen(true);
+                    }}
                   />
                 </Box>
               </Box>
@@ -894,7 +901,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={() => handleExport('sdf')}>Save as SDF</MenuItem>
                         <MenuItem onClick={() => handleExport('smiles')}>Save as SMILES</MenuItem>
                       </Menu>
-                      <Tooltip title="Peptide, RNA, or DNA builder (Ketcher 3.10)">
+                      <Tooltip title="Peptide, RNA, or DNA builder">
                         <Button
                           size="small"
                           variant="outlined"
@@ -1841,86 +1848,95 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           <DialogContent dividers>
             <Stack spacing={2}>
               <Typography variant="body2">
-                Ketcher supports full reaction drawing with arrows, conditions, and atom mapping.
+                GL-Chemdraw supports full reaction drawing with arrows, conditions, and atom mapping.
               </Typography>
               <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>How to draw reactions:</Typography>
               <Typography variant="body2" component="ol" sx={{ pl: 2, '& li': { mb: 1 } }}>
                 <li>Draw your reactant structures on the left side of the canvas</li>
                 <li>Draw your product structures on the right side</li>
-                <li>Use the <strong>reaction arrow tool</strong> in Ketcher&apos;s left toolbar (arrow icon)</li>
+                <li>Use the <strong>reaction arrow tool</strong> in the left toolbar (arrow icon)</li>
                 <li>Click and drag between reactants and products to add an arrow</li>
                 <li>Export as RXN file for reaction schemes</li>
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                <strong>Tip:</strong> Look for the arrow/reaction icon in Ketcher&apos;s drawing tools toolbar on the left.
+                <strong>Tip:</strong> Look for the arrow/reaction icon in the drawing tools toolbar on the left.
               </Typography>
             </Stack>
           </DialogContent>
         </Dialog>
 
-        {/* Shortcuts / Help Dialog */}
+        {/* Shortcuts / Help Dialog - Compact, no scroll */}
         <Dialog
           open={showShortcutsDialog}
           onClose={() => setShowShortcutsDialog(false)}
-          maxWidth="sm"
+          maxWidth="md"
           fullWidth
+          PaperProps={{
+            sx: {
+              maxHeight: '85vh',
+              borderRadius: 2,
+            },
+          }}
         >
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6">Keyboard Shortcuts & Actions</Typography>
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1.5 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>GL-Chemdraw Shortcuts</Typography>
             <IconButton onClick={() => setShowShortcutsDialog(false)} size="small">
               <CloseIcon />
             </IconButton>
           </DialogTitle>
-          <DialogContent dividers>
-            <Stack spacing={2}>
-              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Copy & Paste</Typography>
-              <Stack spacing={0.75}>
-                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+C</Typography>
-                  <Typography variant="body2" component="span" color="text.secondary">Copy structure as image (paste into Word, presentations)</Typography>
+          <DialogContent dividers sx={{ py: 1.5, px: 2, overflow: 'hidden' }}>
+            <Grid container spacing={2} sx={{ maxHeight: 'calc(85vh - 120px)', overflow: 'hidden' }}>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Copy & Paste</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+C</Typography>
+                    <Typography variant="body2" color="text.secondary">Copy as image (Word, PPT)</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Shift+C</Typography>
+                    <Typography variant="body2" color="text.secondary">Copy structure data</Typography>
+                  </Box>
                 </Box>
-                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Shift+C</Typography>
-                  <Typography variant="body2" component="span" color="text.secondary">Copy structure data (paste within canvas)</Typography>
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Structure</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+L</Typography>
+                    <Typography variant="body2" color="text.secondary">Layout (bond lengths & angles)</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Shift+L</Typography>
+                    <Typography variant="body2" color="text.secondary">Clean (standardize)</Typography>
+                  </Box>
                 </Box>
-              </Stack>
-
-              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Structure</Typography>
-              <Stack spacing={0.75}>
-                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+L</Typography>
-                  <Typography variant="body2" component="span" color="text.secondary">Layout – fix bond lengths & angles</Typography>
+                <Box>
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Biopolymer</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Alt+P</Typography>
+                    <Typography variant="body2" color="text.secondary">Peptide</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Alt+R</Typography>
+                    <Typography variant="body2" color="text.secondary">RNA</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Alt+D</Typography>
+                    <Typography variant="body2" color="text.secondary">DNA</Typography>
+                  </Box>
                 </Box>
-                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Shift+L</Typography>
-                  <Typography variant="body2" component="span" color="text.secondary">Clean – standardize structure (aromatize, etc.)</Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Panel Buttons</Typography>
+                  <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                    <Typography variant="body2"><strong>Paste</strong> — Paste from clipboard</Typography>
+                    <Typography variant="body2"><strong>Layout</strong> — Fix bond lengths & angles</Typography>
+                    <Typography variant="body2"><strong>Align</strong> — R-groups or align selected</Typography>
+                    <Typography variant="body2"><strong>Export</strong> — MOL, SDF, SMILES</Typography>
+                    <Typography variant="body2"><strong>Biopolymer</strong> — Peptide/RNA/DNA mode</Typography>
+                    <Typography variant="body2"><strong>Reactions</strong> — Draw reaction arrows</Typography>
+                  </Stack>
                 </Box>
-              </Stack>
-
-              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Biopolymer (Peptide/RNA/DNA)</Typography>
-              <Stack spacing={0.75}>
-                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Alt+P</Typography>
-                  <Typography variant="body2" component="span" color="text.secondary">Peptide builder mode</Typography>
+                <Box>
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Selection</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontStyle: 'italic' }}>
+                    Select structure → chemical info. Click canvas → full info.
+                  </Typography>
                 </Box>
-                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Alt+R</Typography>
-                  <Typography variant="body2" component="span" color="text.secondary">RNA builder mode</Typography>
-                </Box>
-                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Alt+D</Typography>
-                  <Typography variant="body2" component="span" color="text.secondary">DNA builder mode</Typography>
-                </Box>
-              </Stack>
-
-              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Panel Buttons</Typography>
-              <Stack spacing={0.5}>
-                <Typography variant="body2"><strong>Paste</strong> – Paste structure from clipboard (fallback when Ctrl+V fails)</Typography>
-                <Typography variant="body2"><strong>Layout</strong> – Fix bond lengths and angles for a cleaner look</Typography>
-                <Typography variant="body2"><strong>Align</strong> – R-group labels, or Align left/right/top/bottom for selected structures</Typography>
-                <Typography variant="body2"><strong>Export</strong> – Save as MOL, SDF, or SMILES</Typography>
-                <Typography variant="body2"><strong>Biopolymer</strong> – Switch to Peptide/RNA/DNA builder</Typography>
-                <Typography variant="body2"><strong>Reactions</strong> – How to draw reaction arrows</Typography>
-              </Stack>
-
-              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Selection</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                Select a structure to see its chemical info only. Click empty canvas to show full canvas info.
-              </Typography>
-            </Stack>
+              </Grid>
+            </Grid>
           </DialogContent>
         </Dialog>
       </Box>

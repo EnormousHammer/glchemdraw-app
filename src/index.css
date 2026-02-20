@@ -51,6 +51,15 @@
   height: 100% !important;
 }
 
+/* Hide any Ketcher-branded elements (title/aria-label) */
+.Ketcher-root [title*="Ketcher"],
+.Ketcher-root [title*="ketcher"],
+.Ketcher-root [aria-label*="Ketcher"],
+.Ketcher-root [aria-label*="ketcher"] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
 /* Hide Ketcher information, help, and 3D buttons */
 .Ketcher-root button[title*="Information"],
 .Ketcher-root button[title*="information"],

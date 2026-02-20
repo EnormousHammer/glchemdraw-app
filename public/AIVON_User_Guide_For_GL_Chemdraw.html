@@ -773,7 +773,7 @@
 
         footer {
             background: linear-gradient(180deg, var(--surface) 0%, var(--dark) 100%);
-            padding: 60px 40px 40px;
+            padding: 40px 40px 32px;
             border-top: 1px solid rgba(0, 188, 212, 0.2);
             text-align: center;
             position: relative;
@@ -793,36 +793,26 @@
             background: linear-gradient(90deg, transparent, var(--cyan), transparent);
         }
 
-        .footer-text {
-            margin-bottom: 40px;
-        }
-
         .footer-row {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 48px;
-            flex-wrap: wrap;
-            width: 100%;
-            max-width: 520px;
+            gap: 12px;
             margin: 0 auto;
-            padding-top: 30px;
+            padding-top: 4px;
             border-top: 1px solid rgba(0, 188, 212, 0.15);
         }
 
         .footer-logo-cell {
-            flex: 1;
             display: flex;
+            justify-content: center;
             align-items: center;
-            min-height: 80px;
         }
 
-        .footer-logo-cell:first-child {
-            justify-content: flex-start;
-        }
-
-        .footer-logo-cell:last-child {
-            justify-content: flex-end;
+        .footer-text-block {
+            margin-top: 12px;
+            text-align: center;
         }
 
         .footer-logo-left,
@@ -838,7 +828,7 @@
 
         footer p {
             color: var(--text-dim);
-            margin: 8px 0;
+            margin: 4px 0;
         }
 
         .support-email {
@@ -1251,19 +1241,19 @@
     </section>
 
     <footer>
-        <div class="footer-text">
-            <p style="color: var(--text); font-size: 16px; margin-bottom: 8px;">GL-Chemdraw — Chemical Structure Drawing for GLC</p>
-            <p style="color: var(--cyan); font-size: 14px; margin-bottom: 8px;">Built by AIVON</p>
-            <p style="font-size: 14px;">Support: <a href="mailto:haron@aivon.tech" class="support-email">haron@aivon.tech</a></p>
-        </div>
         <div class="footer-row">
+            <div class="footer-logo-cell">
+                <img src="Full_logo.png" alt="AIVON" class="footer-logo-right" onerror="this.src='aivon_logo.png'">
+            </div>
             <div class="footer-logo-cell">
                 <img src="GLC_Logo.png" alt="GL Chemtec" class="footer-logo-left" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
                 <span class="footer-logo-fallback" style="display:none; color: var(--text); font-size: 1rem; font-weight: 600;">GL Chemtec</span>
             </div>
-            <div class="footer-logo-cell">
-                <img src="Full_logo.png" alt="AIVON" class="footer-logo-right" onerror="this.src='aivon_logo.png'">
-            </div>
+        </div>
+        <div class="footer-text-block">
+            <p style="color: var(--text); font-size: 16px; margin-bottom: 8px;">GL-Chemdraw — Chemical Structure Drawing for GLC</p>
+            <p style="color: var(--cyan); font-size: 14px; margin-bottom: 8px;">Built by AIVON</p>
+            <p style="font-size: 14px;">Support: <a href="mailto:haron@aivon.tech" class="support-email">haron@aivon.tech</a></p>
         </div>
     </footer>
 

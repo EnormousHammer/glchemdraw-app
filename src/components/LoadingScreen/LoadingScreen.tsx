@@ -1,155 +1,223 @@
 /**
  * LoadingScreen Component
- * Matches app branding: GL-Chemdraw, GL Chemtec & AIVON logos
+ * Background video with particles, animations, and 5-second timer
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
-
-const CYAN = '#00BCD4';
 
 interface LoadingScreenProps {
   onComplete: () => void;
 }
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [glcLogoError, setGlcLogoError] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => onComplete(), 5000);
     return () => clearTimeout(timer);
   }, [onComplete]);
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch((err) => console.error('Video play failed:', err));
+    }
+  }, []);
+
   return (
     <Box
+      onClick={() => onComplete()}
       sx={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        background: '#0a0a0a',
+        background: 'black',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 9999,
-        color: '#e8e8e8',
+        color: 'white',
         overflow: 'hidden',
+        cursor: 'pointer',
       }}
     >
-      {/* Top line */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '80%',
-          maxWidth: 400,
-          height: 1,
-          background: `linear-gradient(90deg, transparent, ${CYAN}, transparent)`,
-        }}
-      />
-
-      {/* Center content */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          flex: 1,
-          justifyContent: 'center',
-          px: 3,
-        }}
-      >
-        {/* Hollow loading circle */}
-        <CircularProgress
-          size={48}
-          thickness={2}
+      {/* Animated floating particles */}
+      {[...Array(12)].map((_, i) => (
+        <Box
+          key={i}
           sx={{
-            color: CYAN,
-            mb: 4,
-            '& .MuiCircularProgress-circle': {
-              strokeLinecap: 'round',
+            position: 'absolute',
+            width: 20 + Math.random() * 30,
+            height: 20 + Math.random() * 30,
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.15)',
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animation: `float ${4 + Math.random() * 4}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 2}s`,
+            '@keyframes float': {
+              '0%, 100%': { transform: 'translateY(0px) scale(1)' },
+              '50%': { transform: 'translateY(-30px) scale(1.1)' },
             },
           }}
         />
+      ))}
 
-        {/* Title */}
-        <Typography
-          sx={{
-            fontSize: '1.25rem',
-            fontWeight: 500,
-            color: '#fff',
-            textAlign: 'center',
-            mb: 1,
-          }}
-        >
-          GL-Chemdraw — Chemical Structure Drawing for GLC
-        </Typography>
-
-        {/* Built by */}
-        <Typography
-          sx={{
-            fontSize: '0.95rem',
-            color: CYAN,
-            mb: 2,
-          }}
-        >
-          Built by AIVON
-        </Typography>
-
-        {/* Support */}
-        <Typography
-          component="a"
-          href="mailto:haron@aivon.tech"
-          sx={{
-            fontSize: '0.85rem',
-            color: CYAN,
-            textDecoration: 'none',
-            '&:hover': { textDecoration: 'underline' },
-          }}
-        >
-          Support: haron@aivon.tech
-        </Typography>
-      </Box>
-
-      {/* Bottom divider line */}
+      {/* Background video */}
       <Box
+        component="video"
+        ref={videoRef}
+        autoPlay
+        muted
+        loop
+        playsInline
         sx={{
-          width: '80%',
-          maxWidth: 400,
-          height: 1,
-          background: `linear-gradient(90deg, transparent, ${CYAN}, transparent)`,
-          mb: 3,
-        }}
-      />
-
-      {/* Logo row: GL Chemtec left, AIVON right */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
+          position: 'absolute',
           width: '100%',
-          maxWidth: 520,
-          px: 4,
-          pb: 5,
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: 0,
         }}
       >
-        {/* GL Chemtec - left */}
+        <source src="/brv1.mp4" type="video/mp4" />
+      </Box>
+
+      {/* Main content */}
+      <Box
+        sx={{
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          bgcolor: 'transparent',
+          padding: 6,
+          minWidth: '400px',
+        }}
+      >
+        {/* Icon with glow effect and pulse */}
         <Box
           sx={{
-            flex: 1,
+            position: 'relative',
+            mb: 3,
+            fontSize: '6rem',
+            color: 'white',
+            filter: 'drop-shadow(0 0 30px rgba(255, 255, 255, 0.7))',
+            animation: 'pulse 2s ease-in-out infinite',
+            '@keyframes pulse': {
+              '0%, 100%': { transform: 'scale(1)' },
+              '50%': { transform: 'scale(1.1)' },
+            },
+          }}
+        >
+          ⚛️
+        </Box>
+
+        {/* App name */}
+        <Typography
+          variant="h2"
+          sx={{
+            mb: 1.5,
+            fontWeight: 700,
+            letterSpacing: 2,
+            textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          GL-ChemDraw
+        </Typography>
+
+        {/* Subtitle */}
+        <Typography
+          variant="h6"
+          sx={{
+            mb: 4,
+            opacity: 0.95,
+            fontWeight: 400,
+            textAlign: 'center',
+          }}
+        >
+          Structure Drawing & Analysis
+        </Typography>
+
+        {/* Progress indicator */}
+        <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
+          <CircularProgress
+            size={60}
+            thickness={4}
+            sx={{
+              color: 'white',
+              '& .MuiCircularProgress-circle': {
+                strokeLinecap: 'round',
+              },
+            }}
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontSize: '1.5rem',
+            }}
+          >
+            🧪
+          </Box>
+        </Box>
+
+        {/* Loading text with animated dots */}
+        <Typography
+          variant="body1"
+          sx={{
+            mt: 2,
+            opacity: 0.9,
+            fontWeight: 300,
+            letterSpacing: 2,
+          }}
+        >
+          LOADING
+          <Box
+            component="span"
+            sx={{
+              animation: 'dots 1.5s steps(4, end) infinite',
+              '@keyframes dots': {
+                '0%, 20%': { content: '""' },
+                '40%': { content: '"."' },
+                '60%': { content: '".."' },
+                '80%, 100%': { content: '"..."' },
+              },
+            }}
+          >
+            ...
+          </Box>
+        </Typography>
+
+        {/* Click to skip hint */}
+        <Typography
+          variant="caption"
+          sx={{
+            mt: 3,
+            opacity: 0.7,
+            fontSize: '0.75rem',
+          }}
+        >
+          Click anywhere to start
+        </Typography>
+
+        {/* GL Chemtec & AIVON logos */}
+        <Box
+          sx={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            minHeight: 80,
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            gap: 3,
+            mt: 4,
           }}
         >
           {glcLogoError ? (
-            <Typography sx={{ color: '#e8e8e8', fontSize: '1rem', fontWeight: 600 }}>
+            <Typography sx={{ color: 'white', fontSize: '1rem', fontWeight: 600 }}>
               GL Chemtec
             </Typography>
           ) : (
@@ -159,30 +227,13 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
               alt="GL Chemtec"
               onError={() => setGlcLogoError(true)}
               sx={{
-                maxWidth: 160,
-                maxHeight: 80,
-                width: 'auto',
-                height: 'auto',
+                maxWidth: 140,
+                maxHeight: 70,
                 objectFit: 'contain',
-                filter: 'drop-shadow(0 0 16px rgba(0, 188, 212, 0.25))',
+                filter: 'drop-shadow(0 0 12px rgba(255, 255, 255, 0.3))',
               }}
             />
           )}
-        </Box>
-
-        {/* Spacer between logos */}
-        <Box sx={{ width: 48, flexShrink: 0 }} />
-
-        {/* AIVON - right */}
-        <Box
-          sx={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            minHeight: 80,
-          }}
-        >
           <Box
             component="img"
             src="/Full_logo.png"
@@ -192,12 +243,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
               target.src = '/aivon_logo.png';
             }}
             sx={{
-              maxWidth: 160,
-              maxHeight: 80,
-              width: 'auto',
-              height: 'auto',
+              maxWidth: 140,
+              maxHeight: 70,
               objectFit: 'contain',
-              filter: 'drop-shadow(0 0 16px rgba(0, 188, 212, 0.25))',
+              filter: 'drop-shadow(0 0 12px rgba(255, 255, 255, 0.3))',
             }}
           />
         </Box>

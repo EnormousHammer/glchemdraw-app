@@ -157,7 +157,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
           structServiceProvider={structServiceProvider}
           onInit={(ketcher) => {
             editorRef.current = ketcher;
-            console.log('[ChemCanvas] Ketcher initialized');
+            console.log('[ChemCanvas] Canvas initialized');
             
             // Ensure proper layout
             setTimeout(() => {
@@ -219,7 +219,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
             }
           }}
           errorHandler={(error: string) => {
-            console.error('[ChemCanvas] Ketcher error:', error);
+            console.error('[ChemCanvas] Canvas error:', error);
             if (onError) {
               onError(new Error(error));
             }

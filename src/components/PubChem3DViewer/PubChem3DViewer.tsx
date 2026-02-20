@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, ToggleButtonGroup, ToggleButton, CircularProgress, Alert } from '@mui/material';
+import { Box, ToggleButtonGroup, ToggleButton, CircularProgress, Alert, Typography, Link } from '@mui/material';
 
 interface PubChem3DViewerProps {
   cid: number;
@@ -13,6 +13,7 @@ export const PubChem3DViewer: React.FC<PubChem3DViewerProps> = ({ cid }) => {
   const [style, setStyle] = useState<RenderStyle>('stick');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isNo3DData, setIsNo3DData] = useState(false);
 
   useEffect(() => {
     if (!viewerRef.current) return;
@@ -21,6 +22,7 @@ export const PubChem3DViewer: React.FC<PubChem3DViewerProps> = ({ cid }) => {
       try {
         setLoading(true);
         setError(null);
+        setIsNo3DData(false);
 
         // Load 3Dmol dynamically
         const $3Dmol = (window as any).$3Dmol;
@@ -39,7 +41,10 @@ export const PubChem3DViewer: React.FC<PubChem3DViewerProps> = ({ cid }) => {
 
         if (!response.ok) {
           if (response.status === 404) {
-            throw new Error('No 3D structure available for this compound');
+            setIsNo3DData(true);
+            setError('No 3D structure available for this compound');
+            setLoading(false);
+            return;
           }
           throw new Error('Failed to fetch 3D structure from PubChem');
         }
@@ -47,7 +52,10 @@ export const PubChem3DViewer: React.FC<PubChem3DViewerProps> = ({ cid }) => {
         const sdfData = await response.text();
         
         if (!sdfData || sdfData.trim().length === 0) {
-          throw new Error('No 3D structure data available');
+          setIsNo3DData(true);
+          setError('No 3D structure data available');
+          setLoading(false);
+          return;
         }
 
         // Add model to viewer
@@ -63,7 +71,7 @@ export const PubChem3DViewer: React.FC<PubChem3DViewerProps> = ({ cid }) => {
         setViewer(viewerInstance);
         setLoading(false);
       } catch (err) {
-        console.error('Error loading 3D viewer:', err);
+        console.warn('3D viewer:', err instanceof Error ? err.message : 'Failed to load 3D structure');
         setError(err instanceof Error ? err.message : 'Failed to load 3D structure');
         setLoading(false);
       }
@@ -101,18 +109,20 @@ export const PubChem3DViewer: React.FC<PubChem3DViewerProps> = ({ cid }) => {
 
   return (
     <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
-        <ToggleButtonGroup
-          value={style}
-          exclusive
-          onChange={handleStyleChange}
-          size="small"
-        >
-          <ToggleButton value="stick">Ball & Stick</ToggleButton>
-          <ToggleButton value="sphere">Space-Filling</ToggleButton>
-          <ToggleButton value="line">Wireframe</ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+      {!error && (
+        <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+          <ToggleButtonGroup
+            value={style}
+            exclusive
+            onChange={handleStyleChange}
+            size="small"
+          >
+            <ToggleButton value="stick">Ball & Stick</ToggleButton>
+            <ToggleButton value="sphere">Space-Filling</ToggleButton>
+            <ToggleButton value="line">Wireframe</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      )}
 
       <Box sx={{ flex: 1, position: 'relative' }}>
         {loading && (
@@ -136,7 +146,24 @@ export const PubChem3DViewer: React.FC<PubChem3DViewerProps> = ({ cid }) => {
 
         {error && (
           <Box sx={{ p: 2 }}>
-            <Alert severity="error">{error}</Alert>
+            <Alert severity={isNo3DData ? 'info' : 'warning'} sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                {isNo3DData
+                  ? "This compound doesn't have 3D structure data in PubChem. Not all compounds have computed 3D conformers."
+                  : error}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                You can still view the 2D structure in the Chemical Info panel, or check PubChem directly:
+              </Typography>
+              <Link
+                href={`https://pubchem.ncbi.nlm.nih.gov/compound/${cid}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="body2"
+              >
+                Open compound {cid} on PubChem →
+              </Link>
+            </Alert>
           </Box>
         )}
 

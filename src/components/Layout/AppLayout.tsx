@@ -752,7 +752,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onClear={handleClear}
           onSearchByName={handleSearchByName}
           onShortcutsClick={() => setShowShortcutsDialog(true)}
-          onFaqClick={() => window.open('/GL_Chemdraw_How_To_Use.html', '_blank', 'noopener,noreferrer')}
+          onFaqClick={() => window.open('/AIVON_User_Guide_For_GL_Chemdraw.html', '_blank', 'noopener,noreferrer')}
         />
 
         {/* Main Content - Conditional View */}
@@ -1886,7 +1886,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           </DialogTitle>
           <DialogContent dividers sx={{ py: 1.5, px: 2, overflow: 'hidden' }}>
             <Grid container spacing={2} sx={{ maxHeight: 'calc(85vh - 120px)', overflow: 'hidden' }}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Box sx={{ mb: 1.5 }}>
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Copy & Paste</Typography>
                   <Box sx={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
@@ -1917,7 +1917,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   </Box>
                 </Box>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Box sx={{ mb: 1.5 }}>
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Panel Buttons</Typography>
                   <Stack spacing={0.5} sx={{ mt: 0.5 }}>

@@ -52,6 +52,7 @@ interface AppToolbarProps {
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
   onShortcutsClick?: () => void;
+  onFaqClick?: () => void;
   rightContent?: React.ReactNode;
 }
 

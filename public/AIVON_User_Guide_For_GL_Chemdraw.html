@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIVON Chemistry Assistant — User Guide</title>
-    <meta name="description" content="Complete user guide for AIVON, GLChemTec's AI-powered chemistry assistant for NMR analysis, molecular structures, and chemical research.">
-    <meta property="og:title" content="AIVON Chemistry Assistant — User Guide">
-    <meta property="og:description" content="Complete user guide for AIVON, GLChemTec's AI-powered chemistry assistant for NMR analysis, molecular structures, and chemical research.">
+    <title>GL-Chemdraw — How to Use</title>
+    <meta name="description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing, PubChem lookup, 3D viewer, and export for GLC.">
+    <meta property="og:title" content="GL-Chemdraw — How to Use">
+    <meta property="og:description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing, PubChem lookup, 3D viewer, and export for GLC.">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="Full_logo.png">
+    <meta property="og:image" content="GLC_Logo.png">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="AIVON Chemistry Assistant — User Guide">
-    <meta name="twitter:description" content="Complete user guide for AIVON, GLChemTec's AI-powered chemistry assistant.">
+    <meta name="twitter:title" content="GL-Chemdraw — How to Use">
+    <meta name="twitter:description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing for GLC.">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap');
 
@@ -773,10 +773,13 @@
 
         footer {
             background: linear-gradient(180deg, var(--surface) 0%, var(--dark) 100%);
-            padding: 100px 40px 60px;
+            padding: 60px 40px 40px;
             border-top: 1px solid rgba(0, 188, 212, 0.2);
             text-align: center;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         footer::before {
@@ -790,13 +793,46 @@
             background: linear-gradient(90deg, transparent, var(--cyan), transparent);
         }
 
-        .footer-logo {
-            width: 280px;
-            max-width: 60vw;
+        .footer-text {
+            margin-bottom: 40px;
+        }
+
+        .footer-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 48px;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+            padding-top: 30px;
+            border-top: 1px solid rgba(0, 188, 212, 0.15);
+        }
+
+        .footer-logo-cell {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            min-height: 80px;
+        }
+
+        .footer-logo-cell:first-child {
+            justify-content: flex-start;
+        }
+
+        .footer-logo-cell:last-child {
+            justify-content: flex-end;
+        }
+
+        .footer-logo-left,
+        .footer-logo-right {
+            max-width: 160px;
+            max-height: 80px;
+            width: auto;
             height: auto;
-            margin: 0 auto 30px;
-            display: block;
-            filter: drop-shadow(0 0 30px rgba(0, 188, 212, 0.3));
+            object-fit: contain;
+            filter: drop-shadow(0 0 16px rgba(0, 188, 212, 0.25));
             opacity: 0.95;
         }
 
@@ -866,6 +902,48 @@
         .faq-list li {
             margin-bottom: 10px;
         }
+
+        /* Shortcuts grid */
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .shortcut-group {
+            background: rgba(0, 188, 212, 0.04);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 188, 212, 0.12);
+        }
+
+        .shortcut-group h4 {
+            font-size: 16px;
+            color: var(--cyan);
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0, 188, 212, 0.06);
+            font-size: 14px;
+        }
+
+        .shortcut-item:last-child { border-bottom: none; }
+
+        .shortcut-key {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--cyan-glow);
+            min-width: 120px;
+        }
+
+        .shortcut-desc { color: var(--text-dim); }
 
         /* Reveal animations */
         .reveal {
@@ -940,18 +1018,17 @@
     <section class="hero">
         <div class="hero-grid"></div>
         <div class="hero-content">
-            <img src="Full_logo.png" alt="AIVON" class="logo-full">
-            <div class="beta-badge">Beta v1 — Help us improve!</div>
-            <p class="hero-tagline">GL Chemtec Chemistry Assistant</p>
+            <img src="aivon_logo.png" alt="AIVON" class="logo-full" onerror="this.style.display='none'">
+            <p class="hero-tagline" style="font-family: 'Playfair Display', serif; font-size: clamp(36px, 5vw, 56px); font-weight: 900;">GL-Chemdraw</p>
             <p class="hero-subtitle">
-                Analyze spectra, extract document data, and generate branded reports<br>
-                <span style="color: var(--cyan);">Powered by GPT-5.2 Vision &mdash; Built by AIVON</span>
+                Professional chemical structure drawing for GLC<br>
+                <span style="color: var(--cyan);">Built by AIVON</span>
             </p>
             <div class="pill-container">
-                <span class="pill">🔬 Spectrum Analysis</span>
-                <span class="pill">📊 Document Extraction</span>
-                <span class="pill">📥 Report Export</span>
-                <span class="pill">🧪 Research Assistant</span>
+                <span class="pill">✏️ Draw Structures</span>
+                <span class="pill">🔍 PubChem Lookup</span>
+                <span class="pill">📐 3D Viewer</span>
+                <span class="pill">📤 Export MOL/SDF</span>
             </div>
         </div>
         <div class="scroll-indicator" onclick="document.querySelector('.section').scrollIntoView({behavior:'smooth'})">
@@ -964,42 +1041,42 @@
         <div class="container">
             <div class="section-header reveal">
                 <div class="section-num">01 — Overview</div>
-                <h2>What It Does</h2>
+                <h2>What GL-Chemdraw Does</h2>
                 <p class="section-desc">
-                    Six core capabilities designed for GL Chemtec's chemistry research workflow — from spectrum analysis to branded report generation.
+                    A professional chemical structure drawing tool built for GLC. Draw molecules, look up compounds from PubChem, view 3D models, and export in standard formats.
                 </p>
             </div>
 
             <div class="capabilities">
                 <div class="cap-card reveal">
-                    <span class="cap-icon">🔬</span>
-                    <h3 class="cap-title">NMR Analysis</h3>
-                    <p class="cap-desc">Upload spectrum images for AI-powered peak extraction with zoomed label reading. Supports ¹H, ¹³C, ¹⁹F, ³¹P, DEPT, COSY, HSQC, HMBC, and more.</p>
+                    <span class="cap-icon">✏️</span>
+                    <h3 class="cap-title">Draw Structures</h3>
+                    <p class="cap-desc">Draw organic molecules with bonds, rings, and functional groups. Use ring templates, structure library, and tools for peptides, RNA, and DNA.</p>
                 </div>
                 <div class="cap-card reveal">
-                    <span class="cap-icon">📊</span>
-                    <h3 class="cap-title">PowerPoint Extraction</h3>
-                    <p class="cap-desc">Extract text, tables, and images from PowerPoint presentations for AI analysis.</p>
-                </div>
-                <div class="cap-card reveal">
-                    <span class="cap-icon">📄</span>
-                    <h3 class="cap-title">PDF & Document Analysis</h3>
-                    <p class="cap-desc">Full text extraction from PDFs with table detection. Also supports Word, Excel, CSV, and text files.</p>
+                    <span class="cap-icon">🔍</span>
+                    <h3 class="cap-title">Name to Structure</h3>
+                    <p class="cap-desc">Search by compound name in the toolbar. GL-Chemdraw fetches structures from PubChem and inserts them directly into your canvas.</p>
                 </div>
                 <div class="cap-card reveal">
                     <span class="cap-icon">🧪</span>
-                    <h3 class="cap-title">Chemistry Intelligence</h3>
-                    <p class="cap-desc">Ask any chemistry question - synthesis routes, reaction mechanisms, process optimization, safety considerations, and more.</p>
+                    <h3 class="cap-title">PubChem Integration</h3>
+                    <p class="cap-desc">Select a structure to see real-time data from PubChem: properties, identifiers, safety info, and spectral data.</p>
                 </div>
                 <div class="cap-card reveal">
-                    <span class="cap-icon">💬</span>
-                    <h3 class="cap-title">Conversation Memory</h3>
-                    <p class="cap-desc">AI remembers your entire conversation. Ask follow-up questions, reference earlier uploads, and build on previous answers.</p>
+                    <span class="cap-icon">📐</span>
+                    <h3 class="cap-title">3D Viewer</h3>
+                    <p class="cap-desc">View interactive 3D molecular models for recognized compounds. Rotate, zoom, and explore structure in 3D.</p>
                 </div>
                 <div class="cap-card reveal">
-                    <span class="cap-icon">📥</span>
-                    <h3 class="cap-title">Export Reports</h3>
-                    <p class="cap-desc">Export any analysis to branded PDF, Word, or PowerPoint reports with the GL Chemtec logo, professional formatting, and company template.</p>
+                    <span class="cap-icon">📤</span>
+                    <h3 class="cap-title">Export</h3>
+                    <p class="cap-desc">Export as MOL, SDF, or SMILES. Copy structure as image (Ctrl+C) for pasting into Word or PowerPoint with transparent background.</p>
+                </div>
+                <div class="cap-card reveal">
+                    <span class="cap-icon">⚗️</span>
+                    <h3 class="cap-title">Reactions</h3>
+                    <p class="cap-desc">Draw reaction schemes with arrows. Use the arrow tool in the left toolbar to connect reactants and products.</p>
                 </div>
             </div>
         </div>
@@ -1008,20 +1085,20 @@
     <div class="stats-bar">
         <div class="stats-grid">
             <div class="stat">
-                <h3>GPT-5.2</h3>
-                <p>Custom Model</p>
+                <h3>PubChem</h3>
+                <p>Live Lookup</p>
             </div>
             <div class="stat">
-                <h3>15+</h3>
-                <p>File Formats</p>
+                <h3>MOL/SDF</h3>
+                <p>Export Formats</p>
             </div>
             <div class="stat">
-                <h3>Beta v1</h3>
-                <p>Active Development</p>
+                <h3>3D</h3>
+                <p>Viewer</p>
             </div>
             <div class="stat">
-                <h3>24/7</h3>
-                <p>Available</p>
+                <h3>GLC</h3>
+                <p>Built for</p>
             </div>
         </div>
     </div>
@@ -1029,133 +1106,47 @@
     <section class="section premium">
         <div class="container">
             <div class="section-header reveal">
-                <div class="section-num">02 — Document Processing</div>
-                <h2>File Intelligence</h2>
-                <p class="section-desc">
-                    Upload documents and let the AI analyze and answer questions about the content.
-                </p>
+                <div class="section-num">02 — Keyboard Shortcuts</div>
+                <h2>Power User Shortcuts</h2>
             </div>
 
-            <div class="format-grid reveal">
-                <div class="format-category">
-                    <h4>Presentations <span class="format-count">3</span></h4>
-                    <div class="format-list">
-                        • PowerPoint (.pptx)<br>
-                        • PowerPoint 97 (.ppt)<br>
-                        • Slide images
+            <div class="shortcuts-grid reveal">
+                <div class="shortcut-group">
+                    <h4>Copy & Paste</h4>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Ctrl+C</span>
+                        <span class="shortcut-desc">Copy as image</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Ctrl+Shift+C</span>
+                        <span class="shortcut-desc">Copy structure data</span>
                     </div>
                 </div>
-                <div class="format-category">
-                    <h4>Documents <span class="format-count">5</span></h4>
-                    <div class="format-list">
-                        • PDF files<br>
-                        • Word (.docx, .doc)<br>
-                        • OpenDocument (.odt)<br>
-                        • Rich Text (.rtf)<br>
-                        • Plain Text (.txt)
+                <div class="shortcut-group">
+                    <h4>Structure</h4>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Ctrl+L</span>
+                        <span class="shortcut-desc">Layout (bond lengths)</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Ctrl+Shift+L</span>
+                        <span class="shortcut-desc">Clean (standardize)</span>
                     </div>
                 </div>
-                <div class="format-category">
-                    <h4>Spreadsheets <span class="format-count">4</span></h4>
-                    <div class="format-list">
-                        • Excel (.xlsx, .xls)<br>
-                        • CSV files<br>
-                        • TSV files<br>
-                        • JSON data
+                <div class="shortcut-group">
+                    <h4>Biopolymer</h4>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Ctrl+Alt+P</span>
+                        <span class="shortcut-desc">Peptide mode</span>
                     </div>
-                </div>
-                <div class="format-category">
-                    <h4>Images <span class="format-count">5</span></h4>
-                    <div class="format-list">
-                        • PNG, JPG, JPEG<br>
-                        • GIF, WebP<br>
-                        • NMR spectra images<br>
-                        • IR/MS spectra<br>
-                        • Structure diagrams
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Ctrl+Alt+R</span>
+                        <span class="shortcut-desc">RNA mode</span>
                     </div>
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-    <section class="section premium">
-        <div class="container">
-            <div class="section-header reveal">
-                <div class="section-num">03 — NMR Analysis</div>
-                <h2>Spectrum Intelligence</h2>
-                <p class="section-desc">
-                    Upload spectrum images for accurate peak extraction with AI-powered label reading.
-                </p>
-            </div>
-
-            <div class="two-col">
-                <div class="reveal">
-                    <h3 style="margin-bottom: 36px; color: var(--text);">Supported Spectra</h3>
-                    <ul class="feature-list">
-                        <li><strong>All NMR Types</strong> — ¹H, ¹³C, ¹⁹F, ³¹P, COSY, HSQC, HMBC, DEPT, APT, and more</li>
-                        <li><strong>IR/FTIR</strong> — Functional group identification with wavenumber analysis</li>
-                        <li><strong>Mass Spec</strong> — Fragmentation patterns, molecular ions, isotope patterns</li>
-                        <li><strong>UV-Vis</strong> — λmax values, chromophore identification</li>
-                        <li><strong>HPLC/GC</strong> — Retention times, peak purity, integration</li>
-                    </ul>
-                </div>
-                <div class="reveal">
-                    <h3 style="margin-bottom: 36px; color: var(--text);">Analysis Output</h3>
-                    <ul class="feature-list">
-                        <li><strong>Complete peak table</strong> — All peaks with chemical shifts and assignments</li>
-                        <li><strong>5-region zoomed label reading</strong> — AI focuses on printed labels for accuracy</li>
-                        <li><strong>3-pass verification</strong> — Each digit verified across multiple crops to prevent misreads</li>
-                        <li><strong>ACS-style summary</strong> — Publication-ready with proper symbols (δ, ν̃, λmax)</li>
-                        <li><strong>Structural insights</strong> — Functional groups and compound class analysis</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div style="margin-top: 60px; padding: 40px; background: var(--surface); border-radius: 12px; border-left: 4px solid var(--accent);" class="reveal">
-                <h4 style="color: var(--accent); margin-bottom: 20px; font-size: 22px;">🎯 Zoomed Label Reading</h4>
-                <p style="color: var(--text-dim); font-size: 17px; line-height: 1.8;">
-                    The system automatically creates <strong style="color: var(--text);">zoomed crops of the label regions</strong> in your spectrum images. 
-                    This helps the AI read the actual printed ppm values instead of guessing from peak positions.
-                    The 3-pass verification process checks for commonly confused digits like 0↔8, 1↔7, 2↔7.
-                </p>
-            </div>
-        </div>
-    </section>
-
-    <section class="section premium">
-        <div class="container">
-            <div class="section-header reveal">
-                <div class="section-num">04 — Getting Started</div>
-                <h2>How to Use</h2>
-            </div>
-
-            <div class="steps">
-                <div class="step reveal">
-                    <div class="step-num">1</div>
-                    <h3>Log In</h3>
-                    <p>Open the Chemistry Assistant and sign in with your GL Chemtec Microsoft account.</p>
-                </div>
-                <div class="step reveal">
-                    <div class="step-num">2</div>
-                    <h3>Start a Chat</h3>
-                    <p>Click "New Chat" to begin. Type any chemistry question or upload a file for analysis.</p>
-                    <pre>Analyze this 13C NMR spectrum and identify the functional groups</pre>
-                </div>
-                <div class="step reveal">
-                    <div class="step-num">3</div>
-                    <h3>Upload Files</h3>
-                    <p>Drag and drop files or click the attachment icon. Supports images, PDFs, PowerPoints, Excel, and more.</p>
-                </div>
-                <div class="step reveal">
-                    <div class="step-num">4</div>
-                    <h3>Get Answers</h3>
-                    <p>The AI will analyze your files and respond with detailed chemistry insights, peak tables, and analysis. Ask follow-up questions — the AI remembers your entire conversation.</p>
-                </div>
-                <div class="step reveal">
-                    <div class="step-num">5</div>
-                    <h3>Export Your Results</h3>
-                    <p>When you're ready, type <code>export to pdf</code>, <code>export to word</code>, or <code>export to pptx</code> to download a professionally branded report with the GL Chemtec logo and formatting.</p>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Ctrl+Alt+D</span>
+                        <span class="shortcut-desc">DNA mode</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1165,355 +1156,114 @@
     <section class="section premium">
         <div class="container">
             <div class="section-header reveal">
-                <div class="section-num">05 — FAQ</div>
+                <div class="section-num">03 — How to Use</div>
                 <h2>Frequently Asked Questions</h2>
                 <p class="section-desc">
-                    Common questions about using this Chemistry Assistant.
+                    Common questions about using GL-Chemdraw.
                 </p>
             </div>
 
-            <!-- General Questions -->
             <div class="faq-category reveal">
-                <h3 class="faq-category-title">General</h3>
-                
+                <h3 class="faq-category-title">Getting Started</h3>
+
                 <div class="faq-item">
-                    <div class="faq-question">What is this?</div>
-                    <div class="faq-answer">This is a custom Chemistry AI Assistant built specifically for GL Chemtec International. Built by AIVON using OpenWebUI, customized for GL Chemtec's chemistry research needs.</div>
+                    <div class="faq-question">What is GL-Chemdraw?</div>
+                    <div class="faq-answer">GL-Chemdraw is a professional chemical structure drawing application built by AIVON for GLC. It lets you draw molecules, look up compounds from PubChem, view 3D structures, and export in standard chemical formats.</div>
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">What AI model does this use?</div>
-                    <div class="faq-answer">This is a custom-built model for GL Chemtec with the power of GPT-5.2 behind it. This provides full vision capabilities for analyzing images, spectra, and documents with detailed analysis and accurate instruction following.</div>
+                    <div class="faq-question">How do I draw a structure?</div>
+                    <div class="faq-answer">Use the drawing canvas. Select tools from the left toolbar: bonds, atoms, rings. Click and drag to draw. Use ring templates from the bottom toolbar for common rings like benzene or cyclohexane.</div>
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">Is my data secure?</div>
-                    <div class="faq-answer">Yes. The system runs on secure cloud infrastructure with enterprise security. Files are processed but not permanently stored. Conversations are stored in your browser locally.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Can I use this offline?</div>
-                    <div class="faq-answer">No, an internet connection is required for AI processing.</div>
+                    <div class="faq-question">How do I search for a compound by name?</div>
+                    <div class="faq-answer">Type the compound name in the search box in the top toolbar and press Enter or click Search. GL-Chemdraw looks up the structure from PubChem and inserts it into your canvas.</div>
                 </div>
             </div>
 
-            <!-- Features & Capabilities -->
             <div class="faq-category reveal">
-                <h3 class="faq-category-title">Features & Capabilities</h3>
-                
+                <h3 class="faq-category-title">Structure & Layout</h3>
+
                 <div class="faq-item">
-                    <div class="faq-question">Can this analyze NMR spectra?</div>
-                    <div class="faq-answer">Yes! Upload an image of your spectrum and the assistant will automatically:
-                        <ul class="faq-list">
-                            <li>Create 5 zoomed crops of the label regions for accurate ppm reading</li>
-                            <li>Run a 3-pass verification (initial read, cross-crop agreement, digit verification)</li>
-                            <li>Provide a complete peak table with confidence levels</li>
-                            <li>Generate an ACS-style summary ready for publication</li>
-                        </ul>
-                    </div>
+                    <div class="faq-question">How do I clean up a messy structure?</div>
+                    <div class="faq-answer">Select the structure and press <code>Ctrl+L</code> for Layout (fixes bond lengths and angles) or <code>Ctrl+Shift+L</code> for Clean (standardizes aromatics, etc.). You can also click the Layout button in the Chemical Info panel below the canvas.</div>
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">What types of spectra are supported?</div>
-                    <div class="faq-answer">All NMR types (¹H, ¹³C, ¹⁹F, ³¹P, ¹¹B, COSY, HSQC, HMBC, HMQC, DEPT, DEPT-135, DEPT-90, APT, NOESY, ROESY, TOCSY, INADEQUATE), IR/FTIR, Mass Spec, UV-Vis, and HPLC/GC chromatograms.</div>
+                    <div class="faq-question">How do I draw peptides, RNA, or DNA?</div>
+                    <div class="faq-answer">Click the Biopolymer button in the Chemical Info panel, or use <code>Ctrl+Alt+P</code> (Peptide), <code>Ctrl+Alt+R</code> (RNA), or <code>Ctrl+Alt+D</code> (DNA). Enter the sequence and it will be drawn automatically.</div>
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">Does this extract data from PowerPoints?</div>
-                    <div class="faq-answer">Yes! Upload a PowerPoint file and the assistant will extract text, tables, and embedded images from all slides. The AI can then analyze and answer questions about the content — for example, extracting IPC data like conversion percentages, purity values, yields, and time points.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">What file formats are supported?</div>
-                    <div class="faq-answer">PowerPoint (.pptx, .ppt), PDF, Word (.docx, .doc), Excel (.xlsx, .xls), CSV, TSV, JSON, images (PNG, JPG, GIF, WebP), OpenDocument (.odt), Rich Text (.rtf), and plain text files.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Can I export the AI's response as a document?</div>
-                    <div class="faq-answer">Yes! After any analysis, you can export the conversation to a professionally formatted document. Just type one of these commands:
-                        <ul class="faq-list">
-                            <li><code>export to pdf</code> — Creates a branded PDF report with the GL Chemtec logo</li>
-                            <li><code>export to word</code> — Creates a formatted Word (.docx) document</li>
-                            <li><code>export to pptx</code> — Creates a PowerPoint presentation using the GL Chemtec template with logo, CONFIDENTIAL footer, and slide numbers</li>
-                        </ul>
-                        The exported files include proper headings, formatted tables, and company branding. A download link will appear in the chat.
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Does the AI remember what I said earlier?</div>
-                    <div class="faq-answer">Yes. The AI remembers your entire conversation within a chat session. You can ask follow-up questions, reference earlier uploads, and build on previous answers without re-uploading files or repeating context. To start fresh, click "New Chat" in the sidebar.</div>
+                    <div class="faq-question">How do I draw reaction arrows?</div>
+                    <div class="faq-answer">Draw your reactant and product structures. Then select the arrow tool from the left toolbar (reaction/arrow icon). Click and drag between structures to add an arrow. Click the Reactions button in the panel for more details.</div>
                 </div>
             </div>
 
-            <!-- How To: Common Tasks -->
             <div class="faq-category reveal">
-                <h3 class="faq-category-title">How To: Common Tasks</h3>
-                
+                <h3 class="faq-category-title">Copy, Paste & Export</h3>
+
                 <div class="faq-item">
-                    <div class="faq-question">How do I analyze an NMR spectrum?</div>
-                    <div class="faq-answer">
-                        <ol class="faq-list">
-                            <li>Click the attachment icon (or drag and drop) to upload your spectrum image</li>
-                            <li>Type what you want — for example: <code>Analyze this 13C NMR spectrum and identify the functional groups</code></li>
-                            <li>The AI will automatically create zoomed crops of the label regions, read the ppm values, and return a peak table with an ACS-style summary</li>
-                            <li>Ask follow-up questions like <code>What functional groups are consistent with these peaks?</code> or <code>Compare this to a typical ester spectrum</code></li>
-                        </ol>
-                        <br><strong style="color: var(--text);">Tip:</strong> Use high-resolution images with clearly printed labels for best accuracy.
-                    </div>
+                    <div class="faq-question">How do I copy a structure as an image?</div>
+                    <div class="faq-answer">Select the structure (or leave nothing selected for the full canvas) and press <code>Ctrl+C</code>. The structure is copied as a PNG image with transparent background. Paste into Word, PowerPoint, or any document.</div>
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">How do I analyze a PowerPoint or PDF?</div>
-                    <div class="faq-answer">
-                        <ol class="faq-list">
-                            <li>Upload your file by clicking the attachment icon or dragging it into the chat</li>
-                            <li>Ask your question — for example: <code>Summarize the key findings from this presentation</code> or <code>Extract all IPC data from these slides</code></li>
-                            <li>The AI extracts text, tables, and images from all slides/pages and analyzes the full content</li>
-                            <li>Ask follow-up questions about specific slides or data points</li>
-                        </ol>
-                    </div>
+                    <div class="faq-question">How do I export to MOL, SDF, or SMILES?</div>
+                    <div class="faq-answer">Use the Export menu in the Chemical Info panel (or File menu). Choose MOL, SDF, or SMILES. The file will be downloaded.</div>
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">How do I export to PDF, Word, or PowerPoint?</div>
-                    <div class="faq-answer">
-                        After the AI has given you a response you want to save:
-                        <ol class="faq-list">
-                            <li>Type <code>export to pdf</code>, <code>export to word</code>, or <code>export to pptx</code></li>
-                            <li>The AI will format your conversation into a professional report with the GL Chemtec logo and branding</li>
-                            <li>A download link will appear — click it to save the file</li>
-                        </ol>
-                        <br><strong style="color: var(--text);">Other phrases that work:</strong> <code>create pdf</code>, <code>save as word</code>, <code>make powerpoint</code>, <code>generate pdf report</code>, <code>download as docx</code> — the system understands many variations.
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">How do I ask about a specific slide or page?</div>
-                    <div class="faq-answer">After uploading a PowerPoint or PDF, just refer to it naturally: <code>What does slide 5 show?</code> or <code>Summarize the table on page 3</code>. The AI has access to all the extracted content and can answer questions about specific sections.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">How do I analyze Excel or CSV data?</div>
-                    <div class="faq-answer">Upload your spreadsheet and ask questions about the data. For example: <code>What trends do you see in this data?</code> or <code>Calculate the average yield across all experiments</code>. The AI extracts all sheets and can work with the tabular data directly.</div>
+                    <div class="faq-question">How do I paste a structure from the clipboard?</div>
+                    <div class="faq-answer">Press <code>Ctrl+V</code> or click the Paste button in the Chemical Info panel. If Ctrl+V doesn't work in the canvas, use the Paste button as a fallback.</div>
                 </div>
             </div>
 
-            <!-- Chemistry Questions -->
             <div class="faq-category reveal">
-                <h3 class="faq-category-title">What Can I Ask?</h3>
-                
+                <h3 class="faq-category-title">PubChem & 3D</h3>
+
                 <div class="faq-item">
-                    <div class="faq-question">What kinds of chemistry questions does this handle?</div>
-                    <div class="faq-answer">The assistant is designed as a senior-level chemistry research colleague. You can ask about:
-                        <ul class="faq-list">
-                            <li><strong>Synthesis & Mechanism</strong> — Retrosynthetic analysis, reaction mechanisms, reagent selection, protecting group strategies</li>
-                            <li><strong>Analytical Chemistry</strong> — NMR, MS, IR, UV-Vis, HPLC/GC interpretation, elemental analysis</li>
-                            <li><strong>Structure Elucidation</strong> — Cross-correlate spectra, functional group confirmation, consistency checks</li>
-                            <li><strong>Process & Scale-Up</strong> — Stoichiometry, kinetics, thermodynamics, impurity analysis, yield optimization</li>
-                            <li><strong>Document Analysis</strong> — Extract values from PowerPoints and PDFs, summarize reports, critically evaluate data</li>
-                            <li><strong>Safety</strong> — Reagent compatibility, handling considerations, hazard assessment</li>
-                            <li><strong>General Chemistry</strong> — Calculations, literature context, compound properties</li>
-                        </ul>
-                    </div>
+                    <div class="faq-question">How does PubChem lookup work?</div>
+                    <div class="faq-answer">When you select a structure on the canvas, GL-Chemdraw matches it against PubChem. If found, the Chemical Info panel shows properties, identifiers, safety data, and more. Use the search bar to look up by name.</div>
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">Can you give me example prompts?</div>
-                    <div class="faq-answer">Here are some examples of things you can ask:
-                        <ul class="faq-list">
-                            <li><code>Propose a retrosynthetic route for compound X</code></li>
-                            <li><code>Analyze this 1H NMR spectrum and assign the peaks</code></li>
-                            <li><code>What mechanism does this reaction follow?</code></li>
-                            <li><code>Extract all conversion percentages and yields from this PowerPoint</code></li>
-                            <li><code>Compare the purity data across slides 3, 7, and 12</code></li>
-                            <li><code>What functional groups are consistent with an IR absorption at 1720 cm⁻¹?</code></li>
-                            <li><code>Suggest conditions to improve the yield of this amide coupling</code></li>
-                            <li><code>Summarize the key findings from this PDF report</code></li>
-                        </ul>
-                    </div>
+                    <div class="faq-question">How do I view a 3D structure?</div>
+                    <div class="faq-answer">When a compound is recognized from PubChem, a "View 3D" option appears in the Chemical Info panel. Click it to open an interactive 3D viewer. Rotate and zoom to explore the molecule.</div>
                 </div>
             </div>
 
-            <!-- NMR Analysis -->
             <div class="faq-category reveal">
-                <h3 class="faq-category-title">NMR & Spectrum Analysis</h3>
-                
+                <h3 class="faq-category-title">Selection & Info</h3>
+
                 <div class="faq-item">
-                    <div class="faq-question">Why does the assistant zoom on the labels?</div>
-                    <div class="faq-answer">The system creates 5 zoomed crops of the label regions (top strip, downfield, upfield, center, and lower band) to ensure the AI reads the actual printed ppm values. This prevents common OCR errors where the AI might guess values like 160.87 instead of reading the printed 160.07. Each crop is also enhanced with contrast boosting and sharpening for better text visibility.</div>
+                    <div class="faq-question">What does "select a structure" mean?</div>
+                    <div class="faq-answer">Click on a structure in the canvas to select it. The Chemical Info panel then shows data for that structure only. Click on empty canvas to show info for the full canvas.</div>
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">What is 3-pass verification?</div>
-                    <div class="faq-answer">A three-step process to maximize accuracy:
-                        <ol class="faq-list">
-                            <li><strong>Pass 1 — Initial read:</strong> The AI reads every printed ppm label visible in each of the 5 crop images</li>
-                            <li><strong>Pass 2 — Cross-crop agreement:</strong> Values are compared across crops. A ppm value is only confirmed if the identical value appears in 2 or more crops. Single-crop values are flagged as unconfirmed</li>
-                            <li><strong>Pass 3 — Digit verification:</strong> Each confirmed value is re-examined digit by digit, checking for commonly confused pairs (0↔8, 1↔7, 2↔7, 3↔5, 6↔8) and verifying decimal point placement</li>
-                        </ol>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">How accurate is the peak reading?</div>
-                    <div class="faq-answer">The zoomed label reading and 3-pass verification help improve accuracy on printed labels. The AI reports confidence levels for each peak:
-                        <ul class="faq-list">
-                            <li><strong>HIGH</strong> — Value confirmed in 3+ crops</li>
-                            <li><strong>MEDIUM</strong> — Value confirmed in 2 crops</li>
-                            <li><strong>LOW</strong> — Value found in only 1 crop (flagged as unconfirmed)</li>
-                        </ul>
-                        Only HIGH and MEDIUM confidence values are included in the ACS-style summary.
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Tips for best spectrum analysis results?</div>
-                    <div class="faq-answer">
-                        <ul class="faq-list">
-                            <li><strong>Use high-resolution images</strong> — The clearer the printed labels, the more accurate the reading</li>
-                            <li><strong>Make sure labels aren't cut off</strong> — Include the full label region at the top of the spectrum</li>
-                            <li><strong>Specify the nucleus</strong> — Tell the AI what type of spectrum it is (e.g., "This is a 13C NMR" or "Analyze this 1H spectrum")</li>
-                            <li><strong>Mention the solvent</strong> — If visible, mention the solvent (CDCl₃, DMSO-d₆, etc.) so the AI can properly exclude solvent peaks</li>
-                            <li><strong>Ask follow-ups</strong> — After the initial analysis, ask about specific peaks, functional group assignments, or structural interpretation</li>
-                            <li><strong>Upload multiple spectra</strong> — You can upload ¹H and ¹³C together and ask the AI to cross-correlate</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">What output do I get from a spectrum analysis?</div>
-                    <div class="faq-answer">The AI provides:
-                        <ul class="faq-list">
-                            <li>A brief identification (nucleus type, solvent, 1D vs 2D)</li>
-                            <li>A complete peak table with ppm values, confidence levels, and which crops confirmed each peak</li>
-                            <li>An ACS-style summary using proper notation (δ, ν̃, λmax) — ready for publication</li>
-                            <li>Structural insights and tentative functional group assignments</li>
-                        </ul>
-                        You can then <code>export to pdf</code> or <code>export to word</code> to save the analysis as a formatted report.
-                    </div>
-                </div>
-            </div>
-
-            <!-- Troubleshooting -->
-            <div class="faq-category reveal">
-                <h3 class="faq-category-title">Troubleshooting</h3>
-                
-                <div class="faq-item">
-                    <div class="faq-question">File upload not working?</div>
-                    <div class="faq-answer">Check that your file is under 50MB and in a supported format. Try refreshing the page if issues persist. For very large files, try splitting them. PowerPoint files up to 50 slides are supported.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Spectrum analysis seems wrong?</div>
-                    <div class="faq-answer">
-                        <ul class="faq-list">
-                            <li>Make sure your image clearly shows the printed ppm labels — the AI reads labels, not peak positions</li>
-                            <li>Check that labels aren't cropped or cut off at the edges</li>
-                            <li>High-resolution images work best (avoid phone screenshots of screens if possible)</li>
-                            <li>Tell the AI the spectrum type if it wasn't detected: <code>This is a 13C NMR in CDCl3</code></li>
-                            <li>Check the confidence column — LOW confidence peaks may be misread</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">How do I start a fresh conversation?</div>
-                    <div class="faq-answer">Click "New Chat" in the sidebar. Each chat maintains its own conversation history and file context. Your previous chats are saved and can be accessed from the sidebar.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">The export download link isn't working?</div>
-                    <div class="faq-answer">Try clicking the link again — if the file was still being generated, it may need a moment. If it still doesn't work, try the export command again. Make sure you have an analysis or response to export first (the AI needs content to format into a document).</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">The AI isn't detecting my spectrum image?</div>
-                    <div class="faq-answer">The NMR analysis mode activates when it detects spectrum-related keywords in your message. Make sure to mention the type in your prompt — for example, include words like "NMR", "spectrum", "13C", "1H", "ppm", or "DEPT". Simply uploading an image without context may not trigger the specialized spectrum processing.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Response seems slow or loading?</div>
-                    <div class="faq-answer">Large files (multi-slide PowerPoints, big PDFs with images) take longer to process because the AI extracts and analyzes all content. NMR analysis also takes slightly longer due to the 5-crop zoom and 3-pass verification process. This is normal — the AI is being thorough.</div>
-                </div>
-            </div>
-
-            <!-- Access & Login -->
-            <div class="faq-category reveal">
-                <h3 class="faq-category-title">Access & Login</h3>
-                
-                <div class="faq-item">
-                    <div class="faq-question">How do I log in?</div>
-                    <div class="faq-answer">Sign in using your GL Chemtec Microsoft account. Click the Microsoft login button on the home page and authenticate with your organization credentials — it's the same account you use for Outlook, Teams, etc.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Can I access this from another device?</div>
-                    <div class="faq-answerimage.png">Yes, log in with your credentials on any browser — desktop, laptop, or tablet. Note that chat history is stored locally per device, so conversations on one device won't appear on another.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Who can use this?</div>
-                    <div class="faq-answer">This Chemistry Assistant is currently in Beta v1 and available to authorized GL Chemtec International team members. Access is managed by your administrator. Please report any bugs or issues to help us improve!</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Can I use this on my phone?</div>
-                    <div class="faq-answer">The interface works in mobile browsers, but for the best experience — especially when viewing spectrum analysis tables and exported reports — a desktop or laptop screen is recommended.</div>
-                </div>
-            </div>
-
-            <!-- Bug Reports -->
-            <div class="faq-category reveal">
-                <h3 class="faq-category-title">Beta Feedback</h3>
-                
-                <div class="faq-item">
-                    <div class="faq-question">How do I report a bug?</div>
-                    <div class="faq-answer">
-                        Email <a href="mailto:haron@aivon.tech" style="color: var(--cyan);">haron@aivon.tech</a> with:
-                        <ul style="margin-top: 12px; margin-left: 20px; line-height: 2;">
-                            <li><strong>Screenshots</strong> — Press <code style="background: rgba(0,188,212,0.2); padding: 2px 8px; border-radius: 4px;">Win + Shift + S</code> (Windows) or <code style="background: rgba(0,188,212,0.2); padding: 2px 8px; border-radius: 4px;">Cmd + Shift + 4</code> (Mac)</li>
-                            <li><strong>What you were doing</strong> — Step by step actions before the issue</li>
-                            <li><strong>What happened</strong> — The actual result (the bug)</li>
-                            <li><strong>What you expected</strong> — What should have happened</li>
-                            <li><strong>The file you uploaded</strong> — Attach it if possible</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">Why is this a Beta version?</div>
-                    <div class="faq-answer">We're actively developing and improving this assistant based on real user feedback. Your reports help us fix issues and add features you actually need.</div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question">What should I report?</div>
-                    <div class="faq-answer">
-                        <ul style="margin-left: 20px; line-height: 2;">
-                            <li>Incorrect spectrum readings (include the correct values)</li>
-                            <li>File upload failures</li>
-                            <li>Unexpected errors or crashes</li>
-                            <li>Slow performance</li>
-                            <li>Missing features you need</li>
-                            <li>Confusing UI or unclear instructions</li>
-                        </ul>
-                    </div>
+                    <div class="faq-question">What is the Align button for?</div>
+                    <div class="faq-answer">Align lets you align selected structures (left, right, top, bottom) or arrange R-group labels. Useful for reaction schemes and tidy layouts.</div>
                 </div>
             </div>
         </div>
     </section>
 
     <footer>
-        <img src="aivon_logo.png" alt="AIVON" class="footer-logo">
-        <div style="margin-bottom: 25px;">
-            <span style="background: linear-gradient(135deg, rgba(255, 170, 0, 0.2), rgba(255, 136, 0, 0.2)); border: 1px solid rgba(255, 170, 0, 0.5); color: #ffaa00; padding: 8px 20px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Beta v1</span>
-        </div>
-        <p style="color: var(--text); font-size: 16px; margin-bottom: 8px;">Custom Chemistry AI for GL Chemtec International</p>
-        <p style="color: var(--cyan); font-size: 14px; margin-bottom: 8px;">Built by AIVON using OpenWebUI</p>
-        <p style="color: var(--text-dim); font-size: 13px; margin-bottom: 30px;">Custom Model Powered by GPT-5.2</p>
-        <div style="padding-top: 25px; border-top: 1px solid rgba(0, 188, 212, 0.1);">
-            <p style="color: var(--accent); font-size: 15px; margin-bottom: 10px;">🐛 Found a bug? Please report it!</p>
+        <div class="footer-text">
+            <p style="color: var(--text); font-size: 16px; margin-bottom: 8px;">GL-Chemdraw — Chemical Structure Drawing for GLC</p>
+            <p style="color: var(--cyan); font-size: 14px; margin-bottom: 8px;">Built by AIVON</p>
             <p style="font-size: 14px;">Support: <a href="mailto:haron@aivon.tech" class="support-email">haron@aivon.tech</a></p>
+        </div>
+        <div class="footer-row">
+            <div class="footer-logo-cell">
+                <img src="GLC_Logo.png" alt="GL Chemtec" class="footer-logo-left" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                <span class="footer-logo-fallback" style="display:none; color: var(--text); font-size: 1rem; font-weight: 600;">GL Chemtec</span>
+            </div>
+            <div class="footer-logo-cell">
+                <img src="Full_logo.png" alt="AIVON" class="footer-logo-right" onerror="this.src='aivon_logo.png'">
+            </div>
         </div>
     </footer>
 

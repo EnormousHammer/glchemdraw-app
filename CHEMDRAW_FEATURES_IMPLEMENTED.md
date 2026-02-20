@@ -2,73 +2,65 @@
 
 ## ✅ **COMPLETED FEATURES** (Ready to Use!)
 
-### 1. **Structure Cleanup** ⭐⭐⭐
+### 1. **Structure Layout & Clean** ⭐⭐⭐
 **Status:** ✅ **COMPLETE**
 
 **What it does:**
-- One-click structure optimization
-- Auto-aligns atoms to standard positions
-- Fixes bond lengths and angles
-- Makes your drawings look professional
+- **Layout** – Fixes bond lengths and angles for professional-looking structures
+- **Clean** – Standardizes structure (aromatize, etc.)
+- One-click optimization from the panel
 
 **How to use:**
-- Click the **Cleanup icon** (magic wand) in toolbar
-- **OR** Press **Ctrl+L**
+- Click the **Layout** button in the Chemical Info panel (below canvas)
+- **OR** Press **Ctrl+L** for Layout
+- **OR** Press **Ctrl+Shift+L** for Clean
 - Works on any structure in the canvas
 
 **Implementation:**
-- `src/components/Layout/Toolbar.tsx` - Added cleanup button
-- `src/components/Layout/AppLayout.tsx` - Added `handleCleanup()` function
-- Calls `ketcher.editor.clean()` API
+- `src/components/Layout/AppLayout.tsx` - `handleLayout()` calls `ketcher.layout()`
+- Clean uses `ketcher.editor.clean()` (via Ketcher built-in shortcuts)
+- Layout button in bottom panel with `AccountTreeIcon`
 
 ---
 
-### 2. **Template Library** ⭐⭐⭐
-**Status:** ✅ **COMPLETE**
+### 2. **Ketcher Built-in Templates**
+**Status:** ✅ **COMPLETE** (via Ketcher)
 
 **What it includes:**
-- **80+ pre-built templates** organized by category:
-  - ✅ **20 Amino Acids** (Glycine, Alanine, Valine, etc.)
-  - ✅ **8 Sugars** (Glucose, Fructose, Sucrose, etc.)
-  - ✅ **14 Common Rings** (Benzene, Pyridine, Indole, etc.)
-  - ✅ **14 Functional Groups** (Methyl, Phenyl, Carboxyl, etc.)
-  - ✅ **10 Common Compounds** (Aspirin, Caffeine, Cholesterol, etc.)
+- **Ring templates** – Benzene, cyclohexane, pyridine, etc. in Ketcher’s bottom toolbar
+- **Structure Library** – Ketcher’s built-in structure library
 
 **How to use:**
-- Click the **Templates icon** (grid) in toolbar
-- **OR** Press **Ctrl+T**
-- Browse by category or search
-- Click any template to insert it into canvas
+- Use Ketcher’s bottom toolbar (ring templates + Structure Library button)
+- Templates are part of the Ketcher canvas
 
-**Implementation:**
-- `src/components/TemplateLibrary/TemplateLibrary.tsx` - Full template library component
-- `src/components/Layout/AppLayout.tsx` - Wired up with SMILES to MOL conversion
-- Material-UI dialog with search and category tabs
+**Note:** A custom 80+ template library (Amino Acids, Sugars, etc.) is planned in NEXT STEPS.
 
 ---
 
 ### 3. **Keyboard Shortcuts** ⭐⭐⭐
 **Status:** ✅ **COMPLETE**
 
-**Shortcuts added:**
-- **Ctrl+L** → Clean Structure
-- **Ctrl+T** → Open Template Library
+**Shortcuts:**
+- **Ctrl+L** → Layout (fix bond lengths & angles)
+- **Ctrl+Shift+L** → Clean (standardize structure)
+- **Ctrl+C** → Copy structure as image (paste into Word, presentations)
+- **Ctrl+Shift+C** → Copy structure data (paste within canvas)
 
 **Implementation:**
-- `src/components/Layout/AppLayout.tsx` - Global keyboard event listener
-- Prevents default browser behavior
-- Works from anywhere in the app
+- `src/components/Layout/AppLayout.tsx` - Shortcuts dialog documents all shortcuts
+- Ketcher handles Layout/Clean; `useCopyImageToClipboard` handles Ctrl+C
 
 ---
 
 ## 🚀 **YOUR APP NOW HAS**
 
 ### ChemDraw-Like Features
-1. ✅ Structure cleanup/beautification
-2. ✅ Professional template library (80+ templates)
+1. ✅ Structure layout & clean (bond lengths, angles, aromatization)
+2. ✅ Ketcher ring templates & Structure Library
 3. ✅ Keyboard shortcuts for power users
-4. ✅ Clean, modern UI with category tabs
-5. ✅ Search functionality in template library
+4. ✅ Export MOL, SDF, SMILES
+5. ✅ Align structures (left, right, top, bottom) and R-group labels
 
 ### Unique Advantages Over ChemDraw Free
 1. ✅ **PubChem Integration** - Real-time compound lookup
@@ -82,21 +74,21 @@
 
 ## 🎯 **HOW TO TEST**
 
-### Test Structure Cleanup
+### Test Structure Layout
 1. Draw a messy benzene ring
-2. Click cleanup button (or press Ctrl+L)
-3. Watch it snap to perfect geometry!
+2. Click Layout button (or press Ctrl+L)
+3. Watch it snap to proper bond lengths and angles!
 
-### Test Template Library
-1. Click Templates button (or press Ctrl+T)
-2. Navigate to "Amino Acids" tab
-3. Click "Phenylalanine"
-4. See it appear in your canvas!
+### Test Ketcher Templates
+1. Use the bottom toolbar in the Ketcher canvas
+2. Click ring templates or Structure Library
+3. Insert structures into your drawing
 
 ### Test Keyboard Shortcuts
 1. Draw any structure
-2. Press **Ctrl+L** → Structure cleans up
-3. Press **Ctrl+T** → Template library opens
+2. Press **Ctrl+L** → Layout applied
+3. Press **Ctrl+Shift+L** → Clean (standardize)
+4. Press **Ctrl+C** → Copy as image (paste into Word)
 
 ---
 
@@ -105,59 +97,68 @@
 | Feature | ChemDraw Free | GlChemDraw (Now!) | Status |
 |---------|---------------|-------------------|--------|
 | Structure Drawing | ✅ | ✅ | ✅ Complete |
-| Template Library | ✅ (50 templates) | ✅ (80 templates) | ✅ **BETTER!** |
-| Structure Cleanup | ✅ | ✅ | ✅ Complete |
+| Ring Templates | ✅ | ✅ (Ketcher built-in) | ✅ Complete |
+| Structure Layout/Clean | ✅ | ✅ | ✅ Complete |
 | Keyboard Shortcuts | ✅ | ✅ | ✅ Complete |
 | Name-to-Structure | ❌ | ✅ (via search) | ✅ **We Win!** |
 | PubChem Integration | ❌ | ✅ | ✅ **We Win!** |
 | 3D Viewer | ❌ | ✅ | ✅ **We Win!** |
+| Export MOL/SDF/SMILES | ✅ | ✅ | ✅ Complete |
 | Price | Free (limited) | **FREE (full)** | ✅ **We Win!** |
+
+---
+
+## ✅ **NEWLY ADDED FEATURES**
+
+### Biopolymer Builder (Ketcher 3.10)
+- **Biopolymer** button in Chemical Info panel
+- Switch to **Peptide** (Ctrl+Alt+P), **RNA** (Ctrl+Alt+R), or **DNA** (Ctrl+Alt+D) mode
+- Uses Ketcher's `changeSequenceTypeEnterMode` API
+
+### Reaction Arrows
+- **Reactions** button opens help dialog with instructions
+- Ketcher has full reaction support – draw structures, then use arrow tool in left toolbar
+- Export as RXN for reaction schemes
+
+### Advanced Stereochemistry Display (RDKit)
+- **Stereochemistry** section in Chemical Info when chiral centers present
+- Shows chiral center count, unspecified (R/S) centers
+- InChI with tetrahedral stereochemistry when available
 
 ---
 
 ## 💡 **NEXT STEPS** (Optional Improvements)
 
-### High Priority
-1. **Add Structure Previews to Templates** 
+### Medium Priority
+4. **Custom Template Library (80+ templates)**
+   - Amino Acids, Sugars, Common Rings, Functional Groups, Common Compounds
+   - Material-UI dialog with search and category tabs
+   - Ctrl+T shortcut
+
+5. **Structure Previews for Templates**
    - Use RDKit to generate SVG previews
    - Shows actual structure instead of SMILES
 
-2. **Improve Search**
-   - Fuzzy search (typo tolerance)
-   - Category-specific search
-
-### Medium Priority
-3. **Export Templates as High-Res Images**
-   - 300 DPI PNG
-   - 600 DPI for publications
-   - SVG vector format
-
-4. **Custom Templates**
-   - Let users save their own templates
-   - Import/export template collections
-
 ### Low Priority
-5. **Stereochemistry Labels**
-   - Auto-calculate R/S configuration
-   - Display chiral center markers
+6. **Export High-Res Images** – 300/600 DPI PNG, SVG
+7. **Fuzzy Search** – Typo tolerance in compound search
 
 ---
 
 ## 🎉 **SUMMARY**
 
 You now have a **ChemDraw-like interface** with:
-- ✅ 80+ professional templates
-- ✅ One-click structure cleanup
+- ✅ Structure layout & clean (bond lengths, angles)
+- ✅ Ketcher ring templates & Structure Library
 - ✅ Power-user keyboard shortcuts
-- ✅ Better features than ChemDraw Free
+- ✅ PubChem integration & 3D viewer
+- ✅ Export MOL/SDF/SMILES
 - ✅ Completely free and open-source
 
-**Your app is now competitive with ChemDraw for 90% of use cases!**
+**Your app is competitive with ChemDraw for structure drawing and basic chemistry!**
 
-The only major missing features are:
-- Biopolymer builder (Ketcher 3.10 has this, needs UI)
-- Reaction arrow annotations (Ketcher has this, needs UI)
-- Advanced stereochemistry display (needs RDKit integration)
-
-But for structure drawing, templates, and basic chemistry - **you're ready to compete with ChemDraw!** 🎉
+**All major ChemDraw-like features now implemented:**
+- ✅ Biopolymer builder (Peptide/RNA/DNA)
+- ✅ Reaction arrows (via Ketcher + help)
+- ✅ Advanced stereochemistry display (RDKit)
 

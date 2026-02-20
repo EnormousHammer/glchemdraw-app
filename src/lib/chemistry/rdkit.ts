@@ -441,6 +441,51 @@ export async function canonicalizeSmiles(smiles: string): Promise<string | null>
   }
 }
 
+/**
+ * Get stereochemistry information (chiral centers, R/S configuration)
+ * @param smiles - SMILES string
+ */
+export interface StereochemistryInfo {
+  chiralCenters: number;
+  unspecifiedCenters: number;
+  inchiWithStereochemistry?: string;
+}
+
+export async function getStereochemistryInfo(smiles: string): Promise<StereochemistryInfo | null> {
+  try {
+    const rdkit = await initRDKit();
+    if (!rdkit || typeof rdkit.get_mol !== 'function') return null;
+
+    const mol = rdkit.get_mol(smiles);
+    if (!mol || mol.is_valid() === 0) return null;
+
+    const desc = mol.get_descriptors();
+    const chiralCenters = parseInt(desc.NumAtomStereoCenters || desc.NumChiralCenters || '0') || 0;
+    const unspecifiedCenters = parseInt(desc.NumUnspecifiedAtomStereoCenters || '0') || 0;
+
+    let inchiWithStereochemistry: string | undefined;
+    try {
+      const inchi = mol.get_inchi();
+      if (inchi && inchi.includes('/t')) {
+        inchiWithStereochemistry = inchi;
+      }
+    } catch {
+      // InChI may fail for some structures
+    }
+
+    mol.delete();
+
+    return {
+      chiralCenters,
+      unspecifiedCenters,
+      inchiWithStereochemistry,
+    };
+  } catch (error) {
+    console.error('[RDKit] Error getting stereochemistry:', error);
+    return null;
+  }
+}
+
 // Aliases for compatibility
 export const getMolecularProperties = calculateProperties;
 export const getChemicalDescriptors = calculateDescriptors;

@@ -25,6 +25,9 @@ import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
 import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
 import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
+import BiotechIcon from '@mui/icons-material/Biotech';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
@@ -60,6 +63,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [alignMenuAnchor, setAlignMenuAnchor] = useState<null | HTMLElement>(null);
+  const [biotoolMenuAnchor, setBiotoolMenuAnchor] = useState<null | HTMLElement>(null);
+  const [showReactionHelpDialog, setShowReactionHelpDialog] = useState(false);
+  const [stereoInfo, setStereoInfo] = useState<{
+    chiralCenters: number;
+    unspecifiedCenters: number;
+    inchiWithStereochemistry?: string;
+  } | null>(null);
   
   // Chemical data state for comprehensive information
   const [chemicalData, setChemicalData] = useState<{
@@ -172,6 +182,51 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     } catch (err) {
       console.error('[AppLayout] Layout failed:', err);
       setSnackbarMessage('Layout failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  // Load stereochemistry info when structure changes (RDKit)
+  React.useEffect(() => {
+    if (!currentStructure?.smiles || currentStructure.smiles.length < 2) {
+      setStereoInfo(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getStereochemistryInfo } = await import('@lib/chemistry/rdkit');
+        const info = await getStereochemistryInfo(currentStructure.smiles);
+        if (!cancelled && info) setStereoInfo(info);
+        else if (!cancelled) setStereoInfo(null);
+      } catch {
+        if (!cancelled) setStereoInfo(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentStructure?.smiles]);
+
+  // Biopolymer mode: switch Ketcher to Peptide/RNA/DNA entry mode (Ketcher 3.10)
+  const handleBiopolymerMode = useCallback(async (mode: 'PEPTIDE' | 'RNA' | 'DNA') => {
+    setBiotoolMenuAnchor(null);
+    try {
+      const { SequenceType } = await import('ketcher-core');
+      const editor = ketcherRef.current?.editor;
+      const evt = editor?.events?.changeSequenceTypeEnterMode;
+      if (evt?.dispatch) {
+        evt.dispatch(SequenceType[mode]);
+        setSnackbarMessage(`Switched to ${mode} builder mode`);
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      } else {
+        setSnackbarMessage('Macromolecules mode not available');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+      }
+    } catch (err) {
+      console.error('[AppLayout] Biopolymer mode failed:', err);
+      setSnackbarMessage('Failed to switch mode');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
@@ -780,6 +835,46 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={() => handleExport('sdf')}>Save as SDF</MenuItem>
                         <MenuItem onClick={() => handleExport('smiles')}>Save as SMILES</MenuItem>
                       </Menu>
+                      <Tooltip title="Peptide, RNA, or DNA builder (Ketcher 3.10)">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={(e) => setBiotoolMenuAnchor(e.currentTarget)}
+                          startIcon={<BiotechIcon />}
+                          endIcon={<ExpandMoreIcon />}
+                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                        >
+                          Biopolymer
+                        </Button>
+                      </Tooltip>
+                      <Menu
+                        anchorEl={biotoolMenuAnchor}
+                        open={!!biotoolMenuAnchor}
+                        onClose={() => setBiotoolMenuAnchor(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                      >
+                        <MenuItem onClick={() => handleBiopolymerMode('PEPTIDE')}>
+                          <BiotechIcon sx={{ mr: 1, fontSize: 18 }} /> Peptide (Ctrl+Alt+P)
+                        </MenuItem>
+                        <MenuItem onClick={() => handleBiopolymerMode('RNA')}>
+                          <BiotechIcon sx={{ mr: 1, fontSize: 18 }} /> RNA (Ctrl+Alt+R)
+                        </MenuItem>
+                        <MenuItem onClick={() => handleBiopolymerMode('DNA')}>
+                          <BiotechIcon sx={{ mr: 1, fontSize: 18 }} /> DNA (Ctrl+Alt+D)
+                        </MenuItem>
+                      </Menu>
+                      <Tooltip title="How to draw reaction arrows">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setShowReactionHelpDialog(true)}
+                          startIcon={<ArrowForwardIcon />}
+                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                        >
+                          Reactions
+                        </Button>
+                      </Tooltip>
                       {recognizedCompound && !isSearching && (
                         <>
                           <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
@@ -1507,6 +1602,48 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 )
               )}
 
+              {/* Stereochemistry (RDKit) */}
+              {stereoInfo && (stereoInfo.chiralCenters > 0 || stereoInfo.unspecifiedCenters > 0 || stereoInfo.inchiWithStereochemistry) && (
+                <Box sx={{ p: 1.25, bgcolor: 'background.default', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CenterFocusStrongIcon sx={{ fontSize: 18 }} /> Stereochemistry
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                      <Typography variant="caption" color="text.secondary">Chiral centers:</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                        {stereoInfo.chiralCenters} total
+                      </Typography>
+                    </Box>
+                    {stereoInfo.unspecifiedCenters > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 0.75, borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Unspecified (R/S):</Typography>
+                        <Chip label={`${stereoInfo.unspecifiedCenters}`} size="small" color="warning" sx={{ fontSize: '0.7rem' }} />
+                      </Box>
+                    )}
+                    {stereoInfo.inchiWithStereochemistry && (
+                      <Tooltip title="InChI contains tetrahedral stereochemistry (/t)">
+                        <Box 
+                          onClick={() => handleCopy(stereoInfo!.inchiWithStereochemistry!, 'InChI (with stereo)')}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            p: 0.75,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: 'action.hover' }
+                          }}
+                        >
+                          <Typography variant="caption" color="text.secondary">InChI (stereo):</Typography>
+                          <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
+                        </Box>
+                      </Tooltip>
+                    )}
+                  </Stack>
+                </Box>
+              )}
 
               {/* Spectral Data */}
               {chemicalData.spectral && (
@@ -1629,6 +1766,39 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           </DialogContent>
         </Dialog>
 
+        {/* Reaction Arrows Help Dialog */}
+        <Dialog
+          open={showReactionHelpDialog}
+          onClose={() => setShowReactionHelpDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">Reaction Arrows & Schemes</Typography>
+            <IconButton onClick={() => setShowReactionHelpDialog(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2}>
+              <Typography variant="body2">
+                Ketcher supports full reaction drawing with arrows, conditions, and atom mapping.
+              </Typography>
+              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>How to draw reactions:</Typography>
+              <Typography variant="body2" component="ol" sx={{ pl: 2, '& li': { mb: 1 } }}>
+                <li>Draw your reactant structures on the left side of the canvas</li>
+                <li>Draw your product structures on the right side</li>
+                <li>Use the <strong>reaction arrow tool</strong> in Ketcher&apos;s left toolbar (arrow icon)</li>
+                <li>Click and drag between reactants and products to add an arrow</li>
+                <li>Export as RXN file for reaction schemes</li>
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Tip:</strong> Look for the arrow/reaction icon in Ketcher&apos;s drawing tools toolbar on the left.
+              </Typography>
+            </Stack>
+          </DialogContent>
+        </Dialog>
+
         {/* Shortcuts / Help Dialog */}
         <Dialog
           open={showShortcutsDialog}
@@ -1664,12 +1834,27 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 </Box>
               </Stack>
 
+              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Biopolymer (Peptide/RNA/DNA)</Typography>
+              <Stack spacing={0.75}>
+                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Alt+P</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary">Peptide builder mode</Typography>
+                </Box>
+                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Alt+R</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary">RNA builder mode</Typography>
+                </Box>
+                <Box><Typography variant="body2" component="span" sx={{ fontWeight: 600, minWidth: 120, display: 'inline-block' }}>Ctrl+Alt+D</Typography>
+                  <Typography variant="body2" component="span" color="text.secondary">DNA builder mode</Typography>
+                </Box>
+              </Stack>
+
               <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Panel Buttons</Typography>
               <Stack spacing={0.5}>
                 <Typography variant="body2"><strong>Paste</strong> – Paste structure from clipboard (fallback when Ctrl+V fails)</Typography>
                 <Typography variant="body2"><strong>Layout</strong> – Fix bond lengths and angles for a cleaner look</Typography>
                 <Typography variant="body2"><strong>Align</strong> – R-group labels, or Align left/right/top/bottom for selected structures</Typography>
                 <Typography variant="body2"><strong>Export</strong> – Save as MOL, SDF, or SMILES</Typography>
+                <Typography variant="body2"><strong>Biopolymer</strong> – Switch to Peptide/RNA/DNA builder</Typography>
+                <Typography variant="body2"><strong>Reactions</strong> – How to draw reaction arrows</Typography>
               </Stack>
 
               <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Selection</Typography>

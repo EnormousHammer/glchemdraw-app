@@ -20,6 +20,9 @@
     "test:e2e:debug": "playwright test --debug",
     "postinstall": "patch-package"
   },
+  "overrides": {
+    "date-fns": "4.1.0"
+  },
   "dependencies": {
     "@blueprintjs/core": "^6.3.2",
     "@blueprintjs/icons": "^6.2.0",

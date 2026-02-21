@@ -65,27 +65,75 @@
 .Ketcher-root button[title*="information"],
 .Ketcher-root button[aria-label*="Information"],
 .Ketcher-root button[aria-label*="information"],
-/* common alternates seen in Ketcher builds */
 .Ketcher-root button[title*="Info"],
 .Ketcher-root button[aria-label*="Info"],
 .Ketcher-root button[title*="About"],
 .Ketcher-root button[aria-label*="About"],
 .Ketcher-root button[title="i"],
 .Ketcher-root button[aria-label="i"],
-/* Hide help/question mark button */
 .Ketcher-root button[title*="Help"],
 .Ketcher-root button[title*="help"],
 .Ketcher-root button[aria-label*="Help"],
 .Ketcher-root button[aria-label*="help"],
 .Ketcher-root button[title="?"],
 .Ketcher-root button[aria-label="?"],
-/* Hide 3D button */
 .Ketcher-root button[title*="3D"],
 .Ketcher-root button[title*="3d"],
 .Ketcher-root button[aria-label*="3D"],
 .Ketcher-root button[aria-label*="3d"] {
   display: none !important;
   visibility: hidden !important;
+}
+
+/* Block Ketcher About/FAQ/Info modal - white cover to match app, looks like nothing is there */
+.Ketcher-root [role="dialog"]:has(a[href*="epam.com"]),
+.Ketcher-root [role="dialog"]:has(a[href*="ketcher"]),
+.Ketcher-root [role="dialog"]:has([data-testid="build-version"]),
+.Ketcher-root .bp6-dialog:has(a[href*="epam.com"]),
+.Ketcher-root .bp6-dialog:has(a[href*="ketcher"]),
+.Ketcher-root [class*="Dialog"]:has(a[href*="epam.com"]),
+.Ketcher-root [class*="dialog"]:has(a[href*="epam.com"]) {
+  background: #fff !important;
+  box-shadow: none !important;
+}
+.Ketcher-root [role="dialog"]:has(a[href*="epam.com"]) *,
+.Ketcher-root [role="dialog"]:has(a[href*="ketcher"]) *,
+.Ketcher-root .bp6-dialog:has(a[href*="epam.com"]) *,
+.Ketcher-root .bp6-dialog:has(a[href*="ketcher"]) * {
+  visibility: hidden !important;
+}
+
+/* Hide all Ketcher/EPAM links and version info anywhere in Ketcher */
+.Ketcher-root a[href*="epam.com"],
+.Ketcher-root a[href*="lifescience.opensource"],
+.Ketcher-root [data-testid="build-version"],
+.Ketcher-root .headerContent a[href*="ketcher"],
+.Ketcher-polymer-editor-root a[href*="epam.com"],
+.Ketcher-polymer-editor-root a[href*="ketcher"],
+.Ketcher-polymer-editor-root [data-testid="build-version"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Ketcher About/FAQ modal in portal - white cover to match, looks like nothing */
+body [role="dialog"]:has(a[href*="epam.com"]),
+body .bp6-dialog:has(a[href*="epam.com"]) {
+  background: #fff !important;
+  box-shadow: none !important;
+}
+body [role="dialog"]:has(a[href*="epam.com"]) *,
+body .bp6-dialog:has(a[href*="epam.com"]) * {
+  visibility: hidden !important;
+}
+body .bp6-overlay:has(a[href*="epam.com"]) {
+  background: #fff !important;
+  backdrop-filter: none !important;
+}
+body .bp6-overlay:has(a[href*="epam.com"]) .bp6-dialog,
+body .bp6-overlay:has(a[href*="epam.com"]) [role="dialog"] {
+  background: #fff !important;
+  border: none !important;
 }
 
 /* Ensure our app header stays above Ketcher */

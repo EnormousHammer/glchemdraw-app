@@ -39,6 +39,31 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   useCopyImageToClipboard(editorRef, { onCopySuccess: onCopyImageSuccess });
   // Paste: image or structure (Ctrl+V and Paste button)
   useImagePasteIntoSketch(editorRef);
+
+  // Block Ketcher About/FAQ/Info modal - white cover + auto-close so nothing appears
+  useEffect(() => {
+    const coverKetcherInfoModal = () => {
+      document.querySelectorAll('[role="dialog"], .bp6-dialog, .bp6-overlay').forEach((el) => {
+        const html = el.innerHTML || '';
+        if (html.includes('epam.com') || html.includes('build-version') || (html.includes('Ketcher') && html.includes('Feedback'))) {
+          const overlay = el.closest('.bp6-overlay') || el;
+          const t = overlay as HTMLElement;
+          t.style.setProperty('background', '#fff', 'important');
+          t.style.setProperty('backdrop-filter', 'none', 'important');
+          t.querySelectorAll('*').forEach((child) => {
+            (child as HTMLElement).style.setProperty('visibility', 'hidden', 'important');
+          });
+          try {
+            (t.querySelector('.bp6-overlay-backdrop') as HTMLElement)?.click?.();
+          } catch (_) { /* ignore */ }
+        }
+      });
+    };
+    const observer = new MutationObserver(coverKetcherInfoModal);
+    observer.observe(document.body, { childList: true, subtree: true });
+    coverKetcherInfoModal();
+    return () => observer.disconnect();
+  }, []);
   
   // Create service provider once: standalone + OCSR via /api/ocsr (Vercel)
   const structServiceProvider = useMemo(() => new OcsrStructServiceProvider() as any, []);

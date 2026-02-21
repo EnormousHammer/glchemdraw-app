@@ -36,6 +36,25 @@ async function tauriImageToDataUrl(tauriImage: { rgba: () => Promise<Uint8Array>
 }
 
 /**
+ * Get plain text from clipboard (for MOL/SMILES structure paste).
+ */
+async function getTextFromClipboard(): Promise<string | null> {
+  if (isTauri) {
+    try {
+      const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+      return await readText();
+    } catch {
+      return null;
+    }
+  }
+  try {
+    return await navigator.clipboard.readText();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get image data URL from clipboard. Returns null if no image.
  */
 async function getImageFromClipboard(): Promise<string | null> {
@@ -137,18 +156,43 @@ function addImageToCanvas(ketcher: any, dataUrl: string): Promise<boolean> {
 
 export type ImagePasteResult = { success: true; type: 'image' } | { success: true; type: 'structure' } | { success: false };
 
+/** Heuristic: text looks like MOL or SMILES. */
+function looksLikeStructure(text: string): boolean {
+  const t = text.trim();
+  if (!t || t.length > 10000) return false;
+  if (t.includes('$$$$') || t.includes('V2000') || t.includes('V3000') || t.includes('M  END')) return true;
+  if (t.length < 500 && /^[A-Za-z0-9@\[\]\(\)\.\=\#\-\+\/\\\s\n]+$/.test(t) && !/^\d+$/.test(t)) return true;
+  return false;
+}
+
 /**
- * Try to paste image from clipboard into Ketcher. Returns result for UI feedback.
- * 1. If image: try OCSR recognition → load structure if recognized, else add as image
- * 2. Call from Paste button (user gesture) or from Ctrl+V handler.
+ * Try to paste from clipboard into Ketcher. ChemDraw-style: structure paste adds to canvas.
+ * 1. If clipboard has structure text (MOL/SMILES): add to canvas via addFragment (or setMolecule)
+ * 2. If image: try OCSR → structure if recognized, else add as image
+ * 3. Else Ketcher paste
  */
 export async function pasteImageIntoSketch(ketcherRef: React.RefObject<any>): Promise<ImagePasteResult> {
   const ketcher = ketcherRef?.current;
   if (!ketcher) return { success: false };
 
+  const text = await getTextFromClipboard();
+  if (text?.trim() && looksLikeStructure(text)) {
+    try {
+      if (typeof ketcher.addFragment === 'function') {
+        await ketcher.addFragment(text.trim());
+        return { success: true, type: 'structure' };
+      }
+      if (typeof ketcher.setMolecule === 'function') {
+        await ketcher.setMolecule(text.trim());
+        return { success: true, type: 'structure' };
+      }
+    } catch (err) {
+      console.warn('[pasteImageIntoSketch] Structure paste failed:', err);
+    }
+  }
+
   const dataUrl = await getImageFromClipboard();
   if (dataUrl) {
-    // Try OCSR recognition first → editable structure
     const smiles = await recognizeImageToStructure(dataUrl);
     if (smiles && typeof ketcher.setMolecule === 'function') {
       try {
@@ -158,7 +202,6 @@ export async function pasteImageIntoSketch(ketcherRef: React.RefObject<any>): Pr
         // Fall through to add as image
       }
     }
-    // Recognition failed or not available: add image to canvas
     const ok = await addImageToCanvas(ketcher, dataUrl);
     return ok ? { success: true, type: 'image' } : { success: false };
   }
@@ -187,10 +230,11 @@ export function useImagePasteIntoSketch(ketcherRef: React.RefObject<any>) {
       if (result.success) {
         return; // image or structure pasted
       }
-      // No image: let Ketcher paste structure data (clipboard still has content)
+      // No image/structure: try Ketcher's built-in paste (event or events)
       const editor = ketcher.editor;
-      if (editor?.events?.pasteFromClipboard?.dispatch) {
-        editor.events.pasteFromClipboard.dispatch();
+      const ev = (editor as any)?.event ?? (editor as any)?.events;
+      if (ev?.pasteFromClipboard?.dispatch) {
+        ev.pasteFromClipboard.dispatch();
       }
     },
     [ketcherRef]

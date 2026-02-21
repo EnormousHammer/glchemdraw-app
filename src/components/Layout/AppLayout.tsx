@@ -354,7 +354,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     try {
       const result = await pasteImageIntoSketch(ketcherRef);
       if (result.success && result.type === 'structure') {
-        setSnackbarMessage('Structure recognized from image');
+        setSnackbarMessage('Structure pasted');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         return;
@@ -365,16 +365,36 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setSnackbarOpen(true);
         return;
       }
-      // No image: try structure paste
-      const text = await navigator.clipboard.readText();
-      if (!text?.trim() || !ketcherRef.current?.setMolecule) {
+      // Fallback: try reading text (Tauri or web)
+      let text: string | null = null;
+      try {
+        if (typeof navigator?.clipboard?.readText === 'function') {
+          text = await navigator.clipboard.readText();
+        } else if (typeof window !== 'undefined' && '__TAURI__' in window) {
+          const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+          text = await readText();
+        }
+      } catch {
+        text = null;
+      }
+      if (!text?.trim()) {
         setSnackbarMessage('Paste failed – clipboard has no image or structure (MOL/SMILES)');
         setSnackbarSeverity('warning');
         setSnackbarOpen(true);
         return;
       }
-      await ketcherRef.current.setMolecule(text.trim());
-      setSnackbarMessage('Structure pasted from clipboard');
+      const ketcher = ketcherRef.current;
+      if (ketcher?.addFragment) {
+        await ketcher.addFragment(text.trim());
+      } else if (ketcher?.setMolecule) {
+        await ketcher.setMolecule(text.trim());
+      } else {
+        setSnackbarMessage('Paste failed – editor not ready');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
+      setSnackbarMessage('Structure pasted');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (err) {
@@ -862,7 +882,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
                       {isSearching && <CircularProgress size={16} sx={{ mr: 0.5 }} />}
-                      <Tooltip title="Paste image or structure from clipboard (PNG/screenshot or MOL/SMILES)">
+                      <Tooltip title="Paste structure (adds to canvas) or image. Ctrl+V duplicates within canvas.">
                         <Button
                           size="small"
                           variant="outlined"
@@ -1960,9 +1980,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Copy & Paste</Typography>
                   <Box sx={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+C</Typography>
-                    <Typography variant="body2" color="text.secondary">Copy as image (Word, PPT)</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Shift+C</Typography>
-                    <Typography variant="body2" color="text.secondary">Copy structure data</Typography>
+                    <Typography variant="body2" color="text.secondary">Copy image + structure (paste in canvas = duplicate; paste elsewhere = image)</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+V</Typography>
+                    <Typography variant="body2" color="text.secondary">Paste structure (adds to canvas) or image</Typography>
                   </Box>
                 </Box>
                 <Box sx={{ mb: 1.5 }}>

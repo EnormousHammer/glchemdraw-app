@@ -1,6 +1,7 @@
 /**
- * Intercepts Ctrl+C in Ketcher canvas and copies structure as image.
- * Uses Tauri's native writeImage when in Tauri (WebView clipboard doesn't support images).
+ * Intercepts Ctrl+C in Ketcher canvas.
+ * Copies BOTH image (for Word/PPT) AND structure (MOL) for canvas paste/duplicate.
+ * ChemDraw-style: paste within canvas duplicates structure; paste elsewhere gets image.
  */
 
 import { useEffect, useCallback } from 'react';
@@ -10,6 +11,29 @@ const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
 export interface UseCopyImageToClipboardOptions {
   onCopySuccess?: () => void;
+}
+
+async function getStructureMolfile(ketcher: any): Promise<string | null> {
+  const struct = ketcher.editor?.structSelected?.();
+  if (struct && !struct.isBlank?.()) {
+    try {
+      const { getStructure } = await import('ketcher-core');
+      const { SupportedFormat } = await import('ketcher-core');
+      return await getStructure(
+        ketcher.id,
+        SupportedFormat.molAuto,
+        ketcher.formatterFactory,
+        struct
+      );
+    } catch {
+      return null;
+    }
+  }
+  try {
+    return await ketcher.getMolfile();
+  } catch {
+    return null;
+  }
 }
 
 export function useCopyImageToClipboard(
@@ -29,7 +53,6 @@ export function useCopyImageToClipboard(
         const ketSerializer = new KetSerializer();
         structStr = ketSerializer.serialize(struct);
       } else {
-        // No selection: use full canvas (getKet returns entire structure)
         structStr = await ketcher.getKet();
         if (!structStr?.trim()) return;
       }
@@ -39,14 +62,21 @@ export function useCopyImageToClipboard(
         backgroundColor: 'transparent',
       });
 
+      const molfile = await getStructureMolfile(ketcher);
+
       if (isTauri) {
-        const { writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
+        const { writeImage, writeText } = await import('@tauri-apps/plugin-clipboard-manager');
         const buffer = await blob.arrayBuffer();
         await writeImage(new Uint8Array(buffer));
+        if (molfile?.trim()) {
+          await writeText(molfile.trim());
+        }
       } else {
-        await navigator.clipboard.write([
-          new ClipboardItem({ [blob.type]: blob }),
-        ]);
+        const items: Record<string, Blob> = { [blob.type]: blob };
+        if (molfile?.trim()) {
+          items['text/plain'] = new Blob([molfile.trim()], { type: 'text/plain' });
+        }
+        await navigator.clipboard.write([new ClipboardItem(items)]);
       }
       onCopySuccess?.();
     } catch (err) {

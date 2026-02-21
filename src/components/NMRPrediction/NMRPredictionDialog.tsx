@@ -71,6 +71,7 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
   molfile,
 }) => {
   const [loading, setLoading] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState<'nmrdb' | 'loading-db' | 'predicting'>('predicting');
   const [error, setError] = useState<string | null>(null);
   const [protonPeaks, setProtonPeaks] = useState<PredictedPeak[]>([]);
   const [carbonPeaks, setCarbonPeaks] = useState<PredictedPeak[]>([]);
@@ -103,6 +104,7 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
     try {
       // 1. Try nmrdb.org first (larger NMRShiftDB database, better ¹H coverage)
       if (smilesForNmrdb) {
+        setLoadingPhase('nmrdb');
         const { fetchNMRFromNmrdb } = await import('@/lib/chemistry/nmrdb');
         const nmrdbResult = await fetchNMRFromNmrdb(smilesForNmrdb);
         if (nmrdbResult && (nmrdbResult.protonPeaks.length > 0 || nmrdbResult.carbonPeaks.length > 0)) {
@@ -114,11 +116,17 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
       }
 
       // 2. Fall back to nmr-predictor (HOSE)
+      setLoadingPhase('loading-db');
+      const { preloadNmrPredictor, getNmrPreloadPromise } = await import('@/lib/nmr/preloadNmrPredictor');
+      preloadNmrPredictor(); // ensure preload started (no-op if already running)
+      const preload = getNmrPreloadPromise();
+      if (preload) await preload;
       const { fetchProton, fetchCarbon, proton, carbon } = await import('nmr-predictor');
       if (!dbReady) {
         await Promise.all([fetchProton(), fetchCarbon()]);
         setDbReady(true);
       }
+      setLoadingPhase('predicting');
       const runProton = async (): Promise<PredictedPeak[]> => {
         try {
           const result = proton(input, { use: 'median', ignoreLabile: false });
@@ -181,7 +189,11 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
         {loading ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
             <CircularProgress />
-            <Typography color="text.secondary">Predicting chemical shifts...</Typography>
+            <Typography color="text.secondary">
+              {loadingPhase === 'nmrdb' && 'Trying nmrdb.org...'}
+              {loadingPhase === 'loading-db' && 'Loading NMR databases (first time may take 15–30s)...'}
+              {loadingPhase === 'predicting' && 'Predicting chemical shifts...'}
+            </Typography>
           </Box>
         ) : (
           <Box sx={{ mt: 1 }}>

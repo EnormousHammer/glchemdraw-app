@@ -14,7 +14,7 @@ test.describe('NMR Prediction', () => {
 
   test('should open NMR dialog and show prediction (nmr-predictor fallback)', async ({ page }) => {
     // Search for acetone to load a structure
-    const searchInput = page.getByPlaceholder(/search compound/i);
+    const searchInput = page.getByPlaceholder(/search compound name/i);
     await searchInput.fill('acetone');
     await searchInput.press('Enter');
 
@@ -41,7 +41,7 @@ test.describe('NMR Prediction', () => {
   });
 
   test('should show NMR dialog with Close button', async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/search compound/i);
+    const searchInput = page.getByPlaceholder(/search compound name/i);
     await searchInput.fill('ethanol');
     await searchInput.press('Enter');
     await expect(page.getByText('C2H6O').first()).toBeVisible({ timeout: 15000 });

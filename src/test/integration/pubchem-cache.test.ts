@@ -1,5 +1,6 @@
 /**
  * Integration Tests for PubChem Cache
+ * Skipped in Node.js (vitest) - IndexedDB is not available
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -11,7 +12,9 @@ import {
   getCacheStats,
 } from '@lib/pubchem/cache';
 
-describe('PubChem Cache Integration', () => {
+const hasIndexedDB = typeof indexedDB !== 'undefined';
+
+describe.skipIf(!hasIndexedDB)('PubChem Cache Integration', () => {
   beforeEach(async () => {
     // Clear cache before each test
     await clearCache();

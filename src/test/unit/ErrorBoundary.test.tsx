@@ -35,8 +35,9 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
     
-    expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-    expect(screen.getByText(/test error/i)).toBeInTheDocument();
+    // Use getAllByText - error message may appear in Alert and stack trace
+    expect(screen.getAllByText(/something went wrong/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/test error/i).length).toBeGreaterThanOrEqual(1);
     
     consoleError.mockRestore();
   });
@@ -65,7 +66,9 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
     
-    expect(screen.getByRole('button', { name: /reload application/i })).toBeInTheDocument();
+    const reloadButtons = screen.getAllByRole('button', { name: /reload application/i });
+    expect(reloadButtons.length).toBeGreaterThanOrEqual(1);
+    expect(reloadButtons[0]).toBeInTheDocument();
     
     consoleError.mockRestore();
   });

@@ -21,14 +21,16 @@ export default defineConfig({
       "@lib": resolve(__dirname, "./src/lib"),
       "@hooks": resolve(__dirname, "./src/hooks"),
       "@types": resolve(__dirname, "./src/types"),
-      // Force Ketcher to use the same React as the main app
+      // Force Ketcher and all deps to use the same React as the main app (fixes Invalid hook call)
       'react': resolve(__dirname, 'node_modules/react'),
       'react-dom': resolve(__dirname, 'node_modules/react-dom'),
+      'react/jsx-runtime': resolve(__dirname, 'node_modules/react/jsx-runtime'),
+      'react/jsx-dev-runtime': resolve(__dirname, 'node_modules/react/jsx-dev-runtime'),
       '@emotion/react': resolve(__dirname, 'node_modules/@emotion/react'),
       '@emotion/styled': resolve(__dirname, 'node_modules/@emotion/styled'),
     },
     // Force single React instance and Emotion
-    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled', 'react/jsx-runtime'],
+    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
   },
 
   // Force Vite to optimize these dependencies and dedupe React

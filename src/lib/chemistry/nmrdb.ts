@@ -27,7 +27,7 @@ export async function fetchNMRFromNmrdb(smiles: string): Promise<{
   const proxyUrl = `${NMR_PROXY_URL}?url=${encodeURIComponent(url)}`;
 
   try {
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(120_000) });
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(30_000) });
     if (!res.ok) return null;
     const data = await res.json();
     return parseNmrdbResponse(data);

@@ -39,6 +39,11 @@ function App() {
     document.documentElement.setAttribute('data-theme', themeMode);
   }, [themeMode]);
 
+  useEffect(() => {
+    // Preload NMR predictor databases in background for faster first prediction
+    import('@/lib/nmr/preloadNmrPredictor').then(({ preloadNmrPredictor }) => preloadNmrPredictor());
+  }, []);
+
   const toggleDarkMode = () => {
     setThemeMode((prev) => {
       // Cycle through themes: light -> dark -> highContrast -> light

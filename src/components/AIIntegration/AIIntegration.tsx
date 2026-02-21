@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { useAIContext, appendUserContext } from '@/contexts/AIContext';
 import {
   Box,
   Card,
@@ -54,6 +55,70 @@ interface AIIntegrationProps {
   onError?: (error: string) => void;
 }
 
+/** Parse AI free-form response into structured AIAnalysis */
+function parseAIAnalysisResponse(content: string, analysisType: string): AIAnalysis {
+  const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
+  const analysis: AIAnalysis = {};
+
+  const extractAfter = (prefix: string): string | undefined => {
+    const line = lines.find((l) => l.toLowerCase().startsWith(prefix.toLowerCase()));
+    if (line) {
+      const idx = line.indexOf(':');
+      return idx >= 0 ? line.slice(idx + 1).trim() : line.slice(prefix.length).trim();
+    }
+    return undefined;
+  };
+
+  const iupacMatch = content.match(/(?:IUPAC\s*name?|IUPAC:)\s*[:–-]?\s*([^\n(]+)/i);
+  if (iupacMatch) analysis.iupacName = iupacMatch[1].trim();
+  const commonMatch = content.match(/\(([^)]+)\)/);
+  if (commonMatch && commonMatch[1].length < 50) analysis.commonName = commonMatch[1].trim();
+
+  const mwMatch = content.match(/(?:MW|molecular weight)[:\s]+(\d+\.?\d*)/i);
+  const logPMatch = content.match(/(?:logP|LogP)[:\s]+([-\d.]+)/i);
+  if (mwMatch || logPMatch) {
+    analysis.predictedProperties = {};
+    if (mwMatch) analysis.predictedProperties.mw = parseFloat(mwMatch[1]);
+    if (logPMatch) analysis.predictedProperties.logP = parseFloat(logPMatch[1]);
+  }
+
+  const scoreMatch = content.match(/(?:score|drug[- ]?likeness)[:\s]+(\d+)/i);
+  if (scoreMatch) {
+    analysis.drugLikeness = {
+      overallScore: parseInt(scoreMatch[1], 10),
+      lipinskiViolations: 0,
+      veberViolations: 0,
+      recommendations: [],
+    };
+  }
+
+  const reactionBlocks = content.split(/(?=\d+[.)]\s*(?:reaction|hydrolysis|esterification|oxidation|reduction|substitution|etc\.?))/i);
+  if (reactionBlocks.length > 1) {
+    analysis.reactionPredictions = reactionBlocks.slice(1).slice(0, 4).map((block) => {
+      const firstLine = block.split('\n')[0]?.trim() || '';
+      const name = firstLine.replace(/^\d+[.)]\s*/, '').slice(0, 80);
+      return {
+        reaction: name,
+        probability: 0.7,
+        conditions: 'See details',
+        products: [],
+      };
+    });
+  }
+
+  const safetyLines = lines.filter((l) => /(?:safety|hazard|precaution|warning)/i.test(l) && l.length > 10);
+  if (safetyLines.length > 0) analysis.safetyWarnings = safetyLines.slice(0, 5);
+
+  const synthLines = lines.filter((l) => /(?:synthesis|suggest|start with|use )/i.test(l) && l.length > 15);
+  if (synthLines.length > 0) analysis.synthesisSuggestions = synthLines.slice(0, 5);
+
+  if (!analysis.iupacName && analysisType === 'naming') analysis.iupacName = content.split('\n')[0]?.trim() || content.slice(0, 200);
+  if (Object.keys(analysis).length === 0) analysis.iupacName = content.slice(0, 500);
+
+  analysis.aiRawText = content;
+  return analysis;
+}
+
 interface AIAnalysis {
   iupacName?: string;
   commonName?: string;
@@ -80,6 +145,7 @@ interface AIAnalysis {
   }>;
   safetyWarnings?: string[];
   synthesisSuggestions?: string[];
+  aiRawText?: string;
 }
 
 export const AIIntegration: React.FC<AIIntegrationProps> = ({
@@ -94,6 +160,25 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
   const [analysisType, setAnalysisType] = useState<'comprehensive' | 'naming' | 'properties' | 'reactions' | 'safety'>('comprehensive');
   const [progress, setProgress] = useState(0);
 
+  const { context: aiContext } = useAIContext();
+
+  const getSmilesForPrompt = useCallback(async (): Promise<string> => {
+    const { getFirstStructureSmiles } = await import('@/lib/chemistry/openchemlib');
+    const { prepareSmilesForAI } = await import('@/lib/openai/chemistry');
+    let s = (smiles ?? '').trim();
+    if (!s && molfile) {
+      const { molfileToSmiles } = await import('@/lib/chemistry/openchemlib');
+      let smi = molfileToSmiles(molfile);
+      if (!smi) {
+        const { molfileToSmiles: rdkitMol } = await import('@/lib/chemistry/rdkit');
+        smi = await rdkitMol(molfile);
+      }
+      s = smi ?? '';
+    }
+    const prepared = prepareSmilesForAI(s, 500);
+    return prepared ?? '';
+  }, [smiles, molfile]);
+
   const handleAIAnalysis = useCallback(async () => {
     if (!smiles && !molfile) {
       setError('Please provide a structure for AI analysis');
@@ -103,97 +188,57 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
     setIsAnalyzing(true);
     setError(null);
     setProgress(0);
+    setAnalysis(null);
 
     try {
-      // Simulate AI analysis with progress updates
-      const analysisSteps = [
-        'Initializing AI models...',
-        'Analyzing molecular structure...',
-        'Generating IUPAC name...',
-        'Calculating properties...',
-        'Predicting drug-likeness...',
-        'Analyzing reaction possibilities...',
-        'Checking safety warnings...',
-        'Generating synthesis suggestions...',
-        'Finalizing analysis...'
-      ];
-
-      for (let i = 0; i < analysisSteps.length; i++) {
-        setProgress((i + 1) * (100 / analysisSteps.length));
-        await new Promise(resolve => setTimeout(resolve, 500));
+      setProgress(20);
+      const smi = (await getSmilesForPrompt()).trim();
+      if (!smi || smi.length < 2 || !/[A-Za-z\[\]\(\)=#@\+\-\d]/.test(smi)) {
+        throw new Error('Could not get valid SMILES for structure');
       }
 
-      // Mock AI analysis results
-      const mockAnalysis: AIAnalysis = {
-        iupacName: '2-acetoxybenzoic acid',
-        commonName: 'Aspirin',
-        predictedProperties: {
-          logP: 1.19,
-          tpsa: 63.6,
-          mw: 180.16,
-          hbd: 1,
-          hba: 4,
-          rotatableBonds: 3,
-          aromaticRings: 1,
-        },
-        drugLikeness: {
-          lipinskiViolations: 0,
-          veberViolations: 0,
-          overallScore: 85,
-          recommendations: [
-            'Good oral bioavailability potential',
-            'Consider improving solubility for better absorption',
-            'Molecular weight is within acceptable range'
-          ]
-        },
-        reactionPredictions: [
-          {
-            reaction: 'Hydrolysis',
-            probability: 0.85,
-            conditions: 'Aqueous acid, heat',
-            products: ['Salicylic acid', 'Acetic acid']
-          },
-          {
-            reaction: 'Esterification',
-            probability: 0.72,
-            conditions: 'H2SO4, heat',
-            products: ['Methyl aspirin']
-          },
-          {
-            reaction: 'Aromatic substitution',
-            probability: 0.45,
-            conditions: 'HNO3, H2SO4',
-            products: ['Nitro aspirin']
-          }
-        ],
-        safetyWarnings: [
-          'May cause gastrointestinal irritation',
-          'Avoid in patients with bleeding disorders',
-          'Monitor for allergic reactions'
-        ],
-        synthesisSuggestions: [
-          'Start with salicylic acid and acetic anhydride',
-          'Use sulfuric acid as catalyst',
-            'Purify by recrystallization from ethanol',
-            'Consider green chemistry alternatives'
-        ]
+      const promptByType: Record<string, string> = {
+        comprehensive: `Analyze this molecule (SMILES: ${smi}). Provide a detailed, factual analysis in clear sections:
+1) IUPAC Name and common name(s) with structural context
+2) Key physicochemical properties (MW, LogP, HBD/HBA, TPSA, rotatable bonds) with typical interpretation
+3) Drug-likeness assessment (Lipinski/Veber rules, score 0-100, specific recommendations)
+4) 3-4 likely chemical reactions with realistic conditions, reagents, and products
+5) Safety considerations, handling precautions, and known hazards
+6) Synthesis suggestions with plausible routes`,
+        naming: `Given SMILES: ${smi}, provide the IUPAC name and common name if applicable. Include structural context.`,
+        properties: `For SMILES: ${smi}, list key molecular properties (MW, LogP, TPSA, HBD, HBA, rotatable bonds, aromatic rings) with brief interpretation of each.`,
+        reactions: `For SMILES: ${smi}, suggest 3-4 likely chemical reactions with realistic conditions, reagents, and products. Explain the chemistry.`,
+        safety: `For SMILES: ${smi}, provide detailed safety considerations, handling precautions, and any known hazards. Be thorough.`,
       };
+      const userPrompt = appendUserContext(
+        promptByType[analysisType] ?? promptByType.comprehensive,
+        aiContext
+      );
 
-      setAnalysis(mockAnalysis);
-      
+      setProgress(40);
+      const { chatWithOpenAI } = await import('@/lib/openai');
+      const content = await chatWithOpenAI([
+        {
+          role: 'system',
+          content: 'You are an expert chemist. Provide detailed, factual, educational analysis. Use accurate terminology and cite well-established chemical principles. Be thorough and informative.',
+        },
+        { role: 'user', content: userPrompt },
+      ]);
+
+      setProgress(90);
+      const parsed = parseAIAnalysisResponse(content, analysisType);
+      setAnalysis(parsed);
     } catch (err) {
       const errorMessage = (err as Error).message || 'AI analysis failed';
       setError(errorMessage);
-      if (onError) {
-        onError(errorMessage);
-      }
+      if (onError) onError(errorMessage);
     } finally {
       setIsAnalyzing(false);
       setProgress(0);
     }
-  }, [smiles, molfile, onError]);
+  }, [smiles, molfile, analysisType, getSmilesForPrompt, onError, aiContext]);
 
-  const handleGenerateName = async () => {
+  const handleGenerateName = useCallback(async () => {
     if (!smiles && !molfile) {
       setError('Please provide a structure for name generation');
       return;
@@ -203,25 +248,31 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
     setError(null);
 
     try {
-      // Simulate AI name generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockName = '2-acetoxybenzoic acid (Aspirin)';
-      const mockSmiles = smiles || 'CC(=O)OC1=CC=CC=C1C(=O)O';
-      
-      if (onStructureGenerated) {
-        onStructureGenerated(mockSmiles, mockName);
+      const smi = (await getSmilesForPrompt()).trim();
+      if (!smi || smi.length < 2) {
+        throw new Error('Could not get SMILES for structure');
       }
-      
+      const nameUserMsg = appendUserContext(`Given SMILES: ${smi}, provide the IUPAC name.`, aiContext);
+      const { chatWithOpenAI } = await import('@/lib/openai');
+      const content = await chatWithOpenAI([
+        {
+          role: 'system',
+          content: 'You are a chemistry expert. Reply with ONLY the IUPAC name. If there is a common name, add it in parentheses on the same line, e.g. "IUPAC name (common name)". No other text.',
+        },
+        { role: 'user', content: nameUserMsg },
+      ]);
+      const name = content.trim().split('\n')[0]?.trim() || content.trim();
+      setAnalysis({ iupacName: name, commonName: undefined, aiRawText: content });
+      if (onStructureGenerated && smi) onStructureGenerated(smi, name);
     } catch (err) {
       const errorMessage = (err as Error).message || 'Name generation failed';
       setError(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [smiles, molfile, getSmilesForPrompt, onStructureGenerated, aiContext]);
 
-  const handlePredictReactions = async () => {
+  const handlePredictReactions = useCallback(async () => {
     if (!smiles && !molfile) {
       setError('Please provide a structure for reaction prediction');
       return;
@@ -229,21 +280,30 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
 
     setIsAnalyzing(true);
     setError(null);
+    setAnalysis(null);
 
     try {
-      // Simulate AI reaction prediction
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Mock reaction predictions would be generated here
-      console.log('AI reaction prediction completed');
-      
+      const smi = (await getSmilesForPrompt()).trim();
+      if (!smi || smi.length < 2) {
+        throw new Error('Could not get SMILES for structure');
+      }
+      const reactionsUserMsg = appendUserContext(`For SMILES: ${smi}, suggest 3-4 likely chemical reactions. For each: reaction name, conditions (solvent, temperature, catalyst), reagents, and products. Explain why these reactions are plausible.`, aiContext);
+      const { chatWithOpenAI } = await import('@/lib/openai');
+      const content = await chatWithOpenAI([
+        {
+          role: 'system',
+          content: 'You are an expert organic chemist. Provide detailed, factual reaction predictions with realistic conditions, reagents, and products. Explain the chemistry and mechanisms where relevant.',
+        },
+        { role: 'user', content: reactionsUserMsg },
+      ]);
+      setAnalysis(parseAIAnalysisResponse(content, 'reactions'));
     } catch (err) {
       const errorMessage = (err as Error).message || 'Reaction prediction failed';
       setError(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [smiles, molfile, getSmilesForPrompt, aiContext]);
 
   const getDrugLikenessColor = (score: number) => {
     if (score >= 80) return 'success';
@@ -259,71 +319,58 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <AIIcon color="primary" />
-        AI Chemistry Assistant
-        <Chip
-          icon={<SparkleIcon />}
-          label="Powered by AI"
-          size="small"
-          color="primary"
-          variant="outlined"
-        />
-      </Typography>
-      
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Advanced AI-powered chemistry analysis, naming, and prediction capabilities
+    <Box sx={{ p: 0 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, lineHeight: 1.4 }}>
+        Use when PubChem has no match, or for extra analysis.
       </Typography>
 
-      {/* Analysis Type Selection */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="subtitle2" gutterBottom>
-            Analysis Type
-          </Typography>
-          <FormControl fullWidth size="small">
-            <InputLabel>Analysis Type</InputLabel>
-            <Select
-              value={analysisType}
-              onChange={(e) => setAnalysisType(e.target.value as any)}
-              label="Analysis Type"
-            >
-              <MenuItem value="comprehensive">Comprehensive Analysis</MenuItem>
-              <MenuItem value="naming">IUPAC Naming Only</MenuItem>
-              <MenuItem value="properties">Property Prediction</MenuItem>
-              <MenuItem value="reactions">Reaction Prediction</MenuItem>
-              <MenuItem value="safety">Safety Analysis</MenuItem>
-            </Select>
-          </FormControl>
-        </CardContent>
-      </Card>
+      {/* Row: Analysis type */}
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+        <FormControl size="small" sx={{ minWidth: 140, flex: 1 }}>
+          <InputLabel>Analysis Type</InputLabel>
+          <Select
+            value={analysisType}
+            onChange={(e) => setAnalysisType(e.target.value as any)}
+            label="Analysis Type"
+          >
+            <MenuItem value="comprehensive">Comprehensive</MenuItem>
+            <MenuItem value="naming">IUPAC Naming</MenuItem>
+            <MenuItem value="properties">Properties</MenuItem>
+            <MenuItem value="reactions">Reactions</MenuItem>
+            <MenuItem value="safety">Safety</MenuItem>
+          </Select>
+        </FormControl>
+      </Stack>
 
-      {/* Action Buttons */}
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+      {/* Action buttons - single row, consistent style */}
+      <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ gap: 0.75, mb: 1.5 }}>
         <Button
+          size="small"
           variant="contained"
           onClick={handleAIAnalysis}
           disabled={isAnalyzing || (!smiles && !molfile)}
-          startIcon={isAnalyzing ? <CircularProgress size={16} /> : <AIIcon />}
+          startIcon={isAnalyzing ? <CircularProgress size={14} /> : <AIIcon sx={{ fontSize: 16 }} />}
+          sx={{ fontSize: '0.7rem', textTransform: 'none' }}
         >
-          {isAnalyzing ? 'Analyzing...' : 'Run AI Analysis'}
+          {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
         </Button>
-        
         <Button
+          size="small"
           variant="outlined"
           onClick={handleGenerateName}
           disabled={isAnalyzing || (!smiles && !molfile)}
-          startIcon={<ChemistryIcon />}
+          startIcon={<ChemistryIcon sx={{ fontSize: 16 }} />}
+          sx={{ fontSize: '0.7rem', textTransform: 'none' }}
         >
           Generate Name
         </Button>
-        
         <Button
+          size="small"
           variant="outlined"
           onClick={handlePredictReactions}
           disabled={isAnalyzing || (!smiles && !molfile)}
-          startIcon={<PlayIcon />}
+          startIcon={<PlayIcon sx={{ fontSize: 16 }} />}
+          sx={{ fontSize: '0.7rem', textTransform: 'none' }}
         >
           Predict Reactions
         </Button>
@@ -341,7 +388,7 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
 
       {/* Error Display */}
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
@@ -349,6 +396,22 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
       {/* Analysis Results */}
       {analysis && (
         <Stack spacing={3}>
+          {/* Full AI Response (for comprehensive / when parsing is minimal) */}
+          {analysis.aiRawText && (analysisType === 'comprehensive' || analysisType === 'reactions' || analysisType === 'safety' || analysisType === 'properties') && (
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <SuccessIcon color="success" />
+                  AI Analysis
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', maxHeight: 400, overflow: 'auto' }}>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {analysis.aiRawText}
+                  </Typography>
+                </Paper>
+              </CardContent>
+            </Card>
+          )}
           {/* IUPAC Name */}
           {analysis.iupacName && (
             <Card>

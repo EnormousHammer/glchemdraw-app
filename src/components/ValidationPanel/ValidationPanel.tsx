@@ -137,16 +137,20 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     return (
       <Paper
         elevation={0}
+        variant="outlined"
         sx={{
-          p: 2.5,
-          minHeight: 80,
-          bgcolor: 'background.default',
+          p: 1.5,
+          minWidth: 0,
+          minHeight: 48,
+          bgcolor: 'background.paper',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          borderRadius: 1,
+          borderColor: 'divider',
         }}
       >
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', lineHeight: 1.6 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', fontSize: '0.75rem' }}>
           Draw a structure to see validation feedback
         </Typography>
       </Paper>
@@ -180,11 +184,15 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   return (
     <Paper
       elevation={0}
+      variant="outlined"
       sx={{
         p: 1.5,
+        minWidth: 0,
         height: '100%',
-        bgcolor: 'background.default',
+        bgcolor: 'background.paper',
         overflow: 'auto',
+        borderRadius: 1.5,
+        borderColor: 'divider',
       }}
     >
       <Stack spacing={1}>

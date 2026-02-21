@@ -21,9 +21,9 @@ async function getStructureMolfile(ketcher: any): Promise<string | null> {
       const { SupportedFormat } = await import('ketcher-core');
       return await getStructure(
         ketcher.id,
-        SupportedFormat.molAuto,
         ketcher.formatterFactory,
-        struct
+        struct,
+        SupportedFormat.molAuto
       );
     } catch {
       return null;

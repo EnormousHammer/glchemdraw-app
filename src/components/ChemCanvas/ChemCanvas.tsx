@@ -80,9 +80,9 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
               const { SupportedFormat } = await import('ketcher-core');
               const selMolfile = await getStructure(
                 ketcher.id,
-                SupportedFormat.molAuto,
                 ketcher.formatterFactory,
-                struct
+                struct,
+                SupportedFormat.molAuto
               );
               const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
               const selSmiles = await molfileToSmiles(selMolfile);
@@ -211,9 +211,9 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
                     const { SupportedFormat } = await import('ketcher-core');
                     const molfile = await getStructure(
                       ketcher.id,
-                      SupportedFormat.molAuto,
                       ketcher.formatterFactory,
-                      struct
+                      struct,
+                      SupportedFormat.molAuto
                     );
                     const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
                     const smiles = await molfileToSmiles(molfile);

@@ -355,6 +355,12 @@ body .bp6-overlay:has(a[href*="lifescience.opensource"]) [role="dialog"] {
   border-width: 0;
 }
 
+/* GlChemDraw app dialogs - ensure visible (exclude from Ketcher modal hiding) */
+[data-glchemdraw-dialog],
+[data-glchemdraw-dialog] * {
+  visibility: visible !important;
+}
+
 /* Ensure proper focus for interactive elements */
 button, a, input, select, textarea {
   &:focus-visible {

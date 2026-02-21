@@ -52,7 +52,7 @@ app.get('/nmr-proxy', async (req, res) => {
     }
 
     let predictionData = null;
-    const maxWait = 45;
+    const maxWait = 90;
     for (let waited = 0; waited < maxWait; waited++) {
       await new Promise((r) => setTimeout(r, 1000));
       predictionData = await page.evaluate(() => {

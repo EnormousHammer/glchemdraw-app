@@ -59,6 +59,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   useEffect(() => {
     const coverKetcherInfoModal = () => {
       document.querySelectorAll('[role="dialog"], .bp6-dialog, .bp6-overlay').forEach((el) => {
+        if ((el as HTMLElement).querySelector?.('[data-glchemdraw-dialog]')) return;
         const html = el.innerHTML || '';
         const isKetcherModal = html.includes('epam.com') || html.includes('build-version') || html.includes('lifescience.opensource')
           || (html.includes('Ketcher') && (html.includes('Feedback') || html.includes('FAQ') || html.includes('faq') || html.includes('Help')));

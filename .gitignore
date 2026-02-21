@@ -59,6 +59,10 @@ jspm_packages/
 # Tauri
 src-tauri/target/
 
+# Playwright
+playwright-report/
+test-results/
+
 # Test and development files
 *.bat
 *.ps1

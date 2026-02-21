@@ -51,15 +51,11 @@
   height: 100% !important;
 }
 
-/* Hide any Ketcher-branded elements (title/aria-label) */
+/* Hide Ketcher-branded elements (logo/title) - NOT in polymer editor: nav/scroll arrows may use Ketcher in aria-label */
 .Ketcher-root [title*="Ketcher"],
 .Ketcher-root [title*="ketcher"],
 .Ketcher-root [aria-label*="Ketcher"],
-.Ketcher-root [aria-label*="ketcher"],
-.Ketcher-polymer-editor-root [title*="Ketcher"],
-.Ketcher-polymer-editor-root [title*="ketcher"],
-.Ketcher-polymer-editor-root [aria-label*="Ketcher"],
-.Ketcher-polymer-editor-root [aria-label*="ketcher"] {
+.Ketcher-root [aria-label*="ketcher"] {
   display: none !important;
   visibility: hidden !important;
 }

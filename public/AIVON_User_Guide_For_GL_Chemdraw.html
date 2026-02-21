@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GL-Chemdraw — How to Use</title>
-    <meta name="description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing, PubChem lookup, 3D viewer, and export for GLC.">
-    <meta property="og:title" content="GL-Chemdraw — How to Use">
-    <meta property="og:description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing, PubChem lookup, 3D viewer, and export for GLC.">
+    <meta name="description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing, PubChem lookup, 3D viewer, and export for GL Chemtec.">
+    <meta property="og:title" content="GL Chemtec — GL-Chemdraw How to Use">
+    <meta property="og:description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing, PubChem lookup, 3D viewer, and export for GL Chemtec.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="GLC_Logo.png">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="GL-Chemdraw — How to Use">
-    <meta name="twitter:description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing for GLC.">
+    <meta name="twitter:description" content="Complete guide for GL-Chemdraw by AIVON — chemical structure drawing for GL Chemtec.">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap');
 
@@ -63,8 +63,9 @@
         .hero {
             min-height: 100vh;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
+            padding-top: 6vh;
             position: relative;
             background: radial-gradient(ellipse at 50% 0%, rgba(0, 188, 212, 0.25) 0%, transparent 50%),
                         radial-gradient(ellipse at 20% 80%, rgba(0, 229, 255, 0.15) 0%, transparent 40%),
@@ -122,24 +123,11 @@
         }
 
         .logo-full {
-            width: 200px;
-            max-width: 40vw;
+            width: 160px;
+            max-width: 35vw;
             height: auto;
-            margin-bottom: 12px;
-            filter: drop-shadow(0 0 50px rgba(0, 188, 212, 0.5))
-                    drop-shadow(0 0 100px rgba(0, 188, 212, 0.3));
-            animation: logo-float 6s ease-in-out infinite, logo-glow 3s ease-in-out infinite alternate;
+            margin-bottom: 8px;
             display: block;
-        }
-
-        @keyframes logo-float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-
-        @keyframes logo-glow {
-            0% { filter: drop-shadow(0 0 60px rgba(0, 188, 212, 0.5)) drop-shadow(0 0 120px rgba(0, 188, 212, 0.3)); }
-            100% { filter: drop-shadow(0 0 80px rgba(0, 188, 212, 0.7)) drop-shadow(0 0 150px rgba(0, 188, 212, 0.4)); }
         }
 
         .beta-badge {
@@ -165,7 +153,7 @@
         .hero-tagline {
             font-size: clamp(22px, 2.5vw, 32px);
             color: var(--text);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             font-weight: 400;
             font-family: 'DM Sans', sans-serif;
             letter-spacing: 0.5px;
@@ -175,9 +163,57 @@
             font-size: 15px;
             color: var(--text-dim);
             max-width: 550px;
-            margin: 0 auto 18px;
+            margin: 0 auto 8px;
             line-height: 1.5;
             text-align: center;
+        }
+
+        .hero-built-by {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 188, 212, 0.25);
+        }
+
+        .hero-built-by-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .hero-built-by-logos {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+        }
+
+        .hero-built-by-logo-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
+            min-width: 70px;
+        }
+
+        .hero-built-by-logos img {
+            height: 32px;
+            width: auto;
+            max-width: 110px;
+            object-fit: contain;
+            object-position: center;
+        }
+
+        .hero-built-by-logos .hero-built-by-for {
+            font-size: 14px;
+            color: var(--text-dim);
+            font-weight: 500;
+            flex-shrink: 0;
+            padding: 0 4px;
         }
 
         .pill-container {
@@ -186,6 +222,7 @@
             justify-content: center;
             flex-wrap: wrap;
             max-width: 700px;
+            margin-top: 20px;
         }
 
         .pill {
@@ -211,7 +248,7 @@
 
         .scroll-indicator {
             position: absolute;
-            bottom: 8px;
+            bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
@@ -250,7 +287,7 @@
         }
 
         .section {
-            padding: 120px 40px;
+            padding: 60px 40px;
             position: relative;
         }
 
@@ -266,7 +303,7 @@
         }
 
         .section-header {
-            margin-bottom: 50px;
+            margin-bottom: 32px;
         }
 
         .section-num {
@@ -394,8 +431,8 @@
 
         .stats-bar {
             background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan-glow) 100%);
-            padding: 80px 40px;
-            margin: 120px 0;
+            padding: 60px 40px;
+            margin: 60px 0;
         }
 
         .stats-grid {
@@ -822,7 +859,6 @@
             width: auto;
             height: auto;
             object-fit: contain;
-            filter: drop-shadow(0 0 16px rgba(0, 188, 212, 0.25));
             opacity: 0.95;
         }
 
@@ -1011,13 +1047,24 @@
             <img src="aivon_logo.png" alt="AIVON" class="logo-full" onerror="this.style.display='none'">
             <p class="hero-tagline" style="font-family: 'Playfair Display', serif; font-size: clamp(36px, 5vw, 56px); font-weight: 900;">GL-Chemdraw</p>
             <p class="hero-subtitle">
-                Professional chemical structure drawing for GLC<br>
-                <span style="color: var(--cyan);">Built by AIVON</span>
+                Chemical Structure Drawing for GL Chemtec
             </p>
+            <div class="hero-built-by">
+                <span class="hero-built-by-label">Built by</span>
+                <div class="hero-built-by-logos">
+                    <div class="hero-built-by-logo-wrap">
+                        <img src="Company_Name.png" alt="AIVON" onerror="this.style.display='none'">
+                    </div>
+                    <span class="hero-built-by-for">for</span>
+                    <div class="hero-built-by-logo-wrap">
+                        <img src="GLC_Logo.png" alt="GL Chemtec" onerror="this.style.display='none'">
+                    </div>
+                </div>
+            </div>
             <div class="pill-container">
-                <span class="pill">✏️ Draw Structures</span>
+                <span class="pill">⚛️ Draw Structures</span>
                 <span class="pill">🔍 PubChem Lookup</span>
-                <span class="pill">📐 3D Viewer</span>
+                <span class="pill">🧬 3D Viewer</span>
                 <span class="pill">📤 Export MOL/SDF</span>
             </div>
         </div>
@@ -1033,13 +1080,13 @@
                 <div class="section-num">01 — Overview</div>
                 <h2>What GL-Chemdraw Does</h2>
                 <p class="section-desc">
-                    A professional chemical structure drawing tool built for GLC. Draw molecules, look up compounds from PubChem, view 3D models, and export in standard formats.
+                    A professional chemical structure drawing tool built for GL Chemtec. Draw molecules, look up compounds from PubChem, view 3D models, and export in standard formats.
                 </p>
             </div>
 
             <div class="capabilities">
                 <div class="cap-card reveal">
-                    <span class="cap-icon">✏️</span>
+                    <span class="cap-icon">⚛️</span>
                     <h3 class="cap-title">Draw Structures</h3>
                     <p class="cap-desc">Draw organic molecules with bonds, rings, and functional groups. Use ring templates, structure library, and tools for peptides, RNA, and DNA.</p>
                 </div>
@@ -1049,12 +1096,12 @@
                     <p class="cap-desc">Search by compound name in the toolbar. GL-Chemdraw fetches structures from PubChem and inserts them directly into your canvas.</p>
                 </div>
                 <div class="cap-card reveal">
-                    <span class="cap-icon">🧪</span>
+                    <span class="cap-icon">🔗</span>
                     <h3 class="cap-title">PubChem Integration</h3>
                     <p class="cap-desc">Select a structure to see real-time data from PubChem: properties, identifiers, safety info, and spectral data.</p>
                 </div>
                 <div class="cap-card reveal">
-                    <span class="cap-icon">📐</span>
+                    <span class="cap-icon">🧬</span>
                     <h3 class="cap-title">3D Viewer</h3>
                     <p class="cap-desc">View interactive 3D molecular models for recognized compounds. Rotate, zoom, and explore structure in 3D.</p>
                 </div>
@@ -1064,9 +1111,9 @@
                     <p class="cap-desc">Export as MOL, SDF, or SMILES. Copy structure as image (Ctrl+C) for pasting into Word or PowerPoint with transparent background.</p>
                 </div>
                 <div class="cap-card reveal">
-                    <span class="cap-icon">⚗️</span>
-                    <h3 class="cap-title">Reactions</h3>
-                    <p class="cap-desc">Draw reaction schemes with arrows. Use the arrow tool in the left toolbar to connect reactants and products.</p>
+                    <span class="cap-icon">⌨️</span>
+                    <h3 class="cap-title">Keyboard Shortcuts</h3>
+                    <p class="cap-desc">Copy as image, layout bonds, clean structure, and biopolymer modes (peptide, RNA, DNA). See the shortcuts section below for the full list.</p>
                 </div>
             </div>
         </div>
@@ -1087,7 +1134,7 @@
                 <p>Viewer</p>
             </div>
             <div class="stat">
-                <h3>GLC</h3>
+                <h3>GL Chemtec</h3>
                 <p>Built for</p>
             </div>
         </div>
@@ -1158,7 +1205,7 @@
 
                 <div class="faq-item">
                     <div class="faq-question">What is GL-Chemdraw?</div>
-                    <div class="faq-answer">GL-Chemdraw is a professional chemical structure drawing application built by AIVON for GLC. It lets you draw molecules, look up compounds from PubChem, view 3D structures, and export in standard chemical formats.</div>
+                    <div class="faq-answer">GL-Chemdraw is a professional chemical structure drawing application built by AIVON for GL Chemtec. It lets you draw molecules, look up compounds from PubChem, view 3D structures, and export in standard chemical formats.</div>
                 </div>
 
                 <div class="faq-item">
@@ -1245,13 +1292,9 @@
             <div class="footer-logo-cell">
                 <img src="Full_logo.png" alt="AIVON" class="footer-logo-right" onerror="this.src='aivon_logo.png'">
             </div>
-            <div class="footer-logo-cell">
-                <img src="GLC_Logo.png" alt="GL Chemtec" class="footer-logo-left" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-                <span class="footer-logo-fallback" style="display:none; color: var(--text); font-size: 1rem; font-weight: 600;">GL Chemtec</span>
-            </div>
         </div>
         <div class="footer-text-block">
-            <p style="color: var(--text); font-size: 16px; margin-bottom: 8px;">GL-Chemdraw — Chemical Structure Drawing for GLC</p>
+            <p style="color: var(--text); font-size: 16px; margin-bottom: 8px;">GL-Chemdraw — Chemical Structure Drawing for GL Chemtec</p>
             <p style="color: var(--cyan); font-size: 14px; margin-bottom: 8px;">Built by AIVON</p>
             <p style="font-size: 14px;">Support: <a href="mailto:haron@aivon.tech" class="support-email">haron@aivon.tech</a></p>
         </div>

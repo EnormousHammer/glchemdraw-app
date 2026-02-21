@@ -40,6 +40,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
   const [validation, setValidation] = useState<StructureValidation | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [molecularFormula, setMolecularFormula] = useState<string>('');
+  const [isMultiStructure, setIsMultiStructure] = useState(false);
   const [stereoInfo, setStereoInfo] = useState<{
     defined: number;
     undefined: number;
@@ -89,7 +90,10 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
 
         // Extract molecular formula and stereo info
         if (result.isValid) {
+          setIsMultiStructure(smiles.includes('.'));
           await extractAdditionalInfo(smiles);
+        } else {
+          setIsMultiStructure(false);
         }
       } catch (error) {
         console.error('[ValidationPanel] Validation error:', error);
@@ -110,7 +114,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
 
   const extractAdditionalInfo = async (smilesStr: string) => {
     try {
-      // Use OpenChemLib for basic info (skip RDKit due to WASM issues)
+      // Use OpenChemLib for basic info - getFirstStructureSmiles handles multi-structure
       const { getMolecularFormulaFromSmiles } = await import('../../lib/chemistry/openchemlib');
       
       const formula = getMolecularFormulaFromSmiles(smilesStr);
@@ -216,6 +220,13 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                   Molecular Formula
                 </Typography>
               </Stack>
+              {isMultiStructure && (
+                <Tooltip title="Multiple disconnected structures detected. Formula shows first structure only. Select one structure or bond them for accurate data.">
+                  <Alert severity="warning" sx={{ mb: 1, py: 0.5 }} variant="outlined">
+                    <Typography variant="caption">Disconnected structures — formula for first only</Typography>
+                  </Alert>
+                </Tooltip>
+              )}
               <Paper
                 variant="outlined"
                 sx={{

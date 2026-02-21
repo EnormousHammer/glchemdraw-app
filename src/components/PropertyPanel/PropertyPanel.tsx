@@ -57,7 +57,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({ smiles, molfile })
         }
       }
 
-      // Use OpenChemLib for calculations (skip RDKit due to WASM issues)
+      // Use OpenChemLib for calculations - handles multi-structure (uses first only)
       if (smilesStr) {
         const oclFormula = ocl.getMolecularFormulaFromSmiles(smilesStr);
         const oclMW = ocl.getMolecularWeightFromSmiles(smilesStr);

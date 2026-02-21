@@ -81,7 +81,12 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
       setError('No structure to predict');
       return;
     }
-    const input = molfile || smiles || '';
+    let input: string = molfile || smiles || '';
+    // Use first structure only if multi-structure SMILES (e.g. "C1ccccc1.Oc" from disconnected fragments)
+    if (typeof input === 'string' && !input.includes('\n') && input.includes('.')) {
+      const parts = input.split(/\s*\.\s*/);
+      input = parts[0] || input;
+    }
     setLoading(true);
     setError(null);
     setProtonPeaks([]);
@@ -92,18 +97,28 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
         await Promise.all([fetchProton(), fetchCarbon()]);
         setDbReady(true);
       }
-      const [protonResult, carbonResult] = await Promise.all([
-        proton(input, { use: 'median' }).catch((e: Error) => {
+      // nmr-predictor proton/carbon return synchronously (not Promises) - wrap in async to handle errors
+      const runProton = async (): Promise<PredictedPeak[]> => {
+        try {
+          const result = proton(input, { use: 'median' });
+          return Array.isArray(result) ? (result as PredictedPeak[]) : [];
+        } catch (e) {
           console.warn('[NMR] Proton prediction failed:', e);
           return [];
-        }),
-        carbon(input, { use: 'median' }).catch((e: Error) => {
+        }
+      };
+      const runCarbon = async (): Promise<PredictedPeak[]> => {
+        try {
+          const result = carbon(input, { use: 'median' });
+          return Array.isArray(result) ? (result as PredictedPeak[]) : [];
+        } catch (e) {
           console.warn('[NMR] Carbon prediction failed:', e);
           return [];
-        }),
-      ]);
-      setProtonPeaks(protonResult as PredictedPeak[]);
-      setCarbonPeaks(carbonResult as PredictedPeak[]);
+        }
+      };
+      const [protonResult, carbonResult] = await Promise.all([runProton(), runCarbon()]);
+      setProtonPeaks(protonResult);
+      setCarbonPeaks(carbonResult);
     } catch (err) {
       console.error('[NMRPrediction] Error:', err);
       setError(err instanceof Error ? err.message : 'NMR prediction failed');

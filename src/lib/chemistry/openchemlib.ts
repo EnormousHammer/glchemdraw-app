@@ -22,12 +22,23 @@ export function parseSmilesOCL(smiles: string): any {
 }
 
 /**
- * Get molecular formula from SMILES
- * @param smiles - SMILES string
+ * Get first structure from multi-structure SMILES (dot-separated).
+ * Prevents invalid formula when disconnected fragments (e.g. benzene + OMe) are combined.
+ */
+export function getFirstStructureSmiles(smiles: string): string {
+  if (!smiles || typeof smiles !== 'string') return smiles || '';
+  const parts = smiles.split(/\s*\.\s*/).filter(Boolean);
+  return parts[0] || smiles;
+}
+
+/**
+ * Get molecular formula from SMILES.
+ * For multi-structure SMILES (dot-separated), uses first structure only to avoid invalid formulas.
  */
 export function getMolecularFormula(smiles: string): string | null {
   try {
-    const mol = OCL.Molecule.fromSmiles(smiles);
+    const single = getFirstStructureSmiles(smiles);
+    const mol = OCL.Molecule.fromSmiles(single);
     return mol.getMolecularFormula().formula;
   } catch (error) {
     console.error('[OpenChemLib] Error getting molecular formula:', error);
@@ -36,12 +47,13 @@ export function getMolecularFormula(smiles: string): string | null {
 }
 
 /**
- * Get molecular weight from SMILES
- * @param smiles - SMILES string
+ * Get molecular weight from SMILES.
+ * For multi-structure SMILES, uses first structure only.
  */
 export function getMolecularWeight(smiles: string): number | null {
   try {
-    const mol = OCL.Molecule.fromSmiles(smiles);
+    const single = getFirstStructureSmiles(smiles);
+    const mol = OCL.Molecule.fromSmiles(single);
     return mol.getMolecularFormula().relativeWeight;
   } catch (error) {
     console.error('[OpenChemLib] Error getting molecular weight:', error);

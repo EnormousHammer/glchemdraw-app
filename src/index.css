@@ -55,7 +55,11 @@
 .Ketcher-root [title*="Ketcher"],
 .Ketcher-root [title*="ketcher"],
 .Ketcher-root [aria-label*="Ketcher"],
-.Ketcher-root [aria-label*="ketcher"] {
+.Ketcher-root [aria-label*="ketcher"],
+.Ketcher-polymer-editor-root [title*="Ketcher"],
+.Ketcher-polymer-editor-root [title*="ketcher"],
+.Ketcher-polymer-editor-root [aria-label*="Ketcher"],
+.Ketcher-polymer-editor-root [aria-label*="ketcher"] {
   display: none !important;
   visibility: hidden !important;
 }
@@ -80,26 +84,57 @@
 .Ketcher-root button[title*="3D"],
 .Ketcher-root button[title*="3d"],
 .Ketcher-root button[aria-label*="3D"],
-.Ketcher-root button[aria-label*="3d"] {
+.Ketcher-root button[aria-label*="3d"],
+/* Macromolecules mode: same buttons in polymer editor */
+.Ketcher-polymer-editor-root button[title*="Information"],
+.Ketcher-polymer-editor-root button[title*="information"],
+.Ketcher-polymer-editor-root button[aria-label*="Information"],
+.Ketcher-polymer-editor-root button[aria-label*="information"],
+.Ketcher-polymer-editor-root button[title*="Info"],
+.Ketcher-polymer-editor-root button[title*="About"],
+.Ketcher-polymer-editor-root button[aria-label*="About"],
+.Ketcher-polymer-editor-root button[title="i"],
+.Ketcher-polymer-editor-root button[aria-label="i"],
+.Ketcher-polymer-editor-root button[title*="Help"],
+.Ketcher-polymer-editor-root button[title*="help"],
+.Ketcher-polymer-editor-root button[aria-label*="Help"],
+.Ketcher-polymer-editor-root button[aria-label*="help"],
+.Ketcher-polymer-editor-root button[title="?"],
+.Ketcher-polymer-editor-root button[aria-label="?"],
+.Ketcher-polymer-editor-root button[title*="3D"],
+.Ketcher-polymer-editor-root button[title*="3d"],
+.Ketcher-polymer-editor-root button[aria-label*="3D"],
+.Ketcher-polymer-editor-root button[aria-label*="3d"] {
   display: none !important;
   visibility: hidden !important;
 }
 
-/* Block Ketcher About/FAQ/Info modal - white cover to match app, looks like nothing is there */
+/* Block Ketcher About/FAQ/Info modal - white cover to match app (molecules + macromolecules) */
 .Ketcher-root [role="dialog"]:has(a[href*="epam.com"]),
 .Ketcher-root [role="dialog"]:has(a[href*="ketcher"]),
 .Ketcher-root [role="dialog"]:has([data-testid="build-version"]),
 .Ketcher-root .bp6-dialog:has(a[href*="epam.com"]),
 .Ketcher-root .bp6-dialog:has(a[href*="ketcher"]),
 .Ketcher-root [class*="Dialog"]:has(a[href*="epam.com"]),
-.Ketcher-root [class*="dialog"]:has(a[href*="epam.com"]) {
+.Ketcher-root [class*="dialog"]:has(a[href*="epam.com"]),
+.Ketcher-polymer-editor-root [role="dialog"]:has(a[href*="epam.com"]),
+.Ketcher-polymer-editor-root [role="dialog"]:has(a[href*="ketcher"]),
+.Ketcher-polymer-editor-root [role="dialog"]:has([data-testid="build-version"]),
+.Ketcher-polymer-editor-root .bp6-dialog:has(a[href*="epam.com"]),
+.Ketcher-polymer-editor-root .bp6-dialog:has(a[href*="ketcher"]),
+.Ketcher-polymer-editor-root [class*="Dialog"]:has(a[href*="epam.com"]),
+.Ketcher-polymer-editor-root [class*="dialog"]:has(a[href*="epam.com"]) {
   background: #fff !important;
   box-shadow: none !important;
 }
 .Ketcher-root [role="dialog"]:has(a[href*="epam.com"]) *,
 .Ketcher-root [role="dialog"]:has(a[href*="ketcher"]) *,
 .Ketcher-root .bp6-dialog:has(a[href*="epam.com"]) *,
-.Ketcher-root .bp6-dialog:has(a[href*="ketcher"]) * {
+.Ketcher-root .bp6-dialog:has(a[href*="ketcher"]) *,
+.Ketcher-polymer-editor-root [role="dialog"]:has(a[href*="epam.com"]) *,
+.Ketcher-polymer-editor-root [role="dialog"]:has(a[href*="ketcher"]) *,
+.Ketcher-polymer-editor-root .bp6-dialog:has(a[href*="epam.com"]) *,
+.Ketcher-polymer-editor-root .bp6-dialog:has(a[href*="ketcher"]) * {
   visibility: hidden !important;
 }
 
@@ -116,22 +151,37 @@
   pointer-events: none !important;
 }
 
-/* Ketcher About/FAQ modal in portal - white cover to match, looks like nothing */
+/* Ketcher About/FAQ modal in portal - white cover (macromolecules modal may render at body) */
 body [role="dialog"]:has(a[href*="epam.com"]),
-body .bp6-dialog:has(a[href*="epam.com"]) {
+body [role="dialog"]:has(a[href*="ketcher"]),
+body [role="dialog"]:has(a[href*="lifescience.opensource"]),
+body .bp6-dialog:has(a[href*="epam.com"]),
+body .bp6-dialog:has(a[href*="ketcher"]),
+body .bp6-dialog:has(a[href*="lifescience.opensource"]) {
   background: #fff !important;
   box-shadow: none !important;
+  pointer-events: none !important;
 }
 body [role="dialog"]:has(a[href*="epam.com"]) *,
-body .bp6-dialog:has(a[href*="epam.com"]) * {
+body [role="dialog"]:has(a[href*="ketcher"]) *,
+body [role="dialog"]:has(a[href*="lifescience.opensource"]) *,
+body .bp6-dialog:has(a[href*="epam.com"]) *,
+body .bp6-dialog:has(a[href*="ketcher"]) *,
+body .bp6-dialog:has(a[href*="lifescience.opensource"]) * {
   visibility: hidden !important;
 }
-body .bp6-overlay:has(a[href*="epam.com"]) {
+body .bp6-overlay:has(a[href*="epam.com"]),
+body .bp6-overlay:has(a[href*="ketcher"]),
+body .bp6-overlay:has(a[href*="lifescience.opensource"]) {
   background: #fff !important;
   backdrop-filter: none !important;
 }
 body .bp6-overlay:has(a[href*="epam.com"]) .bp6-dialog,
-body .bp6-overlay:has(a[href*="epam.com"]) [role="dialog"] {
+body .bp6-overlay:has(a[href*="epam.com"]) [role="dialog"],
+body .bp6-overlay:has(a[href*="ketcher"]) .bp6-dialog,
+body .bp6-overlay:has(a[href*="ketcher"]) [role="dialog"],
+body .bp6-overlay:has(a[href*="lifescience.opensource"]) .bp6-dialog,
+body .bp6-overlay:has(a[href*="lifescience.opensource"]) [role="dialog"] {
   background: #fff !important;
   border: none !important;
 }

@@ -45,7 +45,9 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
     const coverKetcherInfoModal = () => {
       document.querySelectorAll('[role="dialog"], .bp6-dialog, .bp6-overlay').forEach((el) => {
         const html = el.innerHTML || '';
-        if (html.includes('epam.com') || html.includes('build-version') || (html.includes('Ketcher') && html.includes('Feedback'))) {
+        const isKetcherModal = html.includes('epam.com') || html.includes('build-version') || html.includes('lifescience.opensource')
+          || (html.includes('Ketcher') && (html.includes('Feedback') || html.includes('FAQ') || html.includes('faq') || html.includes('Help')));
+        if (isKetcherModal) {
           const overlay = el.closest('.bp6-overlay') || el;
           const t = overlay as HTMLElement;
           t.style.setProperty('background', '#fff', 'important');

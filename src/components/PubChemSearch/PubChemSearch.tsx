@@ -50,6 +50,7 @@ import {
 import { searchCompound, searchCompoundByName } from '@lib/pubchem/cache';
 import { get2DImageURL } from '@lib/pubchem/api';
 import PubChemAdvanced from '@components/PubChemAdvanced';
+import { useAIContext } from '@/contexts/AIContext';
 
 interface SearchResult {
   cid: number;
@@ -76,6 +77,7 @@ interface SearchFilters {
 }
 
 export const PubChemSearch: React.FC<PubChemSearchProps> = ({ onCompoundSelect }) => {
+  const { context: aiContext } = useAIContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedCompound, setSelectedCompound] = useState<SearchResult | null>(null);
@@ -155,8 +157,31 @@ export const PubChemSearch: React.FC<PubChemSearchProps> = ({ onCompoundSelect }
         setSearchResults([searchResult]);
         setSelectedCompound(searchResult);
       } else {
-        setSearchResults([]);
-        setError('No compounds found');
+        // AI fallback when PubChem has no match
+        try {
+          const { aiNameToSmiles } = await import('@/lib/openai/chemistry');
+          const aiSmiles = await aiNameToSmiles(query, aiContext);
+          if (aiSmiles) {
+            const searchResult: SearchResult = {
+              cid: 0,
+              name: query,
+              formula: '',
+              weight: 0,
+              smiles: aiSmiles,
+              imageUrl: '',
+              isFavorite: false,
+            };
+            setSearchResults([searchResult]);
+            setSelectedCompound(searchResult);
+            setError(null);
+          } else {
+            setSearchResults([]);
+            setError('No compounds found');
+          }
+        } catch {
+          setSearchResults([]);
+          setError('No compounds found');
+        }
       }
     } catch (err) {
       console.error('[PubChemSearch] Search error:', err);

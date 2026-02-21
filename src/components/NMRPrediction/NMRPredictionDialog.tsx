@@ -31,6 +31,7 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import { useAIContext, appendUserContext } from '@/contexts/AIContext';
+import { stripMarkdown } from '@/lib/utils/stripMarkdown';
 
 interface NMRPredictionDialogProps {
   open: boolean;
@@ -367,7 +368,7 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
       const content = await chatWithOpenAI([
         {
           role: 'system',
-          content: 'You are an expert organic chemist and NMR spectroscopist. Give detailed, factual, educational explanations of NMR spectra. Use real chemical shift values and reference typical ranges. Explain the structural reasons for each signal. Be thorough and cite well-established NMR principles. Cover ¹H, ¹³C, and any ¹⁵N, ³¹P, ¹⁹F if present.',
+          content: 'You are an expert organic chemist and NMR spectroscopist. Give detailed, factual, educational explanations of NMR spectra. Use real chemical shift values and reference typical ranges. Explain the structural reasons for each signal. Be thorough and cite well-established NMR principles. Cover ¹H, ¹³C, and any ¹⁵N, ³¹P, ¹⁹F if present. Use plain text only—no markdown (no **, ##, *, bullets). When mentioning chemical structures, use SMILES (e.g. CC(=O)C) or standard formulas (e.g. CH3-CO-CH3) so they display correctly.',
         },
         {
           role: 'user',
@@ -480,12 +481,29 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
               )}
               {explainText && (
                 <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'action.hover' }}>
-                  <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <PsychologyIcon fontSize="small" color="primary" />
-                    AI Explanation
-                  </Typography>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {explainText}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <PsychologyIcon fontSize="small" color="primary" />
+                      AI Explanation
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="text"
+                      startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
+                      onClick={() => navigator.clipboard.writeText(stripMarkdown(explainText))}
+                      sx={{ minWidth: 0, px: 1, fontSize: '0.75rem' }}
+                    >
+                      Copy
+                    </Button>
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {stripMarkdown(explainText)}
                   </Typography>
                 </Paper>
               )}

@@ -29,6 +29,7 @@ import {
   CheckCircle as SuccessIcon,
 } from '@mui/icons-material';
 import * as pubchemCache from '@lib/pubchem/cache';
+import { useAIContext } from '@/contexts/AIContext';
 
 interface NameToStructureProps {
   onStructureFound?: (smiles: string, name: string, cid?: number) => void;
@@ -48,6 +49,7 @@ export const NameToStructure: React.FC<NameToStructureProps> = ({
   onStructureFound,
   onError,
 }) => {
+  const { context: aiContext } = useAIContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
@@ -86,9 +88,28 @@ export const NameToStructure: React.FC<NameToStructureProps> = ({
           onStructureFound(searchResult.smiles, searchResult.name, searchResult.cid);
         }
       } else {
-        setError(`No compound found for "${searchTerm}"`);
-        if (onError) {
-          onError(`No compound found for "${searchTerm}"`);
+        // AI fallback when PubChem has no match
+        try {
+          const { aiNameToSmiles } = await import('@/lib/openai/chemistry');
+          const aiSmiles = await aiNameToSmiles(searchTerm.trim(), aiContext);
+          if (aiSmiles) {
+            const searchResult: SearchResult = {
+              name: searchTerm.trim(),
+              smiles: aiSmiles,
+              cid: 0,
+              iupac: searchTerm.trim(),
+            };
+            setResult(searchResult);
+            setError(null);
+            if (onStructureFound) onStructureFound(aiSmiles, searchTerm.trim(), undefined);
+            setSearchHistory((prev) => [searchResult, ...prev.slice(0, 4)]);
+          } else {
+            setError(`No compound found for "${searchTerm}". Try a different name or check spelling.`);
+            if (onError) onError(`No compound found for "${searchTerm}"`);
+          }
+        } catch {
+          setError(`No compound found for "${searchTerm}"`);
+          if (onError) onError(`No compound found for "${searchTerm}"`);
         }
       }
     } catch (err) {
@@ -100,7 +121,7 @@ export const NameToStructure: React.FC<NameToStructureProps> = ({
     } finally {
       setIsSearching(false);
     }
-  }, [searchTerm, onStructureFound, onError]);
+  }, [searchTerm, onStructureFound, onError, aiContext]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -210,12 +231,11 @@ export const NameToStructure: React.FC<NameToStructureProps> = ({
                       variant="outlined"
                     />
                   )}
-                  <Chip
-                    label={`CID: ${result.cid}`}
-                    size="small"
-                    color="info"
-                    variant="outlined"
-                  />
+                  {result.cid > 0 ? (
+                    <Chip label={`CID: ${result.cid}`} size="small" color="info" variant="outlined" />
+                  ) : (
+                    <Chip label="AI" size="small" color="secondary" variant="outlined" />
+                  )}
                 </Stack>
               </Box>
               <IconButton onClick={handleCopySmiles} color="primary">

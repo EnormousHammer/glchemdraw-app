@@ -7,8 +7,9 @@ import { test, expect } from '@playwright/test';
 test.describe('GlChemDraw Application', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    // Wait for loading screen (5s) + app to render
-    await page.waitForSelector('text=Structure Drawing & Analysis', { timeout: 15000 });
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByText('Click anywhere to start').click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('text=Chemical Info', { timeout: 30000 });
   });
 
   test('should load the application', async ({ page }) => {

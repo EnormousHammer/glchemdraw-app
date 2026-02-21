@@ -9,14 +9,15 @@ import * as fs from 'fs';
 test.describe('File Operations', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('text=Structure Drawing & Analysis', { timeout: 15000 });
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByText('Click anywhere to start').click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('text=Chemical Info', { timeout: 30000 });
   });
 
   test('should have file operation buttons', async ({ page }) => {
-    // Check Ketcher toolbar buttons exist (use data-testid for Open to avoid "Open Angle")
+    // Check Ketcher toolbar buttons exist
     await expect(page.getByRole('button', { name: /clear canvas/i })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByTestId('open-file-button')).toBeVisible();
+    await expect(page.getByRole('button', { name: /open\.\.\.\s*\(ctrl\+o\)/i })).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole('button', { name: /save as/i })).toBeVisible();
   });
 

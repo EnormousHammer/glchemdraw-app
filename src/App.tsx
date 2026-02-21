@@ -9,6 +9,7 @@ import { lightTheme, darkTheme, highContrastTheme } from './theme';
 import AppLayout from '@components/Layout';
 import ErrorBoundary from '@components/ErrorBoundary';
 import LoadingScreen from '@components/LoadingScreen';
+import { AIContextProvider } from './contexts/AIContext';
 
 type ThemeMode = 'light' | 'dark' | 'highContrast';
 
@@ -70,7 +71,9 @@ function App() {
     <ErrorBoundary onError={handleError}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <AppLayout />
+        <AIContextProvider>
+          <AppLayout />
+        </AIContextProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

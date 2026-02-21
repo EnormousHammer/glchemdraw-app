@@ -1,0 +1,30 @@
+---
+description: Use AI (OpenAI) when info is missing or needed across all sections
+alwaysApply: true
+---
+
+# AI Fallback for Missing Info
+
+## Rule
+
+**For all sections of the app, when information is missing or needed, use AI (OpenAI) to fill it.**
+
+## Sections to Apply
+
+1. **NMR** – When no ¹H/¹³C signals predicted, offer "Ask AI for NMR" to retry with AI
+2. **IUPAC Name** – When PubChem returns N/A or no match, offer "Get AI Name" / "Get AI"
+3. **Search** – When PubChem has no CID for a name, use AI name-to-SMILES fallback
+4. **Name-to-Structure** – When PubChem fails, use AI to convert name to SMILES
+5. **PubChem Search** – When no compounds found, try AI fallback
+6. **Physical properties, safety, descriptors** – When data is null/N/A, consider AI to provide estimates or explanations
+
+## Implementation Pattern
+
+- Add a button/link like "Get AI", "Ask AI", or "Explain with AI" next to empty/N/A fields
+- Use `chatWithOpenAI` from `@/lib/openai` or helpers from `@/lib/openai/chemistry`
+- Ensure `npm run dev:proxy` is running for OpenAI (localhost:3001)
+
+## Remember
+
+- **NMR** = AI first, then nmrdb.org, then nmr-predictor
+- **Always** offer AI when info is missing or needed

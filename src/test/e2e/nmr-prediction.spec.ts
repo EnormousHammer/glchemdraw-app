@@ -9,7 +9,9 @@ test.describe('NMR Prediction', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByText('Click anywhere to start').click({ timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('text=Chemical Info', { timeout: 30000 });
   });
 
   test('should open NMR dialog and show prediction (nmr-predictor fallback)', async ({ page }) => {

@@ -3,54 +3,45 @@
  * AI-powered chemistry features including structure-to-name, reaction prediction, and property analysis
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useAIContext, appendUserContext } from '@/contexts/AIContext';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   Button,
   Stack,
   Chip,
   CircularProgress,
   Alert,
-  TextField,
   FormControl,
   InputLabel,
   Select,
-  Grid,
   MenuItem,
-  Paper,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  IconButton,
-  Tooltip,
   LinearProgress,
 } from '@mui/material';
 import {
   Psychology as AIIcon,
   Science as ChemistryIcon,
-  AutoAwesome as SparkleIcon,
-  Refresh as RefreshIcon,
   ContentCopy as CopyIcon,
   CheckCircle as SuccessIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-  ExpandMore as ExpandMoreIcon,
   PlayArrow as PlayIcon,
-  Stop as StopIcon,
 } from '@mui/icons-material';
+import { stripMarkdown } from '@/lib/utils/stripMarkdown';
 
 interface AIIntegrationProps {
   smiles?: string;
   molfile?: string;
+  /** Summary of data we already have from PubChem - AI should NOT repeat this */
+  existingData?: {
+    name?: string;
+    iupacName?: string;
+    molecularFormula?: string;
+    molecularWeight?: number;
+    logP?: number;
+    tpsa?: number;
+    casNumber?: string;
+    cid?: number;
+  };
   onStructureGenerated?: (smiles: string, name: string) => void;
   onError?: (error: string) => void;
 }
@@ -151,6 +142,7 @@ interface AIAnalysis {
 export const AIIntegration: React.FC<AIIntegrationProps> = ({
   smiles,
   molfile,
+  existingData,
   onStructureGenerated,
   onError,
 }) => {
@@ -159,8 +151,16 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [analysisType, setAnalysisType] = useState<'comprehensive' | 'naming' | 'properties' | 'reactions' | 'safety'>('comprehensive');
   const [progress, setProgress] = useState(0);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const { context: aiContext } = useAIContext();
+
+  // Scroll results into view when analysis completes
+  useEffect(() => {
+    if (analysis && !isAnalyzing) {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [analysis, isAnalyzing]);
 
   const getSmilesForPrompt = useCallback(async (): Promise<string> => {
     const { getFirstStructureSmiles } = await import('@/lib/chemistry/openchemlib');
@@ -197,18 +197,33 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
         throw new Error('Could not get valid SMILES for structure');
       }
 
+      const hasExisting = existingData && [
+        existingData.name,
+        existingData.iupacName,
+        existingData.molecularFormula,
+        existingData.molecularWeight,
+        existingData.logP,
+        existingData.tpsa,
+        existingData.casNumber,
+      ].some(Boolean);
+      const skipNote = hasExisting
+        ? `\n\nIMPORTANT: User already has from PubChem: ${[
+            existingData!.name && 'name',
+            existingData!.iupacName && 'IUPAC',
+            existingData!.molecularFormula && 'formula',
+            existingData!.molecularWeight != null && 'MW',
+            existingData!.logP != null && 'LogP',
+            existingData!.tpsa != null && 'TPSA',
+            existingData!.casNumber && 'CAS',
+          ].filter(Boolean).join(', ')}. Do NOT repeat these. Only provide NEW info (reactions, synthesis, safety insights). Plain text only, no markdown.`
+        : '\n\nPlain text only, no markdown (no **, ##, *, etc).';
+
       const promptByType: Record<string, string> = {
-        comprehensive: `Analyze this molecule (SMILES: ${smi}). Provide a detailed, factual analysis in clear sections:
-1) IUPAC Name and common name(s) with structural context
-2) Key physicochemical properties (MW, LogP, HBD/HBA, TPSA, rotatable bonds) with typical interpretation
-3) Drug-likeness assessment (Lipinski/Veber rules, score 0-100, specific recommendations)
-4) 3-4 likely chemical reactions with realistic conditions, reagents, and products
-5) Safety considerations, handling precautions, and known hazards
-6) Synthesis suggestions with plausible routes`,
-        naming: `Given SMILES: ${smi}, provide the IUPAC name and common name if applicable. Include structural context.`,
-        properties: `For SMILES: ${smi}, list key molecular properties (MW, LogP, TPSA, HBD, HBA, rotatable bonds, aromatic rings) with brief interpretation of each.`,
-        reactions: `For SMILES: ${smi}, suggest 3-4 likely chemical reactions with realistic conditions, reagents, and products. Explain the chemistry.`,
-        safety: `For SMILES: ${smi}, provide detailed safety considerations, handling precautions, and any known hazards. Be thorough.`,
+        comprehensive: `Analyze this molecule (SMILES: ${smi}). Provide ONLY information the user does not already have. Focus on: drug-likeness assessment, likely chemical reactions with conditions, safety insights beyond databases, synthesis suggestions.${skipNote}`,
+        naming: `Given SMILES: ${smi}, provide the IUPAC name and common name if applicable.${existingData?.iupacName ? ' User already has IUPAC - provide only if you have a different/better name.' : ''}${skipNote}`,
+        properties: `For SMILES: ${smi}, list ONLY properties the user might not have: drug-likeness, TPSA interpretation, HBD/HBA, rotatable bonds. Skip MW, LogP, formula if user already has them.${skipNote}`,
+        reactions: `For SMILES: ${smi}, suggest 3-4 likely chemical reactions with realistic conditions, reagents, and products. Explain the chemistry.${skipNote}`,
+        safety: `For SMILES: ${smi}, provide safety considerations, handling precautions, and hazards.${skipNote}`,
       };
       const userPrompt = appendUserContext(
         promptByType[analysisType] ?? promptByType.comprehensive,
@@ -220,7 +235,7 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
       const content = await chatWithOpenAI([
         {
           role: 'system',
-          content: 'You are an expert chemist. Provide detailed, factual, educational analysis. Use accurate terminology and cite well-established chemical principles. Be thorough and informative.',
+          content: 'You are an expert chemist. Provide detailed, factual analysis. Use plain text only—no markdown (no **, ##, *, bullets, or formatting symbols). Do not repeat information the user already has from PubChem.',
         },
         { role: 'user', content: userPrompt },
       ]);
@@ -257,7 +272,7 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
       const content = await chatWithOpenAI([
         {
           role: 'system',
-          content: 'You are a chemistry expert. Reply with ONLY the IUPAC name. If there is a common name, add it in parentheses on the same line, e.g. "IUPAC name (common name)". No other text.',
+          content: 'You are a chemistry expert. Reply with ONLY the IUPAC name. If there is a common name, add it in parentheses on the same line. Use plain text only—no markdown (no **, ##, *, etc).',
         },
         { role: 'user', content: nameUserMsg },
       ]);
@@ -318,15 +333,15 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
     return 'Poor';
   };
 
-  return (
-    <Box sx={{ p: 0 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5, lineHeight: 1.4 }}>
-        Use when PubChem has no match, or for extra analysis.
-      </Typography>
+  const handleCopyResult = useCallback((text: string) => {
+    navigator.clipboard?.writeText(text);
+  }, []);
 
-      {/* Row: Analysis type */}
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-        <FormControl size="small" sx={{ minWidth: 140, flex: 1 }}>
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      {/* Controls: compact layout */}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+        <FormControl size="small" sx={{ minWidth: 120, '& .MuiInputBase-root': { fontSize: '0.8rem' } }}>
           <InputLabel>Analysis Type</InputLabel>
           <Select
             value={analysisType}
@@ -340,269 +355,84 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
             <MenuItem value="safety">Safety</MenuItem>
           </Select>
         </FormControl>
-      </Stack>
-
-      {/* Action buttons - single row, consistent style */}
-      <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ gap: 0.75, mb: 1.5 }}>
-        <Button
-          size="small"
-          variant="contained"
-          onClick={handleAIAnalysis}
-          disabled={isAnalyzing || (!smiles && !molfile)}
-          startIcon={isAnalyzing ? <CircularProgress size={14} /> : <AIIcon sx={{ fontSize: 16 }} />}
-          sx={{ fontSize: '0.7rem', textTransform: 'none' }}
-        >
-          {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={handleGenerateName}
-          disabled={isAnalyzing || (!smiles && !molfile)}
-          startIcon={<ChemistryIcon sx={{ fontSize: 16 }} />}
-          sx={{ fontSize: '0.7rem', textTransform: 'none' }}
-        >
-          Generate Name
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={handlePredictReactions}
-          disabled={isAnalyzing || (!smiles && !molfile)}
-          startIcon={<PlayIcon sx={{ fontSize: 16 }} />}
-          sx={{ fontSize: '0.7rem', textTransform: 'none' }}
-        >
-          Predict Reactions
-        </Button>
-      </Stack>
-
-      {/* Progress Bar */}
-      {isAnalyzing && (
-        <Box sx={{ mb: 3 }}>
-          <LinearProgress variant="determinate" value={progress} />
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            AI Analysis Progress: {Math.round(progress)}%
-          </Typography>
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={handleAIAnalysis}
+            disabled={isAnalyzing || (!smiles && !molfile)}
+            startIcon={isAnalyzing ? <CircularProgress size={14} color="inherit" /> : <AIIcon sx={{ fontSize: 16 }} />}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
+          </Button>
+          <Button size="small" variant="outlined" onClick={handleGenerateName} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<ChemistryIcon sx={{ fontSize: 16 }} />} sx={{ textTransform: 'none' }}>
+            Generate Name
+          </Button>
+          <Button size="small" variant="outlined" onClick={handlePredictReactions} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<PlayIcon sx={{ fontSize: 16 }} />} sx={{ textTransform: 'none' }}>
+            Predict Reactions
+          </Button>
         </Box>
+      </Box>
+
+      {/* Progress */}
+      {isAnalyzing && (
+        <LinearProgress variant="determinate" value={progress} sx={{ borderRadius: 1, height: 3 }} />
       )}
 
-      {/* Error Display */}
+      {/* Error - prominent when proxy down */}
       {error && (
-        <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError(null)}>
+        <Alert severity="error" onClose={() => setError(null)} sx={{ '& .MuiAlert-message': { fontSize: '0.8125rem' } }}>
           {error}
         </Alert>
       )}
 
       {/* Analysis Results */}
       {analysis && (
-        <Stack spacing={3}>
-          {/* Full AI Response (for comprehensive / when parsing is minimal) */}
-          {analysis.aiRawText && (analysisType === 'comprehensive' || analysisType === 'reactions' || analysisType === 'safety' || analysisType === 'properties') && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <SuccessIcon color="success" />
-                  AI Analysis
+        <Stack ref={resultsRef} spacing={1.5}>
+          {analysis.aiRawText && (
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5, py: 1, bgcolor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <SuccessIcon color="success" sx={{ fontSize: 18 }} />
+                  Analysis Result
                 </Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default', maxHeight: 400, overflow: 'auto' }}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {analysis.aiRawText}
+                <Button size="small" variant="text" startIcon={<CopyIcon sx={{ fontSize: 14 }} />} onClick={() => handleCopyResult(stripMarkdown(analysis.aiRawText!))} sx={{ minWidth: 0, px: 1, fontSize: '0.75rem' }}>
+                  Copy
+                </Button>
+              </Box>
+              <Box sx={{ p: 1.5, maxHeight: 320, overflow: 'auto' }}>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.8rem' }}>
+                    {stripMarkdown(analysis.aiRawText)}
                   </Typography>
-                </Paper>
-              </CardContent>
-            </Card>
+              </Box>
+            </Box>
           )}
-          {/* IUPAC Name */}
-          {analysis.iupacName && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <SuccessIcon color="success" />
-                  IUPAC Name
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
-                  <Typography variant="h6" sx={{ fontFamily: 'monospace' }}>
-                    {analysis.iupacName}
-                  </Typography>
-                  {analysis.commonName && (
-                    <Typography variant="body2" color="text.secondary">
-                      Common name: {analysis.commonName}
-                    </Typography>
-                  )}
-                </Paper>
-              </CardContent>
-            </Card>
+          {analysis.iupacName && analysis.iupacName.length < 200 && (
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.secondary">IUPAC:</Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 500 }}>{analysis.iupacName}</Typography>
+              {analysis.commonName && <Typography variant="caption" color="text.secondary">({analysis.commonName})</Typography>}
+            </Box>
           )}
-
-          {/* Predicted Properties */}
-          {analysis.predictedProperties && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Predicted Properties
-                </Typography>
-                <Grid container spacing={2}>
-                  {Object.entries(analysis.predictedProperties).map(([key, value]) => (
-                    <Grid size={{ xs: 6, sm: 4 }} key={key}>
-                      <Paper variant="outlined" sx={{ p: 1, textAlign: 'center' }}>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {key.toUpperCase()}
-                        </Typography>
-                        <Typography variant="h6" color="primary">
-                          {typeof value === 'number' ? value.toFixed(2) : value}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-              </CardContent>
-            </Card>
+          {analysis.predictedProperties && Object.keys(analysis.predictedProperties).length > 0 && (
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              {Object.entries(analysis.predictedProperties).map(([key, value]) => (
+                <Chip key={key} size="small" label={`${key.toUpperCase()}: ${typeof value === 'number' ? value.toFixed(2) : value}`} variant="outlined" />
+              ))}
+            </Box>
           )}
-
-          {/* Drug Likeness */}
-          {analysis.drugLikeness && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Drug Likeness Analysis
-                </Typography>
-                <Stack spacing={2}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="body1">Overall Score:</Typography>
-                    <Chip
-                      label={`${analysis.drugLikeness.overallScore}/100 - ${getDrugLikenessLabel(analysis.drugLikeness.overallScore || 0)}`}
-                      color={getDrugLikenessColor(analysis.drugLikeness.overallScore || 0) as any}
-                      variant="filled"
-                    />
-                  </Box>
-                  
-                  <Box>
-                    <Typography variant="body2" gutterBottom>
-                      Lipinski Violations: {analysis.drugLikeness.lipinskiViolations}/5
-                    </Typography>
-                    <Typography variant="body2" gutterBottom>
-                      Veber Violations: {analysis.drugLikeness.veberViolations}/2
-                    </Typography>
-                  </Box>
-
-                  {analysis.drugLikeness.recommendations && (
-                    <Box>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Recommendations:
-                      </Typography>
-                      <List dense>
-                        {analysis.drugLikeness.recommendations.map((rec, index) => (
-                          <ListItem key={index}>
-                            <ListItemIcon>
-                              <WarningIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primary={rec} />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Box>
-                  )}
-                </Stack>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Reaction Predictions */}
-          {analysis.reactionPredictions && analysis.reactionPredictions.length > 0 && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Predicted Reactions
-                </Typography>
-                <Stack spacing={2}>
-                  {analysis.reactionPredictions.map((reaction, index) => (
-                    <Accordion key={index}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Stack direction="row" alignItems="center" spacing={2} sx={{ width: '100%' }}>
-                          <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                            {reaction.reaction}
-                          </Typography>
-                          <Chip
-                            label={`${Math.round(reaction.probability * 100)}%`}
-                            color={reaction.probability > 0.7 ? 'success' : reaction.probability > 0.4 ? 'warning' : 'error'}
-                            size="small"
-                          />
-                        </Stack>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Stack spacing={1}>
-                          <Typography variant="body2">
-                            <strong>Conditions:</strong> {reaction.conditions}
-                          </Typography>
-                          <Typography variant="body2">
-                            <strong>Products:</strong> {reaction.products.join(', ')}
-                          </Typography>
-                        </Stack>
-                      </AccordionDetails>
-                    </Accordion>
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Safety Warnings */}
-          {analysis.safetyWarnings && analysis.safetyWarnings.length > 0 && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <WarningIcon color="warning" />
-                  Safety Warnings
-                </Typography>
-                <List dense>
-                  {analysis.safetyWarnings.map((warning, index) => (
-                    <ListItem key={index}>
-                      <ListItemIcon>
-                        <ErrorIcon color="error" fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={warning} />
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Synthesis Suggestions */}
-          {analysis.synthesisSuggestions && analysis.synthesisSuggestions.length > 0 && (
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Synthesis Suggestions
-                </Typography>
-                <List dense>
-                  {analysis.synthesisSuggestions.map((suggestion, index) => (
-                    <ListItem key={index}>
-                      <ListItemIcon>
-                        <ChemistryIcon color="primary" fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText primary={suggestion} />
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
+          {analysis.drugLikeness?.overallScore != null && (
+            <Chip size="small" label={`Drug-likeness: ${analysis.drugLikeness.overallScore}/100`} color={getDrugLikenessColor(analysis.drugLikeness.overallScore) as any} />
           )}
         </Stack>
       )}
 
-      {/* Empty State */}
-      {!smiles && !molfile && !isAnalyzing && (
-        <Box
-          sx={{
-            textAlign: 'center',
-            py: 4,
-            color: 'text.secondary',
-          }}
-        >
-          <AIIcon sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
-          <Typography variant="body2">
-            Draw a structure to run AI analysis
+      {!smiles && !molfile && !isAnalyzing && !analysis && (
+        <Box sx={{ py: 1, textAlign: 'center' }}>
+          <AIIcon sx={{ fontSize: 24, opacity: 0.35 }} />
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25, fontSize: '0.7rem' }}>
+            Draw or search for a structure to analyze
           </Typography>
         </Box>
       )}

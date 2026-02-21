@@ -1,12 +1,20 @@
 /**
  * Local NMR Proxy Server
  * Proxies requests to nmrdb.org for NMR predictions (bypasses CORS)
+ * Also provides OpenAI chat proxy (keeps API key server-side)
  * Run: npm run dev:proxy  or  node server/nmr-proxy.js
  */
 
 import express from 'express';
 import cors from 'cors';
 import puppeteer from 'puppeteer';
+import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import OpenAI from 'openai';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: join(__dirname, '..', 'openaikey', '.env') });
 
 const app = express();
 const PORT = 3001;
@@ -94,7 +102,99 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'nmr-proxy' });
 });
 
+/** Debug: test OpenAI and return exact error on failure */
+app.get('/openai/debug', async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.json({
+      ok: false,
+      error: 'No OPENAI_API_KEY in openaikey/.env',
+      hint: 'Add OPENAI_API_KEY=sk-... to openaikey/.env',
+    });
+  }
+  try {
+    const openai = new OpenAI({ apiKey });
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-5.2-chat-latest',
+      messages: [{ role: 'user', content: 'Say OK' }],
+      max_completion_tokens: 10,
+    });
+    const content = completion.choices[0]?.message?.content ?? '';
+    res.json({ ok: true, response: content });
+  } catch (err) {
+    const e = err?.error || err;
+    const out = {
+      ok: false,
+      error: e?.message || err?.message || String(err),
+      status: e?.status ?? err?.status,
+      code: e?.code ?? err?.code,
+      type: e?.type ?? err?.type,
+      openaiResponse: e?.response?.data ?? err?.response?.data,
+    };
+    console.error('[OpenAI DEBUG]', JSON.stringify(out, null, 2));
+    res.json(out);
+  }
+});
+
+/** OpenAI chat proxy - keeps API key server-side */
+app.post('/openai/chat', async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.error('[OpenAI] No API key in openaikey/.env');
+    return res.status(503).json({
+      error: 'OpenAI API key not configured',
+      message: 'Add OPENAI_API_KEY to openaikey/.env',
+    });
+  }
+  const { messages } = req.body;
+  if (!Array.isArray(messages)) {
+    console.error('[OpenAI] Bad request: messages not an array');
+    return res.status(400).json({ error: 'messages array required' });
+  }
+  const userMsg = messages.find((m) => m.role === 'user');
+  const userPreview = userMsg?.content?.slice(0, 80) ?? '(no user message)';
+  console.log('[OpenAI] Request:', userPreview.replace(/\n/g, ' ') + (userMsg?.content?.length > 80 ? '...' : ''));
+  try {
+    const openai = new OpenAI({ apiKey });
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-5.2-chat-latest',
+      messages,
+      max_completion_tokens: 4096,
+    });
+    const content = completion.choices[0]?.message?.content ?? '';
+    console.log('[OpenAI] OK, response length:', content.length);
+    res.json({ content });
+  } catch (err) {
+    const errObj = err?.error || err;
+    const status = errObj?.status || errObj?.statusCode || err?.status;
+    const code = errObj?.code || err?.code;
+    const message = errObj?.message || err?.message || String(err);
+    const type = errObj?.type || err?.type;
+
+    console.error('[OpenAI] FAILED ---');
+    console.error('[OpenAI] message:', message);
+    console.error('[OpenAI] status:', status, '| code:', code, '| type:', type);
+    if (errObj?.response) {
+      console.error('[OpenAI] response.data:', JSON.stringify(errObj.response?.data)?.slice(0, 500));
+    }
+    if (err?.stack) {
+      console.error('[OpenAI] stack:', err.stack.split('\n').slice(0, 3).join('\n'));
+    }
+
+    const detail = errObj?.response?.data
+      ? JSON.stringify(errObj.response.data)
+      : (status ? `status=${status}` : '') + (code ? ` code=${code}` : '');
+    res.status(500).json({
+      error: message,
+      detail: detail || undefined,
+      status: status || undefined,
+      code: code || undefined,
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`[NMR Proxy] Server running on http://localhost:${PORT}`);
   console.log('[NMR Proxy] Ready for NMR predictions');
+  console.log('[NMR Proxy] OpenAI endpoint: POST /openai/chat');
 });

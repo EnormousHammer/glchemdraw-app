@@ -1,0 +1,34 @@
+---
+description: GL-ChemDraw is a chemical structure drawing and analysis app
+alwaysApply: true
+---
+
+# Chemical Structure App
+
+## Core Purpose
+
+GL-ChemDraw is a **chemical structure drawing and analysis application**. All features must support chemists working with molecular structures.
+
+## AI Integration Principles
+
+1. **AI supports chemistry workflows** — NMR prediction, IUPAC naming, structure search, reaction suggestions, safety analysis
+2. **AI is accessible** — AI features visible in Chemical Info panel; "AI" chip in header scrolls to AI section; "Add context for AI" available in header, NMR dialog, Get AI Name
+3. **AI does not interfere** — AI features are additive; existing PubChem, nmrdb, nmr-predictor flows remain primary where applicable
+4. **Structure-first** — Drawing canvas, validation, and compound identification are primary; AI augments when data is missing or user requests it
+
+## AI Touchpoints (all must remain accessible)
+
+| Location | Feature |
+|----------|---------|
+| Header search | Name → structure (PubChem first, AI fallback) |
+| Chemical Info header | AI chip (scroll to AI section), Add context icon, Predict NMR |
+| AI Assistant (collapsible) | Run analysis, Generate Name, Predict Reactions, Add context |
+| NMR dialog | AI prediction, Explain with AI, Add context |
+| Get AI Name | When structure unrecognized by PubChem |
+| PubChemSearch | AI fallback when no compounds found |
+| NameToStructure | AI fallback when PubChem fails |
+
+## Remember
+
+- This is a **chemical structure app** — prioritize structure drawing, validation, and chemistry-specific analysis
+- AI enhances; it does not replace core chemistry tools

@@ -941,72 +941,66 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   borderColor: 'divider',
                 }}
               >
-                {/* Chemical Info — Compact, clean layout */}
+                {/* Chemical Info — Enterprise layout */}
                 <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
-                  {/* Header row */}
-                  <Box sx={{ px: 1.5, py: 1, minWidth: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>Chemical Info</Typography>
+                  {/* Header */}
+                  <Box sx={{ px: 2, py: 1.25, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem', letterSpacing: '0.02em' }}>Chemical Info</Typography>
                     {recognizedCompound && !isSearching && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Chip label="Identified" size="small" color="success" sx={{ height: 18, fontSize: '0.6rem' }} />
-                        <Tooltip title="Copy report">
-                          <IconButton size="small" onClick={handleCopyAll} sx={{ width: 24, height: 24 }}>
-                            <ContentCopyIcon sx={{ fontSize: 14 }} />
-                          </IconButton>
-                        </Tooltip>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <Chip label="Identified" size="small" color="success" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 500 }} />
+                        <IconButton size="small" onClick={handleCopyAll} sx={{ width: 28, height: 28 }}>
+                          <ContentCopyIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
                       </Box>
                     )}
                   </Box>
 
-                  {/* Single compact toolbar */}
-                  <Box sx={{ px: 1.5, py: 1.25, minWidth: 0, overflowX: 'auto' }}>
-                    <Stack spacing={1} sx={{ minWidth: 0 }}>
-                      {/* Row 1: Structure + AI + Analysis */}
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                  {/* Toolbar — compact buttons */}
+                  <Box sx={{ px: 1, py: 0.75 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+                      {/* Structure */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, pr: 0.75, borderRight: 1, borderColor: 'divider' }}>
+                        <Tooltip title="Paste"><Button size="small" variant="outlined" onClick={handlePasteFromClipboard} sx={{ minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Paste</Button></Tooltip>
+                        <Tooltip title="Layout"><Button size="small" variant="outlined" onClick={handleLayout} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><AccountTreeIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
+                        <Tooltip title="Align"><Button size="small" variant="outlined" onClick={(e) => setAlignMenuAnchor(e.currentTarget)} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><FormatAlignLeftIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
+                      </Box>
+                      <Menu anchorEl={alignMenuAnchor} open={!!alignMenuAnchor} onClose={() => setAlignMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
+                        <MenuItem onClick={handleAlignDescriptors}>R-group labels</MenuItem>
+                        <MenuItem onClick={() => handleAlignStructures('left')}>Align left</MenuItem>
+                        <MenuItem onClick={() => handleAlignStructures('right')}>Align right</MenuItem>
+                        <MenuItem onClick={() => handleAlignStructures('top')}>Align top</MenuItem>
+                        <MenuItem onClick={() => handleAlignStructures('bottom')}>Align bottom</MenuItem>
+                      </Menu>
+                      {/* Analysis */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, pr: 0.75, borderRight: 1, borderColor: 'divider' }}>
                         {isSearching && <CircularProgress size={12} />}
-                        <Tooltip title="Paste structure or image"><Button size="small" variant="outlined" onClick={handlePasteFromClipboard} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>Paste</Button></Tooltip>
-                        <Tooltip title="Layout structure (Ctrl+L)"><Button size="small" variant="outlined" onClick={handleLayout} startIcon={<AccountTreeIcon sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>Layout</Button></Tooltip>
-                        <Tooltip title="Align structures"><Button size="small" variant="outlined" onClick={(e) => setAlignMenuAnchor(e.currentTarget)} endIcon={<ExpandMoreIcon sx={{ fontSize: 12 }} />} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>Align</Button></Tooltip>
-                        <Tooltip title="AI Assistant"><Button size="small" variant="outlined" onClick={() => { setAiSectionExpanded(true); setTimeout(() => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }} startIcon={<PsychologyIcon sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>AI</Button></Tooltip>
-                        <Menu anchorEl={alignMenuAnchor} open={!!alignMenuAnchor} onClose={() => setAlignMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                          <MenuItem onClick={handleAlignDescriptors}><FormatAlignLeftIcon sx={{ mr: 1 }} /> R-group labels</MenuItem>
-                          <MenuItem onClick={() => handleAlignStructures('left')}><FormatAlignLeftIcon sx={{ mr: 1 }} /> Align left</MenuItem>
-                          <MenuItem onClick={() => handleAlignStructures('right')}><FormatAlignRightIcon sx={{ mr: 1 }} /> Align right</MenuItem>
-                          <MenuItem onClick={() => handleAlignStructures('top')}><VerticalAlignTopIcon sx={{ mr: 1 }} /> Align top</MenuItem>
-                          <MenuItem onClick={() => handleAlignStructures('bottom')}><VerticalAlignBottomIcon sx={{ mr: 1 }} /> Align bottom</MenuItem>
-                        </Menu>
-                        <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
-                        <Tooltip title="Predict ¹H, ¹³C, ¹⁵N, ³¹P, ¹⁹F NMR"><span><Button size="small" variant="contained" color="primary" onClick={() => { setNmrDialogMode('predict'); setShowNMRPredictionDialog(true); }} disabled={!currentStructure?.smiles} startIcon={<ShowChartIcon sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>Predict NMR</Button></span></Tooltip>
-                        <Tooltip title="Explain NMR with AI"><span><Button size="small" variant="outlined" onClick={() => { setNmrDialogMode('explain'); setShowNMRPredictionDialog(true); }} disabled={!currentStructure?.smiles} startIcon={<PsychologyIcon sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>Explain NMR</Button></span></Tooltip>
+                        <Tooltip title="Predict NMR"><span><Button size="small" variant="contained" onClick={() => { setNmrDialogMode('predict'); setShowNMRPredictionDialog(true); }} disabled={!currentStructure?.smiles} startIcon={<ShowChartIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>NMR</Button></span></Tooltip>
+                        <Tooltip title="Explain NMR"><span><Button size="small" variant="outlined" onClick={() => { setNmrDialogMode('explain'); setShowNMRPredictionDialog(true); }} disabled={!currentStructure?.smiles} startIcon={<PsychologyIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Explain</Button></span></Tooltip>
+                        <Tooltip title="AI Assistant"><Button size="small" variant="outlined" onClick={() => { setAiSectionExpanded(true); setTimeout(() => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><PsychologyIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
                       </Box>
-                      {/* Row 2: Export + Biopolymer + Reactions */}
-                      <Box sx={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 0.5, width: 'max-content', minWidth: '100%' }}>
-                        <Tooltip title="Export (MOL, SDF, SMILES)">
-                          <span><Button size="small" variant="outlined" onClick={(e) => setExportMenuAnchor(e.currentTarget)} disabled={!currentStructure?.molfile} startIcon={<DownloadIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 10 }} />} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>Export</Button></span>
-                        </Tooltip>
+                      {/* Tools */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                        <Tooltip title="Export"><span><Button size="small" variant="outlined" onClick={(e) => setExportMenuAnchor(e.currentTarget)} disabled={!currentStructure?.molfile} startIcon={<DownloadIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 12 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Export</Button></span></Tooltip>
                         <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                          <MenuItem onClick={() => handleExport('mol')}>Save as MOL</MenuItem>
-                          <MenuItem onClick={() => handleExport('sdf')}>Save as SDF</MenuItem>
-                          <MenuItem onClick={() => handleExport('smiles')}>Save as SMILES</MenuItem>
+                          <MenuItem onClick={() => handleExport('mol')}>MOL</MenuItem>
+                          <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
+                          <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
                         </Menu>
-                        <Tooltip title="Peptide, RNA, DNA builder">
-                          <Button size="small" variant="outlined" onClick={(e) => setBiotoolMenuAnchor(e.currentTarget)} startIcon={<BiotechIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 10 }} />} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>Biopolymer</Button>
-                        </Tooltip>
+                        <Tooltip title="Biopolymer"><Button size="small" variant="outlined" onClick={(e) => setBiotoolMenuAnchor(e.currentTarget)} startIcon={<BiotechIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 12 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Biopolymer</Button></Tooltip>
                         <Menu anchorEl={biotoolMenuAnchor} open={!!biotoolMenuAnchor} onClose={() => setBiotoolMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                          <MenuItem onClick={() => handleBiopolymerOpen('PEPTIDE')}><BiotechIcon sx={{ mr: 1 }} /> Peptide</MenuItem>
-                          <MenuItem onClick={() => handleBiopolymerOpen('RNA')}><BiotechIcon sx={{ mr: 1 }} /> RNA</MenuItem>
-                          <MenuItem onClick={() => handleBiopolymerOpen('DNA')}><BiotechIcon sx={{ mr: 1 }} /> DNA</MenuItem>
+                          <MenuItem onClick={() => handleBiopolymerOpen('PEPTIDE')}>Peptide</MenuItem>
+                          <MenuItem onClick={() => handleBiopolymerOpen('RNA')}>RNA</MenuItem>
+                          <MenuItem onClick={() => handleBiopolymerOpen('DNA')}>DNA</MenuItem>
                         </Menu>
-                        <Tooltip title="Reaction arrows help">
-                          <Button size="small" variant="outlined" onClick={() => setShowReactionHelpDialog(true)} startIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />} sx={{ fontSize: '0.75rem', py: 0.5, px: 1.25, whiteSpace: 'nowrap' }}>Reactions</Button>
-                        </Tooltip>
+                        <Tooltip title="Reactions"><Button size="small" variant="outlined" onClick={() => setShowReactionHelpDialog(true)} startIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Reactions</Button></Tooltip>
                       </Box>
-                    </Stack>
+                    </Box>
                   </Box>
                 </Box>
 
                 {/* Content area */}
-                <Box sx={{ flex: 1, minWidth: 0, overflow: 'auto', p: 1.5, display: 'flex', flexDirection: 'column', gap: 1, bgcolor: 'background.default' }}>
+                <Box sx={{ flex: 1, minWidth: 0, overflow: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, bgcolor: 'background.default' }}>
                   <Stack spacing={1} sx={{ minWidth: 0 }}>
                     {/* Structure Validation */}
                     <ValidationPanel
@@ -1016,10 +1010,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
               {/* Compound Identification - PubChem primary (shown first) */}
               {recognizedCompound && (
-                <Box sx={{ p: 1.5, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1.5, border: '1px solid', borderColor: 'divider', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                      🔬 Molecular Identifiers
+                <Box sx={{ p: 1.5, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, pb: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8rem', letterSpacing: '0.03em', color: 'text.secondary' }}>
+                      Molecular Identifiers
                     </Typography>
                     <Button
                       size="small"
@@ -1234,8 +1228,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                  chemicalData.physicalProperties.meltingPoint || 
                  chemicalData.physicalProperties.boilingPoint) && (
                   <Box sx={{ p: 1.5, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                      ⚗️ Properties
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, pb: 0.75, fontSize: '0.8rem', letterSpacing: '0.03em', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider' }}>
+                      Properties
                     </Typography>
                     <Stack spacing={0.5}>
                       {chemicalData.physicalProperties.molecularWeight && (
@@ -1464,8 +1458,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                  chemicalData.descriptors.heavyAtomCount !== undefined || 
                  chemicalData.descriptors.formalCharge !== undefined) && (
                   <Box sx={{ p: 1.5, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                      📊 Chemical Descriptors
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, pb: 0.75, fontSize: '0.8rem', letterSpacing: '0.03em', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider' }}>
+                      Chemical Descriptors
                     </Typography>
                     <Stack spacing={0.5}>
                       {chemicalData.descriptors.logP !== undefined && (
@@ -1713,8 +1707,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
               {/* Stereochemistry (RDKit) */}
               {stereoInfo && (stereoInfo.chiralCenters > 0 || stereoInfo.unspecifiedCenters > 0 || stereoInfo.inchiWithStereochemistry) && (
                 <Box sx={{ p: 1.5, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CenterFocusStrongIcon sx={{ fontSize: 18 }} /> Stereochemistry
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, pb: 0.75, fontSize: '0.8rem', letterSpacing: '0.03em', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <CenterFocusStrongIcon sx={{ fontSize: 16 }} /> Stereochemistry
                   </Typography>
                   <Stack spacing={0.5}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
@@ -1758,8 +1752,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 (chemicalData.spectral.irSpectrum || 
                  chemicalData.spectral.massSpectrum) && (
                   <Box sx={{ p: 1.5, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.75, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 1 }}>
-                      📊 Spectral Data
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, pb: 0.75, fontSize: '0.8rem', letterSpacing: '0.03em', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider' }}>
+                      Spectral Data
                     </Typography>
                     <Stack spacing={0.5}>
                       {chemicalData.spectral.irSpectrum && (
@@ -1815,24 +1809,42 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       </Box>
                     )}
 
-                    {/* AI Chemistry Assistant */}
+                    {/* AI Assistant */}
                     <Box ref={aiSectionRef} id="ai-chemistry-section">
                       <Accordion
                         expanded={aiSectionExpanded}
                         onChange={(_, exp) => setAiSectionExpanded(!!exp)}
-                        sx={{ '&:before': { display: 'none' }, boxShadow: 'none', border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden', minWidth: 0, bgcolor: 'background.paper' }}
+                        sx={{
+                          '&:before': { display: 'none' },
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1.5,
+                          overflow: 'hidden',
+                          minWidth: 0,
+                          bgcolor: 'background.paper',
+                        }}
                       >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
-                          <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontSize: '0.85rem', fontWeight: 600 }}>
-                            <PsychologyIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+                        <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 36, px: 1.5, '& .MuiAccordionSummary-content': { my: 0.5, alignItems: 'center' } }}>
+                          <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.02em' }}>
+                            <PsychologyIcon sx={{ fontSize: 16, color: 'primary.main' }} />
                             AI Assistant
-                            <Chip label="Supplementary" size="small" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />
                           </Typography>
                         </AccordionSummary>
-                        <AccordionDetails sx={{ pt: 0, px: 1, pb: 1 }}>
+                        <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5 }}>
                           <AIIntegration
                             smiles={currentStructure?.smiles ?? undefined}
                             molfile={currentStructure?.molfile ?? undefined}
+                            existingData={recognizedCompound || chemicalData.physicalProperties || chemicalData.descriptors || chemicalData.regulatory ? {
+                              name: recognizedCompound?.name,
+                              iupacName: recognizedCompound?.properties?.IUPACName || aiIupacName || undefined,
+                              molecularFormula: chemicalData.physicalProperties?.molecularFormula,
+                              molecularWeight: chemicalData.physicalProperties?.molecularWeight,
+                              logP: chemicalData.descriptors?.logP,
+                              tpsa: chemicalData.descriptors?.tpsa,
+                              casNumber: chemicalData.regulatory?.casNumber,
+                              cid: recognizedCompound?.cid,
+                            } : undefined}
                             onStructureGenerated={(smiles, name) => {
                               setAiIupacName(name);
                               setSnackbarMessage('AI name generated');
@@ -1851,8 +1863,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
                     {/* Empty state */}
                     {!recognizedCompound && !currentStructure?.smiles && (
-                      <Box sx={{ p: 2, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1, border: '1px dashed', borderColor: 'divider', textAlign: 'center', minHeight: 56 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      <Box sx={{ p: 1.25, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1, border: '1px dashed', borderColor: 'divider', textAlign: 'center', minHeight: 40 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                           Draw a structure or search for a compound to see detailed information
                         </Typography>
                       </Box>

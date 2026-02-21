@@ -134,15 +134,15 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
       <Paper
         elevation={0}
         sx={{
-          p: 2,
-          height: '100%',
+          p: 2.5,
+          minHeight: 80,
           bgcolor: 'background.default',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', lineHeight: 1.6 }}>
           Draw a structure to see validation feedback
         </Typography>
       </Paper>
@@ -177,13 +177,13 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     <Paper
       elevation={0}
       sx={{
-        p: 1,
+        p: 1.5,
         height: '100%',
         bgcolor: 'background.default',
         overflow: 'auto',
       }}
     >
-      <Stack spacing={0.75}>
+      <Stack spacing={1}>
         {/* Validation Status Header */}
         <Box>
           <Stack direction="row" spacing={1} alignItems="center">

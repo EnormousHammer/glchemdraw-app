@@ -804,7 +804,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
               {/* Right Panel - All Information in One View */}
               <Box
                 sx={{
-                  width: '25%', // Reduced from 35% to give more space to canvas
+                  width: 'min(320px, 28%)', // Min width for readability, max 28% of viewport
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
@@ -813,20 +813,20 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   borderColor: 'divider',
                 }}
               >
-                {/* Status Header - Compact */}
-                <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                      Chemical Info
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      {isSearching && <CircularProgress size={16} />}
+                {/* Status Header */}
+                <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
+                  <Typography variant="subtitle1" color="text.primary" sx={{ fontWeight: 600, fontSize: '0.95rem', mb: 1.5 }}>
+                    Chemical Info
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
+                      {isSearching && <CircularProgress size={16} sx={{ mr: 0.5 }} />}
                       <Tooltip title="Paste image or structure from clipboard (PNG/screenshot or MOL/SMILES)">
                         <Button
                           size="small"
                           variant="outlined"
                           onClick={handlePasteFromClipboard}
-                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                          sx={{ fontSize: '0.75rem', py: 0.6, px: 1.25 }}
                         >
                           Paste
                         </Button>
@@ -836,8 +836,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           size="small"
                           variant="outlined"
                           onClick={handleLayout}
-                          startIcon={<AccountTreeIcon />}
-                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                          startIcon={<AccountTreeIcon sx={{ fontSize: 16 }} />}
+                          sx={{ fontSize: '0.75rem', py: 0.6, px: 1.25 }}
                         >
                           Layout
                         </Button>
@@ -847,9 +847,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           size="small"
                           variant="outlined"
                           onClick={(e) => setAlignMenuAnchor(e.currentTarget)}
-                          startIcon={<FormatAlignLeftIcon />}
-                          endIcon={<ExpandMoreIcon />}
-                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                          startIcon={<FormatAlignLeftIcon sx={{ fontSize: 16 }} />}
+                          endIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />}
+                          sx={{ fontSize: '0.75rem', py: 0.6, px: 1.25 }}
                         >
                           Align
                         </Button>
@@ -883,9 +883,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           variant="outlined"
                           onClick={(e) => setExportMenuAnchor(e.currentTarget)}
                           disabled={!currentStructure?.molfile}
-                          startIcon={<DownloadIcon />}
-                          endIcon={<ExpandMoreIcon />}
-                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                          startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+                          endIcon={<ExpandMoreIcon sx={{ fontSize: 16 }} />}
+                          sx={{ fontSize: '0.75rem', py: 0.6, px: 1.25 }}
                         >
                           Export
                         </Button>
@@ -935,8 +935,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           size="small"
                           variant="outlined"
                           onClick={() => setShowReactionHelpDialog(true)}
-                          startIcon={<ArrowForwardIcon />}
-                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1 }}
+                          startIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
+                          sx={{ fontSize: '0.75rem', py: 0.6, px: 1.25 }}
                         >
                           Reactions
                         </Button>
@@ -967,9 +967,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   </Box>
                 </Box>
 
-                {/* All Information in One View - Compact */}
-                <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
-                  <Stack spacing={1}>
+                {/* All Information in One View */}
+                <Box sx={{ flex: 1, overflow: 'auto', p: 1.5 }}>
+                  <Stack spacing={1.5}>
                     {/* Structure Validation */}
                     <ValidationPanel
                       smiles={currentStructure?.smiles}
@@ -1743,8 +1743,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
                     {/* Additional Info */}
                     {!recognizedCompound && (
-                      <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', fontStyle: 'italic' }}>
+                      <Box sx={{ p: 2.5, bgcolor: 'background.default', borderRadius: 1 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', fontStyle: 'italic', lineHeight: 1.6 }}>
                           Draw a structure or search for a compound to see detailed information
                         </Typography>
                       </Box>

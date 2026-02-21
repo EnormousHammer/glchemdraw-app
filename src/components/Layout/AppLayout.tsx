@@ -2000,7 +2000,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     In the <strong>left toolbar</strong>: click the <strong>Bond</strong> tool, then use the bond-type submenu (wedge up, wedge down, wavy). Or draw a bond, select it, and change type in the floating toolbar.
                   </Typography>
                 </Box>
-                <Box>
+                <Box sx={{ mb: 1.5 }}>
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Biopolymer</Typography>
                   <Box sx={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Alt+P</Typography>
@@ -2010,6 +2010,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Alt+D</Typography>
                     <Typography variant="body2" color="text.secondary">DNA</Typography>
                   </Box>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Functional Groups (OMe, OEt, CN, etc.)</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Shift+F</Typography>
+                    <Typography variant="body2" color="text.secondary">Open Functional Groups window</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.8rem' }}>
+                    Use <strong>Structure tool</strong>: select FG, then <strong>click on atom</strong> to attach (merges) or <strong>click and drag from atom</strong> to create bond. FGs attach only to atoms, not bonds.
+                  </Typography>
                 </Box>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>

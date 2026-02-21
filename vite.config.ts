@@ -112,6 +112,9 @@ export default defineConfig({
   build: {
     target: process.env.TAURI_PLATFORM == "windows" ? "chrome105" : "safari13",
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
     sourcemap: !!process.env.TAURI_DEBUG,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {

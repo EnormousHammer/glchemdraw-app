@@ -2022,7 +2022,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 <Box sx={{ mb: 1.5 }}>
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Panel Buttons</Typography>
                   <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                    <Typography variant="body2"><strong>Predict NMR</strong> — ¹H & ¹³C chemical shifts</Typography>
+                    <Typography variant="body2"><strong>Predict NMR</strong> — ¹H & ¹³C (¹³C works; ¹H may return no signals for some structures)</Typography>
                     <Typography variant="body2"><strong>Paste</strong> — Paste from clipboard</Typography>
                     <Typography variant="body2"><strong>Layout</strong> — Fix bond lengths & angles</Typography>
                     <Typography variant="body2"><strong>Align</strong> — R-groups or align selected</Typography>

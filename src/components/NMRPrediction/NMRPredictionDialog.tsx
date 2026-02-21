@@ -1,6 +1,7 @@
 /**
- * NMRPredictionDialog - 1H and 13C NMR prediction using nmr-predictor (HOSE code method)
- * Displays predicted chemical shifts (δ ppm) for the current structure
+ * NMRPredictionDialog - 1H and 13C NMR prediction
+ * Uses nmrdb.org (NMRShiftDB, larger database) when proxy is available,
+ * falls back to nmr-predictor (HOSE) otherwise.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -87,20 +88,40 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
       const parts = input.split(/\s*\.\s*/);
       input = parts[0] || input;
     }
+    // Get SMILES for nmrdb (convert molfile if needed)
+    let smilesForNmrdb = input.includes('\n') ? null : input;
+    if (!smilesForNmrdb && molfile) {
+      const { molfileToSmiles } = await import('@/lib/chemistry/openchemlib');
+      smilesForNmrdb = molfileToSmiles(molfile);
+    }
+
     setLoading(true);
     setError(null);
     setProtonPeaks([]);
     setCarbonPeaks([]);
+
     try {
+      // 1. Try nmrdb.org first (larger NMRShiftDB database, better ¹H coverage)
+      if (smilesForNmrdb) {
+        const { fetchNMRFromNmrdb } = await import('@/lib/chemistry/nmrdb');
+        const nmrdbResult = await fetchNMRFromNmrdb(smilesForNmrdb);
+        if (nmrdbResult && (nmrdbResult.protonPeaks.length > 0 || nmrdbResult.carbonPeaks.length > 0)) {
+          setProtonPeaks(nmrdbResult.protonPeaks);
+          setCarbonPeaks(nmrdbResult.carbonPeaks);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Fall back to nmr-predictor (HOSE)
       const { fetchProton, fetchCarbon, proton, carbon } = await import('nmr-predictor');
       if (!dbReady) {
         await Promise.all([fetchProton(), fetchCarbon()]);
         setDbReady(true);
       }
-      // nmr-predictor proton/carbon return synchronously (not Promises) - wrap in async to handle errors
       const runProton = async (): Promise<PredictedPeak[]> => {
         try {
-          const result = proton(input, { use: 'median' });
+          const result = proton(input, { use: 'median', ignoreLabile: false });
           return Array.isArray(result) ? (result as PredictedPeak[]) : [];
         } catch (e) {
           console.warn('[NMR] Proton prediction failed:', e);
@@ -202,7 +223,7 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
                       {protonGroups.length === 0 && !loading && (
                         <TableRow>
                           <TableCell colSpan={2} align="center" color="text.secondary">
-                            No ¹H signals predicted
+                            No ¹H signals predicted (try running npm run dev:proxy for nmrdb.org backend)
                           </TableCell>
                         </TableRow>
                       )}
@@ -254,9 +275,11 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
                 </TableContainer>
               </Stack>
             )}
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-              HOSE code method via nmr-predictor. Predictions are approximate; verify with experimental data.
-            </Typography>
+            <Alert severity="info" sx={{ mt: 2 }} variant="outlined">
+              <Typography variant="caption" component="div">
+                <strong>Backend:</strong> Uses nmrdb.org (NMRShiftDB) when proxy is running (npm run dev:proxy); otherwise nmr-predictor. ¹H coverage is better with nmrdb. Not suitable as sole verification for PhD-level custom synthesis — use alongside experimental data or dedicated NMR software.
+              </Typography>
+            </Alert>
           </Box>
         )}
       </DialogContent>

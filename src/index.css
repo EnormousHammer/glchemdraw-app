@@ -81,6 +81,13 @@
 .Ketcher-root button[title*="3d"],
 .Ketcher-root button[aria-label*="3D"],
 .Ketcher-root button[aria-label*="3d"],
+/* Hide Functional Groups (creates disconnected structures until Ketcher fix) */
+.Ketcher-root button[title*="Functional Groups"],
+.Ketcher-root button[title*="functional groups"],
+.Ketcher-root button[aria-label*="Functional Groups"],
+.Ketcher-root button[aria-label*="functional groups"],
+.Ketcher-polymer-editor-root button[title*="Functional Groups"],
+.Ketcher-polymer-editor-root button[aria-label*="Functional Groups"],
 /* Macromolecules mode: same buttons in polymer editor */
 .Ketcher-polymer-editor-root button[title*="Information"],
 .Ketcher-polymer-editor-root button[title*="information"],

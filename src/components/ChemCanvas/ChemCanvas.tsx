@@ -40,6 +40,21 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   // Paste: image or structure (Ctrl+V and Paste button)
   useImagePasteIntoSketch(editorRef);
 
+  // Block Shift+F (Functional Groups) - feature creates disconnected structures until Ketcher fix
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+        const target = e.target as HTMLElement;
+        if (target?.closest?.('.Ketcher-root') || target?.closest?.('.Ketcher-polymer-editor-root')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, []);
+
   // Block Ketcher About/FAQ/Info modal - white cover + auto-close so nothing appears
   useEffect(() => {
     const coverKetcherInfoModal = () => {

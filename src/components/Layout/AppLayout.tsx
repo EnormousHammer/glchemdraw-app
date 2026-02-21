@@ -2012,13 +2012,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   </Box>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Functional Groups (OMe, OEt, CN, etc.)</Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Shift+F</Typography>
-                    <Typography variant="body2" color="text.secondary">Open Functional Groups window</Typography>
-                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Functional Groups — Temporarily disabled</Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.8rem' }}>
-                    Use <strong>Structure tool</strong>: select FG, then <strong>click on atom</strong> to attach (merges) or <strong>click and drag from atom</strong> to create bond. FGs attach only to atoms, not bonds.
+                    Ketcher&apos;s FG insertion creates disconnected structures. Use bond/atom tools to draw OMe, OEt, CN, etc. manually until fixed.
                   </Typography>
                 </Box>
               </Grid>

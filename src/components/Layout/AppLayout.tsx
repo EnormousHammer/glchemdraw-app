@@ -38,6 +38,10 @@ import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
+import { NMRPredictionDialog } from '../NMRPrediction';
+import { BiopolymerSequenceDialog } from '../BiopolymerSequence';
+import { peptideToHelm, dnaToHelm, rnaToHelm } from '../../lib/chemistry/helmFormat';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 // StructureData interface for chemical structure information
 interface StructureData {
   molfile: string;
@@ -66,6 +70,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [alignMenuAnchor, setAlignMenuAnchor] = useState<null | HTMLElement>(null);
   const [biotoolMenuAnchor, setBiotoolMenuAnchor] = useState<null | HTMLElement>(null);
   const [showReactionHelpDialog, setShowReactionHelpDialog] = useState(false);
+  const [showNMRPredictionDialog, setShowNMRPredictionDialog] = useState(false);
+  const [showBiopolymerSequenceDialog, setShowBiopolymerSequenceDialog] = useState(false);
+  const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [stereoInfo, setStereoInfo] = useState<{
     chiralCenters: number;
     unspecifiedCenters: number;
@@ -247,6 +254,31 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, []);
 
+  // Issue #3: Ctrl+Shift+L → Layout (fix geometry), not Ketcher's Clean (which only standardizes)
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey && e.shiftKey && e.key?.toLowerCase() === 'l')) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      const ketcher = ketcherRef.current;
+      if (!ketcher?.layout) return;
+      e.preventDefault();
+      e.stopPropagation();
+      ketcher.layout().then(() => {
+        setSnackbarMessage('Layout applied (bond lengths/angles adjusted)');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      }).catch((err: Error) => {
+        console.error('[AppLayout] Layout failed:', err);
+        setSnackbarMessage('Layout failed');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+      });
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, []);
+
   // Load stereochemistry info when structure changes (RDKit)
   React.useEffect(() => {
     if (!currentStructure?.smiles || currentStructure.smiles.length < 2) {
@@ -267,28 +299,37 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     return () => { cancelled = true; };
   }, [currentStructure?.smiles]);
 
-  // Biopolymer mode: switch Ketcher to Peptide/RNA/DNA entry mode (Ketcher 3.10)
-  const handleBiopolymerMode = useCallback(async (mode: 'PEPTIDE' | 'RNA' | 'DNA') => {
+  // Biopolymer: open sequence input dialog (Ketcher changeSequenceTypeEnterMode often unavailable)
+  const handleBiopolymerOpen = useCallback((mode: 'PEPTIDE' | 'RNA' | 'DNA') => {
     setBiotoolMenuAnchor(null);
+    setBiopolymerDialogMode(mode);
+    setShowBiopolymerSequenceDialog(true);
+  }, []);
+
+  const handleBiopolymerSequenceSubmit = useCallback(async (
+    sequence: string,
+    mode: 'PEPTIDE' | 'RNA' | 'DNA'
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { SequenceType } = await import('ketcher-core');
-      const editor = ketcherRef.current?.editor;
-      const evt = editor?.events?.changeSequenceTypeEnterMode;
-      if (evt?.dispatch) {
-        evt.dispatch(SequenceType[mode]);
-        setSnackbarMessage(`Switched to ${mode} builder mode`);
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-      } else {
-        setSnackbarMessage('Macromolecules mode not available');
-        setSnackbarSeverity('warning');
-        setSnackbarOpen(true);
+      const helm = mode === 'PEPTIDE' ? peptideToHelm(sequence)
+        : mode === 'DNA' ? dnaToHelm(sequence)
+        : rnaToHelm(sequence);
+      if (!helm) {
+        return { success: false, error: 'Invalid sequence' };
       }
-    } catch (err) {
-      console.error('[AppLayout] Biopolymer mode failed:', err);
-      setSnackbarMessage('Failed to switch mode');
-      setSnackbarSeverity('error');
+      const ketcher = ketcherRef.current;
+      if (!ketcher?.setMolecule) {
+        return { success: false, error: 'Editor not ready' };
+      }
+      await ketcher.setMolecule(helm);
+      setSnackbarMessage(`${mode} structure created from sequence`);
+      setSnackbarSeverity('success');
       setSnackbarOpen(true);
+      return { success: true };
+    } catch (err) {
+      console.error('[AppLayout] Biopolymer HELM import failed:', err);
+      const msg = err instanceof Error ? err.message : 'HELM import failed';
+      return { success: false, error: `${msg}. Try pasting MOL/SMILES from an external converter.` };
     }
   }, []);
 
@@ -831,7 +872,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           Paste
                         </Button>
                       </Tooltip>
-                      <Tooltip title="Layout: fix bond lengths & angles (Ctrl+L). Clean only standardizes structure.">
+                      <Tooltip title="Fix bond lengths & angles: Layout (Ctrl+L) or Ctrl+Shift+L. Straightens sloppy bonds.">
                         <Button
                           size="small"
                           variant="outlined"
@@ -877,6 +918,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           <VerticalAlignBottomIcon sx={{ mr: 1, fontSize: 18 }} /> Align bottom
                         </MenuItem>
                       </Menu>
+                      <Tooltip title="Predict ¹H and ¹³C NMR chemical shifts">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setShowNMRPredictionDialog(true)}
+                          disabled={!currentStructure?.smiles}
+                          startIcon={<ShowChartIcon sx={{ fontSize: 16 }} />}
+                          sx={{ fontSize: '0.75rem', py: 0.6, px: 1.25 }}
+                        >
+                          Predict NMR
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="Export structure (MOL, SDF, SMILES)">
                         <Button
                           size="small"
@@ -920,13 +973,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
                       >
-                        <MenuItem onClick={() => handleBiopolymerMode('PEPTIDE')}>
+                        <MenuItem onClick={() => handleBiopolymerOpen('PEPTIDE')}>
                           <BiotechIcon sx={{ mr: 1, fontSize: 18 }} /> Peptide (Ctrl+Alt+P)
                         </MenuItem>
-                        <MenuItem onClick={() => handleBiopolymerMode('RNA')}>
+                        <MenuItem onClick={() => handleBiopolymerOpen('RNA')}>
                           <BiotechIcon sx={{ mr: 1, fontSize: 18 }} /> RNA (Ctrl+Alt+R)
                         </MenuItem>
-                        <MenuItem onClick={() => handleBiopolymerMode('DNA')}>
+                        <MenuItem onClick={() => handleBiopolymerOpen('DNA')}>
                           <BiotechIcon sx={{ mr: 1, fontSize: 18 }} /> DNA (Ctrl+Alt+D)
                         </MenuItem>
                       </Menu>
@@ -1832,6 +1885,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           </DialogContent>
         </Dialog>
 
+        {/* NMR Prediction Dialog */}
+        <NMRPredictionDialog
+          open={showNMRPredictionDialog}
+          onClose={() => setShowNMRPredictionDialog(false)}
+          smiles={currentStructure?.smiles ?? null}
+          molfile={currentStructure?.molfile ?? undefined}
+        />
+
+        {/* Biopolymer Sequence Dialog */}
+        <BiopolymerSequenceDialog
+          open={showBiopolymerSequenceDialog}
+          onClose={() => setShowBiopolymerSequenceDialog(false)}
+          initialMode={biopolymerDialogMode}
+          onSubmit={handleBiopolymerSequenceSubmit}
+        />
+
         {/* Reaction Arrows Help Dialog */}
         <Dialog
           open={showReactionHelpDialog}
@@ -1900,10 +1969,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Structure</Typography>
                   <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+L</Typography>
-                    <Typography variant="body2" color="text.secondary">Layout (bond lengths & angles)</Typography>
+                    <Typography variant="body2" color="text.secondary">Layout (fix bond lengths & angles)</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Shift+L</Typography>
-                    <Typography variant="body2" color="text.secondary">Clean (standardize)</Typography>
+                    <Typography variant="body2" color="text.secondary">Layout (same as Ctrl+L — fix geometry)</Typography>
                   </Box>
+                </Box>
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stereochemistry (Wedge/Dash)</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    In the <strong>left toolbar</strong>: click the <strong>Bond</strong> tool, then use the bond-type submenu (wedge up, wedge down, wavy). Or draw a bond, select it, and change type in the floating toolbar.
+                  </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Biopolymer</Typography>
@@ -1921,11 +1996,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 <Box sx={{ mb: 1.5 }}>
                   <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Panel Buttons</Typography>
                   <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                    <Typography variant="body2"><strong>Predict NMR</strong> — ¹H & ¹³C chemical shifts</Typography>
                     <Typography variant="body2"><strong>Paste</strong> — Paste from clipboard</Typography>
                     <Typography variant="body2"><strong>Layout</strong> — Fix bond lengths & angles</Typography>
                     <Typography variant="body2"><strong>Align</strong> — R-groups or align selected</Typography>
                     <Typography variant="body2"><strong>Export</strong> — MOL, SDF, SMILES</Typography>
-                    <Typography variant="body2"><strong>Biopolymer</strong> — Peptide/RNA/DNA mode</Typography>
+                    <Typography variant="body2"><strong>Biopolymer</strong> — Peptide/RNA/DNA sequence</Typography>
                     <Typography variant="body2"><strong>Reactions</strong> — Draw reaction arrows</Typography>
                   </Stack>
                 </Box>

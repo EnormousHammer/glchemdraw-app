@@ -56,28 +56,47 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   }, []);
 
   // Handle structure changes with 300ms debouncing for performance
+  // Issue #2: When selection exists, show selected structure; else show full canvas
   const handleStructureChange = useCallback(async () => {
-    if (!editorRef.current || !onStructureChange) {
-      return;
-    }
+    if (!editorRef.current) return;
 
-    // Clear previous debounce timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Debounce: Wait 300ms after last change before processing
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const molfile = await editorRef.current.getMolfile();
-        const smiles = await editorRef.current.getSmiles();
-        
-        onStructureChange(molfile, smiles);
+        const ketcher = editorRef.current;
+        const molfile = await ketcher.getMolfile();
+        const smiles = await ketcher.getSmiles();
+        if (onStructureChange) onStructureChange(molfile, smiles);
+
+        // Issue #2: After full canvas update, check selection - show selected struct if any
+        if (onSelectionChange && ketcher?.editor?.structSelected) {
+          try {
+            const struct = ketcher.editor.structSelected();
+            if (struct && !struct.isBlank?.()) {
+              const { getStructure } = await import('ketcher-core');
+              const { SupportedFormat } = await import('ketcher-core');
+              const selMolfile = await getStructure(
+                ketcher.id,
+                SupportedFormat.molAuto,
+                ketcher.formatterFactory,
+                struct
+              );
+              const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
+              const selSmiles = await molfileToSmiles(selMolfile);
+              onSelectionChange(selMolfile, selSmiles || null);
+              return;
+            }
+          } catch (_) { /* fall through to no selection */ }
+          onSelectionChange(null, null);
+        }
       } catch (err) {
         console.error('[ChemCanvas] Error getting structure:', err);
       }
     }, 300);
-  }, [onStructureChange]);
+  }, [onStructureChange, onSelectionChange]);
 
   if (error) {
     return (
@@ -179,20 +198,15 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
               console.warn('[ChemCanvas] Failed to subscribe change handler:', e);
             }
 
-            // Subscribe to selection change (for chemical info of selected structure only)
-            // Ketcher types may not include events; use runtime check
-            try {
-              const editorEvents = (ketcher?.editor as any)?.events;
-              if (editorEvents?.selectionChange && onSelectionChange) {
-                editorEvents.selectionChange.add(async () => {
-                  const editor = ketcher.editor;
-                  if (!editor?.structSelected) return;
-                  try {
-                    const struct = editor.structSelected();
-                    if (!struct || struct.isBlank?.()) {
-                      onSelectionChange(null, null);
-                      return;
-                    }
+            // Subscribe to selection change (Issue #2: chemical info for selected structure only)
+            // Ketcher uses editor.event.selectionChange (singular "event")
+            const emitSelectionOrFull = async () => {
+              if (!onSelectionChange) return;
+              const editor = ketcher.editor;
+              try {
+                if (editor?.structSelected) {
+                  const struct = editor.structSelected();
+                  if (struct && !struct.isBlank?.()) {
                     const { getStructure } = await import('ketcher-core');
                     const { SupportedFormat } = await import('ketcher-core');
                     const molfile = await getStructure(
@@ -204,11 +218,21 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
                     const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
                     const smiles = await molfileToSmiles(molfile);
                     onSelectionChange(molfile, smiles || null);
-                  } catch (err) {
-                    console.warn('[ChemCanvas] Selection to SMILES failed:', err);
-                    onSelectionChange(null, null);
+                    return;
                   }
-                });
+                }
+              } catch (err) {
+                console.warn('[ChemCanvas] Selection to SMILES failed:', err);
+              }
+              onSelectionChange(null, null);
+            };
+            try {
+              const ev = (ketcher?.editor as any)?.event;
+              if (ev?.selectionChange?.add && onSelectionChange) {
+                ev.selectionChange.add(emitSelectionOrFull);
+              }
+              if (ketcher?.editor?.subscribe && onSelectionChange) {
+                ketcher.editor.subscribe('selectionChange', emitSelectionOrFull);
               }
             } catch (e) {
               console.warn('[ChemCanvas] Failed to subscribe selection handler:', e);

@@ -110,10 +110,10 @@
 
 ## ✅ **NEWLY ADDED FEATURES**
 
-### Biopolymer Builder (Ketcher 3.10)
-- **Biopolymer** button in Chemical Info panel
-- Switch to **Peptide** (Ctrl+Alt+P), **RNA** (Ctrl+Alt+R), or **DNA** (Ctrl+Alt+D) mode
-- Uses Ketcher's `changeSequenceTypeEnterMode` API
+### Biopolymer Builder
+- **Biopolymer** button opens sequence input dialog (Peptide/RNA/DNA)
+- Enter single-letter sequence (e.g. MVDG for peptide, ATGC for DNA)
+- HELM format import via `setMolecule` (workaround when Ketcher's built-in mode unavailable)
 
 ### Reaction Arrows
 - **Reactions** button opens help dialog with instructions
@@ -124,6 +124,12 @@
 - **Stereochemistry** section in Chemical Info when chiral centers present
 - Shows chiral center count, unspecified (R/S) centers
 - InChI with tetrahedral stereochemistry when available
+- Shortcuts dialog documents wedge/dash: Bond tool → bond-type submenu in left toolbar
+
+### NMR Prediction (nmr-predictor)
+- **Predict NMR** button in Chemical Info panel
+- ¹H and ¹³C chemical shift prediction (HOSE code method)
+- Tabs for ¹H / ¹³C, copy-to-clipboard, grouped signals
 
 ---
 

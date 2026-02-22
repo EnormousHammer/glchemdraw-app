@@ -38,6 +38,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
 import ChemCanvas from '../ChemCanvas/ChemCanvas';
+import { BondTypeBar } from '../BondTypeBar';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
@@ -1146,9 +1147,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                   overflow: 'hidden'
                 }}
               >
+                {/* Bond Type Bar - ChemDraw parity: Single, Double, Triple, Wedge, Hash, Wavy */}
+                <Box sx={{ flexShrink: 0, px: 1, py: 0.75, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <BondTypeBar ketcherRef={ketcherRef} compact />
+                </Box>
                 {/* Drawing Canvas - Full Height */}
                 <Box sx={{ 
-                  height: '100%',
+                  flex: 1,
+                  minHeight: 0,
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden'
@@ -2714,10 +2720,30 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                     </Box>
                   </Stack>
                 </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Bond Types</Typography>
+                  <Stack spacing={1}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <KbdKey>1</KbdKey>
+                      <Typography variant="body2" color="text.secondary">Single bond</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <KbdKey>2</KbdKey>
+                      <Typography variant="body2" color="text.secondary">Double bond</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <KbdKey>3</KbdKey>
+                      <Typography variant="body2" color="text.secondary">Triple bond</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Use the <strong>Bond Type Bar</strong> above the canvas for Single, Double, Triple, Wedge, Hash, Wavy. Select a bond and click a type to change it.
+                    </Typography>
+                  </Stack>
+                </Box>
                 <Box>
                   <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary', letterSpacing: 1, display: 'block', mb: 1.5 }}>Stereochemistry (Wedge/Dash)</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    In the <strong>left toolbar</strong>: click the <strong>Bond</strong> tool, then use the bond-type submenu (wedge up, wedge down, wavy). Or draw a bond, select it, and change type in the floating toolbar.
+                    In the <strong>left toolbar</strong>: click the <strong>Bond</strong> tool, then use the bond-type submenu. Or use the <strong>Bond Type Bar</strong> above the canvas (wedge up, wedge down, wavy).
                   </Typography>
                 </Box>
               </Grid>

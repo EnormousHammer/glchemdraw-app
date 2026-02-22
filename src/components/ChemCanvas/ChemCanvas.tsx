@@ -61,6 +61,26 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
+  // Bond type shortcuts 1/2/3: ensure they reach Ketcher when focus is elsewhere (ChemDraw parity)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== '1' && e.key !== '2' && e.key !== '3') return;
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+      const inKetcher = target?.closest?.('.Ketcher-root') || target?.closest?.('.Ketcher-polymer-editor-root');
+      if (inKetcher) return; // Already in canvas, let Ketcher handle it
+      const ketcherRoot = document.querySelector('.Ketcher-root') as HTMLElement | null;
+      if (!ketcherRoot) return;
+      e.preventDefault();
+      e.stopPropagation();
+      ketcherRoot.setAttribute('tabindex', '-1');
+      ketcherRoot.focus({ preventScroll: true });
+      ketcherRoot.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, bubbles: true, cancelable: true }));
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, []);
+
   // Block Shift+F (Functional Groups) - feature creates disconnected structures until Ketcher fix
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

@@ -7,7 +7,7 @@ import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { Editor } from 'ketcher-react';
 import { OcsrStructServiceProvider } from '../../lib/chemistry/OcsrStructServiceProvider';
 import 'ketcher-react/dist/index.css';
-import { Box, CircularProgress, Alert } from '@mui/material';
+import { Box, CircularProgress, Alert, Button, Typography, Stack } from '@mui/material';
 import { useCopyImageToClipboard } from '../../hooks/useCopyImageToClipboard';
 import { useImagePasteIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 
@@ -32,6 +32,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
   const editorRef = useRef<any>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -150,6 +151,12 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
     }, 300);
   }, [onStructureChange, onSelectionChange]);
 
+  const handleReloadCanvas = useCallback(() => {
+    setError(null);
+    setEditorKey((k) => k + 1);
+    editorRef.current = null;
+  }, []);
+
   if (error) {
     return (
       <Box
@@ -162,11 +169,20 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
           p: 3,
         }}
       >
-        <Alert severity="error" sx={{ maxWidth: 600 }}>
-          <strong>Chemical Editor Error</strong>
-          <br />
-          {error}
-        </Alert>
+        <Stack spacing={2} sx={{ maxWidth: 600 }}>
+          <Alert severity="error">
+            <strong>Chemical Editor Error</strong>
+            <br />
+            {error}
+            <br />
+            <Typography component="span" variant="body2" sx={{ mt: 1, display: 'block' }}>
+              This can happen when switching between Molecules and Macromolecules mode.
+            </Typography>
+          </Alert>
+          <Button variant="contained" onClick={handleReloadCanvas} sx={{ alignSelf: 'flex-start' }}>
+            Reload Canvas
+          </Button>
+        </Stack>
       </Box>
     );
   }
@@ -224,6 +240,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
         }}
       >
         <Editor
+          key={editorKey}
           staticResourcesUrl={staticResourcesUrl}
           structServiceProvider={structServiceProvider}
           onInit={(ketcher) => {
@@ -305,10 +322,11 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
               onKetcherInit(ketcher);
             }
           }}
-          errorHandler={(error: string) => {
-            console.error('[ChemCanvas] Canvas error:', error);
+          errorHandler={(err: string) => {
+            console.error('[ChemCanvas] Canvas error:', err);
+            setError(err);
             if (onError) {
-              onError(new Error(error));
+              onError(new Error(err));
             }
           }}
         />

@@ -154,6 +154,57 @@ Drug-likeness (Lipinski): [brief assessment]`,
   }
 }
 
+/** Common functional groups: name -> SMILES fragment (add to canvas, user connects) */
+const COMMON_FG_SMILES: Record<string, string> = {
+  OMe: 'CO',
+  MeO: 'CO',
+  OEt: 'CCO',
+  EtO: 'CCO',
+  CN: 'C#N',
+  NC: 'C#N',
+  OH: 'O',
+  NH2: 'N',
+  COOH: 'C(=O)O',
+  Ac: 'CC(=O)C',
+  Ph: 'c1ccccc1',
+  Bn: 'Cc1ccccc1',
+  SH: 'S',
+  F: 'F',
+  Cl: 'Cl',
+  Br: 'Br',
+  I: 'I',
+  NO2: 'N(=O)=O',
+  CF3: 'C(F)(F)F',
+};
+
+/**
+ * Get SMILES for a functional group. Uses lookup for common FGs, AI for custom.
+ * @param fgName - e.g. "OMe", "OEt", "CN", or custom like "cyclopropyl"
+ * @returns SMILES fragment or null
+ */
+export async function aiFunctionalGroupToSmiles(fgName: string): Promise<string | null> {
+  const key = String(fgName ?? '').trim();
+  if (!key || key.length < 1) return null;
+  const lookup = COMMON_FG_SMILES[key];
+  if (lookup) return lookup;
+  try {
+    const content = await chatWithOpenAI([
+      {
+        role: 'system',
+        content: 'You are a chemistry expert. Convert functional group names to SMILES. Reply with ONLY the SMILES string for the fragment, nothing else. Examples: OMe->CO, OEt->CCO, CN->C#N. For groups like "cyclopropyl" use c1cc1. No explanation.',
+      },
+      { role: 'user', content: `SMILES for functional group: ${key}` },
+    ]);
+    const smiles = content.trim().split(/\s/)[0]?.trim();
+    if (smiles && smiles.length >= 2 && /[A-Za-z\[\]\(\)=#@\+\-\d]/.test(smiles)) {
+      return smiles;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Estimate safety/hazard summary using AI when PubChem safety data is sparse.
  * @param smiles - SMILES string

@@ -45,10 +45,38 @@ import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
 import { BiopolymerSequenceDialog } from '../BiopolymerSequence';
+import { FunctionalGroupDialog } from '../FunctionalGroup/FunctionalGroupDialog';
 import { AIIntegration } from '../AIIntegration';
 import { peptideToHelm, dnaToHelm, rnaToHelm } from '../../lib/chemistry/helmFormat';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { useAIContext } from '@/contexts/AIContext';
+
+/** Styled keyboard key for shortcuts dialog */
+const KbdKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Box
+    component="kbd"
+    sx={(theme) => ({
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 28,
+      px: 1,
+      py: 0.5,
+      fontFamily: 'monospace',
+      fontSize: '0.75rem',
+      fontWeight: 600,
+      color: theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary',
+      backgroundColor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+      border: '1px solid',
+      borderColor: theme.palette.mode === 'dark' ? 'grey.600' : 'grey.300',
+      borderRadius: 1,
+      boxShadow: theme.palette.mode === 'dark' ? '0 1px 0 0 rgba(0,0,0,0.3)' : '0 1px 0 0 rgba(0,0,0,0.08)',
+    })}
+  >
+    {children}
+  </Box>
+);
+
 // StructureData interface for chemical structure information
 interface StructureData {
   molfile: string;
@@ -79,6 +107,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showReactionHelpDialog, setShowReactionHelpDialog] = useState(false);
   const [showNMRPredictionDialog, setShowNMRPredictionDialog] = useState(false);
   const [showBiopolymerSequenceDialog, setShowBiopolymerSequenceDialog] = useState(false);
+  const [showFunctionalGroupDialog, setShowFunctionalGroupDialog] = useState(false);
   const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [aiSectionExpanded, setAiSectionExpanded] = useState(false);
   const [stereoInfo, setStereoInfo] = useState<{
@@ -365,6 +394,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     })();
     return () => { cancelled = true; };
   }, [currentStructure?.smiles]);
+
+  const handleAddFunctionalGroup = useCallback(async (smiles: string) => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher?.addFragment) {
+      if (ketcher?.setMolecule) {
+        await ketcher.setMolecule(smiles);
+      } else {
+        throw new Error('Editor not ready');
+      }
+    } else {
+      await ketcher.addFragment(smiles);
+    }
+    setSnackbarMessage('Functional group added — connect it to your structure');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  }, []);
 
   // Biopolymer: open sequence input dialog (Ketcher changeSequenceTypeEnterMode often unavailable)
   const handleBiopolymerOpen = useCallback((mode: 'PEPTIDE' | 'RNA' | 'DNA') => {
@@ -1124,6 +1169,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={() => handleBiopolymerOpen('DNA')}>DNA</MenuItem>
                       </Menu>
                       <Tooltip title="Reactions"><Button size="small" variant="outlined" onClick={() => setShowReactionHelpDialog(true)} startIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Reactions</Button></Tooltip>
+                      <Tooltip title="Add functional group (OMe, OEt, CN, etc.) — AI-powered"><Button size="small" variant="outlined" onClick={() => setShowFunctionalGroupDialog(true)} startIcon={<PsychologyIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Add FG</Button></Tooltip>
                     </Box>
                     {/* Row 2: Paste + Analysis — centered, buttons wrap individually */}
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
@@ -2229,6 +2275,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           molfile={currentStructure?.molfile ?? undefined}
         />
 
+        {/* Functional Group Dialog (AI-powered) */}
+        <FunctionalGroupDialog
+          open={showFunctionalGroupDialog}
+          onClose={() => setShowFunctionalGroupDialog(false)}
+          onAdd={handleAddFunctionalGroup}
+        />
+
         {/* Biopolymer Sequence Dialog */}
         <BiopolymerSequenceDialog
           open={showBiopolymerSequenceDialog}
@@ -2270,7 +2323,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           </DialogContent>
         </Dialog>
 
-        {/* Shortcuts / Help Dialog - Compact, no scroll */}
+        {/* Shortcuts / Help Dialog - Keyboard keys styled */}
         <Dialog
           open={showShortcutsDialog}
           onClose={() => setShowShortcutsDialog(false)}
@@ -2278,79 +2331,136 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           fullWidth
           PaperProps={{
             sx: {
-              maxHeight: '85vh',
+              maxHeight: '90vh',
               borderRadius: 2,
+              boxShadow: '0 24px 48px rgba(0,0,0,0.12)',
             },
           }}
         >
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1.5 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>GL-Chemdraw Shortcuts</Typography>
-            <IconButton onClick={() => setShowShortcutsDialog(false)} size="small">
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 2, px: 3, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 1, bgcolor: 'primary.main', color: 'white' }}>
+                <Typography sx={{ fontSize: '1.25rem' }}>⌨</Typography>
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>GL-ChemDraw Shortcuts</Typography>
+            </Box>
+            <IconButton onClick={() => setShowShortcutsDialog(false)} size="small" sx={{ borderRadius: 1 }}>
               <CloseIcon />
             </IconButton>
           </DialogTitle>
-          <DialogContent dividers sx={{ py: 1.5, px: 2, overflow: 'hidden' }}>
-            <Grid container spacing={2} sx={{ maxHeight: 'calc(85vh - 120px)', overflow: 'hidden' }}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Box sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Copy & Paste</Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+C</Typography>
-                    <Typography variant="body2" color="text.secondary">Copy image + structure (paste in canvas = duplicate; paste elsewhere = image)</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+V</Typography>
-                    <Typography variant="body2" color="text.secondary">Paste structure (adds to canvas) or image</Typography>
-                  </Box>
+          <DialogContent sx={{ py: 2, px: 3, overflow: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Copy & Paste</Typography>
+                  <Stack spacing={1.5}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <KbdKey>Ctrl</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>C</KbdKey>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">Copy image + structure</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <KbdKey>Ctrl</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>V</KbdKey>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">Paste structure or image</Typography>
+                    </Box>
+                  </Stack>
                 </Box>
-                <Box sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Structure</Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+L</Typography>
-                    <Typography variant="body2" color="text.secondary">Layout (fix bond lengths & angles)</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Shift+L</Typography>
-                    <Typography variant="body2" color="text.secondary">Layout (same as Ctrl+L — fix geometry)</Typography>
-                  </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Structure</Typography>
+                  <Stack spacing={1.5}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <KbdKey>Ctrl</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>L</KbdKey>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">Layout (fix bond lengths & angles)</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <KbdKey>Ctrl</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>Shift</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>L</KbdKey>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">Layout (fix geometry)</Typography>
+                    </Box>
+                  </Stack>
                 </Box>
-                <Box sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stereochemistry (Wedge/Dash)</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Biopolymer</Typography>
+                  <Stack spacing={1.5}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <KbdKey>Ctrl</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>Alt</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>P</KbdKey>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">Peptide</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <KbdKey>Ctrl</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>Alt</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>R</KbdKey>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">RNA</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <KbdKey>Ctrl</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>Alt</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>D</KbdKey>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">DNA</Typography>
+                    </Box>
+                  </Stack>
+                </Box>
+                <Box>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'text.secondary', letterSpacing: 1, display: 'block', mb: 1.5 }}>Stereochemistry (Wedge/Dash)</Typography>
+                  <Typography variant="body2" color="text.secondary">
                     In the <strong>left toolbar</strong>: click the <strong>Bond</strong> tool, then use the bond-type submenu (wedge up, wedge down, wavy). Or draw a bond, select it, and change type in the floating toolbar.
                   </Typography>
                 </Box>
-                <Box sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Biopolymer</Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '2px 8px', mt: 0.5, alignItems: 'baseline' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Alt+P</Typography>
-                    <Typography variant="body2" color="text.secondary">Peptide</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Alt+R</Typography>
-                    <Typography variant="body2" color="text.secondary">RNA</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>Ctrl+Alt+D</Typography>
-                    <Typography variant="body2" color="text.secondary">DNA</Typography>
-                  </Box>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Functional Groups — Temporarily disabled</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.8rem' }}>
-                    Ketcher&apos;s FG insertion creates disconnected structures. Use bond/atom tools to draw OMe, OEt, CN, etc. manually until fixed.
-                  </Typography>
-                </Box>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Box sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Panel Buttons</Typography>
-                  <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                    <Typography variant="body2"><strong>Predict NMR</strong> — ¹H, ¹³C, ¹⁵N, ³¹P, ¹⁹F (AI supports all; nmrdb/nmr-predictor: ¹H & ¹³C only)</Typography>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Panel Buttons</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2"><strong>Predict NMR</strong> — ¹H, ¹³C, ¹⁵N, ³¹P, ¹⁹F (AI: all; nmrdb/nmr-predictor: ¹H & ¹³C)</Typography>
                     <Typography variant="body2"><strong>Paste</strong> — Paste from clipboard</Typography>
                     <Typography variant="body2"><strong>Layout</strong> — Fix bond lengths & angles</Typography>
                     <Typography variant="body2"><strong>Align</strong> — R-groups or align selected</Typography>
                     <Typography variant="body2"><strong>Export</strong> — MOL, SDF, SMILES</Typography>
                     <Typography variant="body2"><strong>Biopolymer</strong> — Peptide/RNA/DNA sequence</Typography>
                     <Typography variant="body2"><strong>Reactions</strong> — Draw reaction arrows</Typography>
+                    <Typography variant="body2"><strong>Add FG</strong> — Add functional groups (OMe, OEt, CN, etc.) — AI-powered</Typography>
                   </Stack>
                 </Box>
-                <Box>
-                  <Typography variant="caption" color="primary" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Selection</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontStyle: 'italic' }}>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Selection</Typography>
+                  <Typography variant="body2" color="text.secondary">
                     Select structure → chemical info. Click canvas → full info.
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Functional Groups</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Use the <strong>Add FG</strong> button in Chemical Info — AI-powered. Select OMe, OEt, CN, etc. or enter a custom name. The fragment is added to the canvas; connect it to your structure.
                   </Typography>
                 </Box>
               </Grid>

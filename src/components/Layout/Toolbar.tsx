@@ -13,7 +13,6 @@ import {
   Undo as UndoIcon,
   Redo as RedoIcon,
   DeleteSweep as ClearIcon,
-  Science as ScienceIcon,
   AutoAwesome as SparkleIcon,
   Upload as ImportIcon,
   Download as ExportIcon,
@@ -32,7 +31,6 @@ import {
   ExpandMore as ExpandMoreIcon,
   AccountTree as MoleculeIcon,
   Timeline as SpectraIcon,
-  Hexagon as BenzeneIcon,
   SelectAll as SelectAllIcon,
 } from '@mui/icons-material';
 
@@ -95,16 +93,20 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
       position="fixed" 
       elevation={0}
       sx={{
-        bgcolor: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+        bgcolor: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
+        background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 0 rgba(255, 255, 255, 0.05) inset',
         zIndex: 9999,
         top: 0,
         left: 0,
         right: 0,
+        width: '100%',
+        minWidth: '100%',
         height: '56px',
         position: 'fixed',
+        margin: 0,
       }}
     >
       <MuiToolbar 
@@ -115,45 +117,48 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
           maxHeight: '56px',
         }}
       >
-        {/* Logo - Premium */}
+        {/* Logo - Complex molecular structure (AI-inspired) */}
         <Box
           sx={{
             width: 36,
             height: 36,
-            borderRadius: 2,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '8px',
+            background: 'linear-gradient(145deg, #1e3a5f 0%, #0f172a 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.06)',
             mr: 2,
           }}
         >
-          <ScienceIcon sx={{ fontSize: 22, color: 'white' }} />
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Three fused aromatic rings (anthracene) - trio */}
+            <path d="M4 8 L8 5 L12 8 L12 12 L8 15 L4 12 Z" stroke="white" strokeWidth="1" fill="none" strokeLinejoin="round"/>
+            <path d="M8 15 L12 12 L16 15 L16 19 L12 22 L8 19 Z" stroke="white" strokeWidth="1" fill="none" strokeLinejoin="round"/>
+            <path d="M12 8 L16 5 L20 8 L20 12 L16 15 L12 12 Z" stroke="white" strokeWidth="1" fill="none" strokeLinejoin="round"/>
+          </svg>
         </Box>
 
-        {/* Brand - Premium */}
+        {/* Brand - Enterprise */}
         <Box sx={{ mr: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography 
             variant="h6" 
             sx={{ 
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontSize: '1.1rem',
+              fontWeight: 600,
+              color: 'white',
+              fontSize: '1.05rem',
               letterSpacing: '-0.02em',
               whiteSpace: 'nowrap',
             }}
           >
-            GL-ChemDraw -
+            GL-ChemDraw
           </Typography>
           <Typography 
             variant="caption" 
             sx={{ 
-              color: 'text.secondary',
-              fontSize: '0.85rem',
+              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: '0.8rem',
               fontWeight: 500,
               letterSpacing: '0.02em',
               whiteSpace: 'nowrap',
@@ -164,8 +169,8 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         </Box>
 
         <>
-        {/* Name to Structure Search - Premium */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 3 }}>
+        {/* Name to Structure Search - Enterprise */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 3, '& input::placeholder': { color: 'rgba(0,0,0,0.45)' } }}>
           <input
             type="text"
             placeholder="Search compound name..."
@@ -174,23 +179,22 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
             onKeyPress={handleKeyPress}
             style={{
               width: '220px',
-              height: '38px',
-              padding: '0 16px',
+              height: '36px',
+              padding: '0 14px',
               fontSize: '0.875rem',
-              border: '1px solid rgba(0, 0, 0, 0.12)',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
               borderRadius: '8px',
               outline: 'none',
-              backgroundColor: 'rgba(0, 0, 0, 0.02)',
+              backgroundColor: 'white',
+              color: '#0f172a',
               transition: 'all 0.2s ease',
             }}
             onFocus={(e) => {
-              e.target.style.backgroundColor = 'white';
-              e.target.style.borderColor = '#667eea';
-              e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+              e.target.style.borderColor = 'rgba(59, 130, 246, 0.8)';
+              e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
             }}
             onBlur={(e) => {
-              e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
-              e.target.style.borderColor = 'rgba(0, 0, 0, 0.12)';
+              e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)';
               e.target.style.boxShadow = 'none';
             }}
           />
@@ -198,15 +202,15 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
             size="small"
             onClick={handleSearch}
             sx={{ 
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
               color: 'white',
               '&:hover': { 
-                background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
               },
-              height: '38px',
-              width: '38px',
-              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+              height: '36px',
+              width: '36px',
+              boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
               transition: 'all 0.2s ease',
             }}
           >
@@ -221,7 +225,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         {onShortcutsClick && (
           <Tooltip title="Keyboard shortcuts" arrow placement="bottom">
             <Chip
-              icon={<KeyboardIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+              icon={<KeyboardIcon sx={{ fontSize: 14, color: '#0f172a' }} />}
               label="Shortcuts"
               size="small"
               variant="outlined"
@@ -230,13 +234,16 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
                 fontSize: '0.7rem',
                 fontWeight: 500,
                 height: 26,
-                bgcolor: 'transparent',
-                borderColor: 'primary.main',
-                color: 'primary.main',
+                bgcolor: 'white !important',
+                borderColor: 'rgba(255,255,255,0.4)',
+                color: '#0f172a !important',
                 cursor: 'pointer',
                 '&:hover': {
-                  bgcolor: 'action.hover',
-                  borderColor: 'primary.dark'
+                  bgcolor: 'white !important',
+                  borderColor: 'rgba(255,255,255,0.7)',
+                  color: '#0f172a !important',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.5)',
+                  '& .MuiChip-icon': { color: '#0f172a !important' }
                 }
               }}
             />
@@ -249,7 +256,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         {onFaqClick && (
           <Tooltip title="How to use GL-Chemdraw" arrow placement="bottom">
             <Chip
-              icon={<HelpIcon sx={{ fontSize: 14, color: 'primary.main' }} />}
+              icon={<HelpIcon sx={{ fontSize: 14, color: '#0f172a' }} />}
               label="FAQ"
               size="small"
               variant="outlined"
@@ -258,13 +265,16 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
                 fontSize: '0.7rem',
                 fontWeight: 500,
                 height: 26,
-                bgcolor: 'transparent',
-                borderColor: 'primary.main',
-                color: 'primary.main',
+                bgcolor: 'white !important',
+                borderColor: 'rgba(255,255,255,0.4)',
+                color: '#0f172a !important',
                 cursor: 'pointer',
                 '&:hover': {
-                  bgcolor: 'action.hover',
-                  borderColor: 'primary.dark'
+                  bgcolor: 'white !important',
+                  borderColor: 'rgba(255,255,255,0.7)',
+                  color: '#0f172a !important',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.5)',
+                  '& .MuiChip-icon': { color: '#0f172a !important' }
                 }
               }}
             />
@@ -281,10 +291,10 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
               size="small"
               aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
               sx={{ 
-                color: 'text.secondary',
+                color: 'rgba(255,255,255,0.8)',
                 '&:hover': { 
-                  bgcolor: 'action.hover',
-                  color: 'text.primary'
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'white'
                 },
               }}
             >

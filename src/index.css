@@ -2,6 +2,25 @@
  * Global Styles with Accessibility Support
  */
 
+/* Eliminate white edges - match header color so gaps blend in */
+html,
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-color: #0f172a !important; /* Match enterprise header */
+}
+
+#root {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-height: 100vh;
+  background-color: #0f172a;
+}
+
 /* NO desktop-specific overrides - desktop should match web exactly */
 
 /* Ketcher Canvas: Proper sizing to fit under header */

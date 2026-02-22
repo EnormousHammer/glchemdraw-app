@@ -83,6 +83,28 @@ body {
   z-index: 10000 !important;
 }
 
+/* Fix: MUI Popover adds padding-right to body when open (scrollbar compensation), causing white space.
+   Reserve scrollbar space so body doesn't need padding when popover opens. */
+html {
+  overflow-y: scroll;
+}
+
+/* Fix: Reduce big gap between Molecules dropdown and next toolbar buttons (gear, zoom, etc) */
+.Ketcher-root [data-testid="top-toolbar"] > div:last-child,
+.Ketcher-polymer-editor-root [data-testid="top-toolbar"] > div:last-child {
+  gap: 4px !important;
+}
+/* Prevent flex-grow from creating excess space between toolbar items */
+.Ketcher-root [data-testid="top-toolbar"] > div:last-child > *,
+.Ketcher-polymer-editor-root [data-testid="top-toolbar"] > div:last-child > * {
+  flex-grow: 0 !important;
+}
+.Ketcher-root [data-testid="top-toolbar"] hr,
+.Ketcher-polymer-editor-root [data-testid="top-toolbar"] hr {
+  margin-left: 2px !important;
+  margin-right: 2px !important;
+}
+
 /* NMRium: Let it use its natural layout */
 .nmrium-container {
   position: relative !important;

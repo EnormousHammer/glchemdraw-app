@@ -471,8 +471,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
     setSnackbarOpen(true);
   }, []);
 
-  /** Switch back to Molecules mode when stuck in Macromolecules. Remounts canvas so it starts fresh in Molecules mode. */
+  /** Switch back to Molecules mode using Ketcher's built-in API. Falls back to remount only if API unavailable. */
   const handleBackToMolecules = useCallback(() => {
+    const ketcher = ketcherRef.current;
+    if (ketcher?.switchToMoleculesMode) {
+      try {
+        ketcher.switchToMoleculesMode();
+        setSnackbarMessage('Switched to Molecules mode');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        return;
+      } catch (err) {
+        console.warn('[AppLayout] switchToMoleculesMode failed, falling back to remount:', err);
+      }
+    }
+    // Fallback: remount canvas when Ketcher API unavailable
     setCanvasKey((k) => k + 1);
     ketcherRef.current = null;
     setSnackbarMessage('Switched to Molecules mode');

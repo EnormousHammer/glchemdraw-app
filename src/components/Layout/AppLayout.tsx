@@ -125,6 +125,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showAccessibilityMenu, setShowAccessibilityMenu] = useState(false);
   const [showAdvancedExportDialog, setShowAdvancedExportDialog] = useState(false);
+  const [showBondTypeBar, setShowBondTypeBar] = useState(false);
   const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [aiSectionExpanded, setAiSectionExpanded] = useState(false);
   const [stereoInfo, setStereoInfo] = useState<{
@@ -1147,14 +1148,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                   overflow: 'hidden'
                 }}
               >
-                {/* Bond Type Bar - ChemDraw parity: Single, Double, Triple, Wedge, Hash, Wavy */}
-                <Box sx={{ flexShrink: 0, px: 1, py: 0.75, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <BondTypeBar ketcherRef={ketcherRef} compact />
-                </Box>
                 {/* Drawing Canvas - Full Height */}
                 <Box sx={{ 
-                  flex: 1,
-                  minHeight: 0,
+                  height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden'
@@ -1349,8 +1345,28 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                         >Templates</Button>
                       </Tooltip>
                     </Box>
-                    {/* Row 2: Paste, Layout, Align, NMR, AI */}
+                    {/* Row 2: Bond Type, Paste, Layout, Align, NMR, AI */}
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.25, flexWrap: 'wrap', minWidth: 0 }}>
+                      <Tooltip title="Bond type: Single, Double, Triple, Wedge, Hash, Wavy. Select bond(s) then click type to change.">
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => setShowBondTypeBar((b) => !b)}
+                          startIcon={<span style={{ fontSize: 14, fontWeight: 600 }}>≡</span>}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            fontSize: '0.7rem',
+                            letterSpacing: '0.03em',
+                            color: showBondTypeBar ? 'primary.main' : 'text.secondary',
+                            minWidth: 0,
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                          }}
+                        >Bond Type</Button>
+                      </Tooltip>
                       <Tooltip title="Paste from clipboard (use when Ctrl+V doesn't work)">
                         <Button
                           size="small"
@@ -1435,6 +1451,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                         </IconButton>
                       </Tooltip>
                     </Box>
+                    {showBondTypeBar && (
+                      <Box sx={{ py: 1, display: 'flex', justifyContent: 'center', borderTop: 1, borderColor: 'divider' }}>
+                        <BondTypeBar ketcherRef={ketcherRef} compact />
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 

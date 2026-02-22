@@ -57,6 +57,32 @@ body {
   flex: 0 0 auto !important;
 }
 
+/* Fix: Ketcher mode dropdown (Molecules/Macromolecules) disappearing when opened.
+   Overflow clips the dropdown; toolbar must not clip. Mode switcher uses MUI Popover (portals to body). */
+.Ketcher-root [data-testid="top-toolbar"],
+.Ketcher-polymer-editor-root [data-testid="top-toolbar"] {
+  overflow: visible !important;
+}
+
+/* Fix: In RNA Builder mode, Ketcher disables the mode switcher (toggler-component-wrapper--disabled).
+   User gets stuck - cannot switch back to Molecules. Re-enable it. */
+.Ketcher-polymer-editor-root .toggler-component-wrapper--disabled {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+/* Make mode switcher visible in macromolecules - it collapses to 28px and is easy to miss */
+.Ketcher-polymer-editor-root [data-testid="polymer-toggler"] {
+  min-width: 90px !important;
+}
+/* MUI Popover for mode switcher - ensure high z-index above Chemical Info panel */
+.MuiPopover-root:has([data-testid="molecules_mode"]) {
+  z-index: 9999 !important;
+}
+.MuiPopover-root:has([data-testid="molecules_mode"]) .MuiPopover-paper {
+  z-index: 10000 !important;
+}
+
 /* NMRium: Let it use its natural layout */
 .nmrium-container {
   position: relative !important;

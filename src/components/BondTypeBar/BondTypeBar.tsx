@@ -38,10 +38,12 @@ export type BondTypeId =
 
 interface BondTypeBarProps {
   ketcherRef: React.RefObject<any>;
-  /** When true, bar is for changing selected bonds. When false, for setting draw mode. */
-  hasBondSelection?: boolean;
   /** Compact mode for inline display */
   compact?: boolean;
+  /** Called when bond type applied (for snackbar) */
+  onApplied?: (msg: string) => void;
+  /** Called when bond type fails */
+  onError?: (msg: string) => void;
 }
 
 const BOND_TYPES: { id: BondTypeId; label: string; icon: React.ReactNode; type: number; stereo: number }[] = [
@@ -56,21 +58,40 @@ const BOND_TYPES: { id: BondTypeId; label: string; icon: React.ReactNode; type: 
 export const BondTypeBar: React.FC<BondTypeBarProps> = ({
   ketcherRef,
   compact = false,
+  onApplied,
+  onError,
 }) => {
   const [selectedBondIds, setSelectedBondIds] = useState<number[]>([]);
   const [activeDrawType, setActiveDrawType] = useState<BondTypeId | null>('single');
 
   const applyBondType = useCallback(
-    (bondTypeId: BondTypeId) => {
-      const ketcher = ketcherRef?.current;
-      if (!ketcher?.editor) return;
+    async (bondTypeId: BondTypeId) => {
+      let ketcher = ketcherRef?.current;
+      if (!ketcher) {
+        try {
+          const kc = await import('ketcher-core');
+          ketcher = (kc as any).ketcherProvider?.getKetcher?.();
+        } catch (_) {}
+      }
+      if (!ketcher) {
+        onError?.('Editor not ready. Draw a structure first.');
+        return;
+      }
+
+      const editor = ketcher.editor;
+      if (!editor) {
+        onError?.('Bond tools only work in Molecules mode.');
+        return;
+      }
 
       const def = BOND_TYPES.find((b) => b.id === bondTypeId);
       if (!def) return;
 
-      const editor = ketcher.editor;
       const restruct = (editor as any).render?.ctab;
-      if (!restruct) return; // Macromolecules mode or editor not ready
+      if (!restruct) {
+        onError?.('Bond tools only work in Molecules mode (not Macromolecules).');
+        return;
+      }
 
       if (selectedBondIds.length > 0) {
         try {
@@ -80,8 +101,10 @@ export const BondTypeBar: React.FC<BondTypeBarProps> = ({
           } as any);
           editor.update(action);
           setActiveDrawType(bondTypeId);
+          onApplied?.(`Bond${selectedBondIds.length > 1 ? 's' : ''} set to ${def.label}`);
         } catch (err) {
           console.warn('[BondTypeBar] fromBondsAttrs failed:', err);
+          onError?.('Failed to change bond type.');
         }
       } else {
         setActiveDrawType(bondTypeId);
@@ -94,25 +117,43 @@ export const BondTypeBar: React.FC<BondTypeBarProps> = ({
           wavy: 'bond-updown',
         };
         const toolName = toolMap[bondTypeId];
-        if (toolName && typeof editor.tool === 'function') {
-          editor.tool(toolName);
+        if (toolName) {
+          if (typeof editor.tool === 'function') {
+            editor.tool(toolName);
+            onApplied?.(`Draw mode: ${def.label}`);
+          } else if ((editor as any).events?.selectTool?.dispatch) {
+            (editor as any).events.selectTool.dispatch([toolName]);
+            onApplied?.(`Draw mode: ${def.label}`);
+          } else {
+            onError?.('Could not set bond tool.');
+          }
         }
       }
     },
-    [ketcherRef, selectedBondIds]
+    [ketcherRef, selectedBondIds, onApplied, onError]
   );
 
   useEffect(() => {
     const ketcher = ketcherRef?.current;
-    if (!ketcher?.editor?.event?.selectionChange) return;
+    const editor = ketcher?.editor;
+    const ev = editor?.event?.selectionChange ?? editor?.events?.selectionChange;
+    if (!ev?.add) return;
 
     const handler = () => {
-      const sel = ketcher.editor.selection?.();
-      const bonds = sel?.bonds ?? [];
-      setSelectedBondIds(Array.isArray(bonds) ? bonds : []);
+      try {
+        const sel = editor.selection?.();
+        const bonds = sel?.bonds ?? [];
+        const arr = Array.isArray(bonds) ? bonds : (typeof bonds === 'object' ? Object.values(bonds) : []);
+        setSelectedBondIds(arr.filter((x): x is number => typeof x === 'number'));
+      } catch (_) {
+        setSelectedBondIds([]);
+      }
     };
 
-    const sub = ketcher.editor.event.selectionChange.add(handler);
+    let sub: { detach?: () => void } | undefined;
+    try {
+      sub = ev.add(handler);
+    } catch (_) {}
     handler();
     return () => {
       try {

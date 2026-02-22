@@ -55,6 +55,7 @@ interface AppToolbarProps {
   onReactionsClick?: () => void;
   onFaqClick?: () => void;
   onSettingsClick?: () => void;
+  onBackToMolecules?: () => void;
   rightContent?: React.ReactNode;
 }
 
@@ -77,6 +78,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onReactionsClick,
   onFaqClick,
   onSettingsClick,
+  onBackToMolecules,
   rightContent,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -226,6 +228,36 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         </>
 
         <Box sx={{ flexGrow: 1 }} />
+
+        {/* Molecules - switch back from RNA/DNA/PEP when stuck */}
+        {onBackToMolecules && (
+          <Tooltip title="Switch back to Molecules mode (resets canvas when stuck in RNA/DNA/PEP)" arrow placement="bottom">
+            <Chip
+              icon={<MoleculeIcon sx={{ fontSize: 14, color: '#0f172a' }} />}
+              label="Molecules"
+              size="small"
+              variant="outlined"
+              onClick={onBackToMolecules}
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                height: 26,
+                bgcolor: 'white !important',
+                borderColor: 'rgba(255,255,255,0.4)',
+                color: '#0f172a !important',
+                cursor: 'pointer',
+                mr: 1,
+                '&:hover': {
+                  bgcolor: 'white !important',
+                  borderColor: 'rgba(255,255,255,0.7)',
+                  color: '#0f172a !important',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.5)',
+                  '& .MuiChip-icon': { color: '#0f172a !important' }
+                }
+              }}
+            />
+          </Tooltip>
+        )}
 
         {/* Shortcuts */}
         {onShortcutsClick && (

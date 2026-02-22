@@ -126,6 +126,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
   const [showAccessibilityMenu, setShowAccessibilityMenu] = useState(false);
   const [showAdvancedExportDialog, setShowAdvancedExportDialog] = useState(false);
   const [showBondTypeBar, setShowBondTypeBar] = useState(false);
+  const [canvasKey, setCanvasKey] = useState(0);
   const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [aiSectionExpanded, setAiSectionExpanded] = useState(false);
   const [stereoInfo, setStereoInfo] = useState<{
@@ -466,6 +467,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
       await ketcher.addFragment(smiles);
     }
     setSnackbarMessage('Functional group added — connect it to your structure');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  }, []);
+
+  /** Switch back to Molecules mode when stuck in Macromolecules. Remounts canvas so it starts fresh in Molecules mode. */
+  const handleBackToMolecules = useCallback(() => {
+    setCanvasKey((k) => k + 1);
+    ketcherRef.current = null;
+    setSnackbarMessage('Switched to Molecules mode');
     setSnackbarSeverity('success');
     setSnackbarOpen(true);
   }, []);
@@ -1118,6 +1128,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
           onSettingsClick={() => setShowSettingsDialog(true)}
+          onBackToMolecules={handleBackToMolecules}
           darkMode={themeMode !== 'light'}
           onToggleDarkMode={onToggleDarkMode}
         />
@@ -1156,6 +1167,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                   overflow: 'hidden'
                 }}>
                   <ChemCanvas
+                    key={canvasKey}
                     onStructureChange={handleStructureChange}
                     onSelectionChange={handleSelectionChange}
                     onError={(error) => console.error('[AppLayout] ChemCanvas error:', error)}
@@ -1345,8 +1357,29 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                         >Templates</Button>
                       </Tooltip>
                     </Box>
-                    {/* Row 2: Bond Type, Paste, Layout, Align, NMR, AI */}
+                    {/* Row 2: Molecules (escape hatch), Bond Type, Paste, Layout, Align, NMR, AI */}
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.25, flexWrap: 'wrap', minWidth: 0 }}>
+                      <Tooltip title="Switch back to Molecules mode (resets canvas when stuck in RNA/DNA/PEP)">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={handleBackToMolecules}
+                          startIcon={<BiotechIcon sx={{ fontSize: 14, transform: 'scaleX(-1)' }} />}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                            letterSpacing: '0.03em',
+                            color: 'primary.main',
+                            borderColor: 'primary.main',
+                            minWidth: 0,
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            '&:hover': { bgcolor: 'primary.main', color: 'primary.contrastText', borderColor: 'primary.main' },
+                          }}
+                        >Molecules</Button>
+                      </Tooltip>
                       <Tooltip title="Bond type: Single, Double, Triple, Wedge, Hash, Wavy. Select bond(s) then click type to change.">
                         <Button
                           size="small"
@@ -1453,7 +1486,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                     </Box>
                     {showBondTypeBar && (
                       <Box sx={{ py: 1, display: 'flex', justifyContent: 'center', borderTop: 1, borderColor: 'divider' }}>
-                        <BondTypeBar ketcherRef={ketcherRef} compact />
+                        <BondTypeBar
+                          ketcherRef={ketcherRef}
+                          compact
+                          onApplied={(msg) => { setSnackbarMessage(msg); setSnackbarSeverity('success'); setSnackbarOpen(true); }}
+                          onError={(msg) => { setSnackbarMessage(msg); setSnackbarSeverity('warning'); setSnackbarOpen(true); }}
+                        />
                       </Box>
                     )}
                   </Box>

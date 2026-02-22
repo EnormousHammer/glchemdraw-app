@@ -88,6 +88,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   } | null>(null);
   const [aiIupacName, setAiIupacName] = useState<string | null>(null);
   const [aiIupacLoading, setAiIupacLoading] = useState(false);
+  const [aiProperties, setAiProperties] = useState<{
+    meltingPoint?: string;
+    boilingPoint?: string;
+    solubility?: string;
+    logP?: number;
+    tpsa?: number;
+    drugLikeness?: string;
+  } | null>(null);
+  const [aiPropertiesLoading, setAiPropertiesLoading] = useState(false);
+  const [aiSafetySummary, setAiSafetySummary] = useState<string | null>(null);
+  const [aiSafetyLoading, setAiSafetyLoading] = useState(false);
   const [chemicalInfoWidth, setChemicalInfoWidth] = useState(() => {
     const saved = localStorage.getItem('glchemdraw_chemical_info_width');
     const n = saved ? parseInt(saved, 10) : 360;
@@ -577,7 +588,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           name: foundCompound.name,
           properties: foundCompound.properties
         });
-        
+        setAiProperties(null);
+        setAiSafetySummary(null);
         // Set ALL REAL data from PubChem (basic properties + safety data)
         setChemicalData({
           physicalProperties: {
@@ -710,7 +722,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
             name: properties.IUPACName || name,
             properties: properties
           });
-          
+          setAiProperties(null);
+          setAiSafetySummary(null);
           // Set ALL REAL data from PubChem
           setChemicalData({
             physicalProperties: {
@@ -872,6 +885,75 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, [currentStructure?.smiles, chemicalData.regulatory?.smiles, aiContext]);
 
+  const handlePredictMissingProperties = useCallback(async () => {
+    const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
+    if (!smiles) return;
+    setAiPropertiesLoading(true);
+    setAiProperties(null);
+    try {
+      const { aiEstimatePhysicalProperties } = await import('../../lib/openai/chemistry');
+      const phys = chemicalData.physicalProperties;
+      const desc = chemicalData.descriptors;
+      const result = await aiEstimatePhysicalProperties(smiles, {
+        meltingPoint: phys?.meltingPoint,
+        boilingPoint: phys?.boilingPoint,
+        logP: desc?.logP,
+        tpsa: desc?.tpsa,
+      });
+      if (result) {
+        setAiProperties({
+          meltingPoint: result.meltingPoint,
+          boilingPoint: result.boilingPoint,
+          solubility: result.solubility,
+          logP: result.logP,
+          tpsa: result.tpsa,
+          drugLikeness: result.drugLikeness,
+        });
+        setSnackbarMessage('Properties predicted');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      } else {
+        setSnackbarMessage('Could not predict properties');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+      }
+    } catch {
+      setSnackbarMessage('Property prediction failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setAiPropertiesLoading(false);
+    }
+  }, [currentStructure?.smiles, chemicalData.regulatory?.smiles, chemicalData.physicalProperties, chemicalData.descriptors]);
+
+  const handleGetSafetySummary = useCallback(async () => {
+    const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
+    if (!smiles) return;
+    setAiSafetyLoading(true);
+    setAiSafetySummary(null);
+    try {
+      const { aiEstimateSafety } = await import('../../lib/openai/chemistry');
+      const name = recognizedCompound?.name;
+      const summary = await aiEstimateSafety(smiles, name);
+      if (summary) {
+        setAiSafetySummary(summary);
+        setSnackbarMessage('Safety summary generated');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      } else {
+        setSnackbarMessage('Could not generate safety summary');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+      }
+    } catch {
+      setSnackbarMessage('Safety summary failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setAiSafetyLoading(false);
+    }
+  }, [currentStructure?.smiles, chemicalData.regulatory?.smiles, recognizedCompound?.name]);
+
   const handleClear = useCallback(() => {
     if (ketcherRef.current && ketcherRef.current.editor) {
       try {
@@ -879,6 +961,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setCurrentStructure(null);
         setRecognizedCompound(null);
         setAiIupacName(null);
+        setAiProperties(null);
+        setAiSafetySummary(null);
         setChemicalData({
           physicalProperties: null,
           safetyData: null,
@@ -1055,7 +1139,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       </Menu>
                       {isSearching && <CircularProgress size={12} sx={{ flexShrink: 0 }} />}
                       <Tooltip title="NMR prediction and AI explanation"><span><Button size="small" variant="contained" onClick={() => setShowNMRPredictionDialog(true)} disabled={!currentStructure?.smiles} startIcon={<ShowChartIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>NMR</Button></span></Tooltip>
-                      <Tooltip title="AI Assistant"><Button size="small" variant="outlined" onClick={() => { setAiSectionExpanded(true); setTimeout(() => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><PsychologyIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
+                      <Tooltip title="AI Assistant"><Button size="small" variant="outlined" onClick={() => {
+                        setAiSectionExpanded(true);
+                        const scrollToAi = () => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(scrollToAi, 100);
+                        setTimeout(scrollToAi, 400);
+                      }} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><PsychologyIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
                     </Box>
                   </Box>
                 </Box>
@@ -1507,6 +1596,49 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           </Box>
                         </Box>
                       )}
+                      {/* AI-predicted properties when PubChem data is missing */}
+                      {aiProperties && (
+                        <>
+                          {aiProperties.meltingPoint && !chemicalData.physicalProperties?.meltingPoint && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                              <Typography variant="caption" color="text.secondary">Melting Point (predicted):</Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 500 }}>{aiProperties.meltingPoint}</Typography>
+                            </Box>
+                          )}
+                          {aiProperties.boilingPoint && !chemicalData.physicalProperties?.boilingPoint && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                              <Typography variant="caption" color="text.secondary">Boiling Point (predicted):</Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 500 }}>{aiProperties.boilingPoint}</Typography>
+                            </Box>
+                          )}
+                          {aiProperties.solubility && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                              <Typography variant="caption" color="text.secondary">Aqueous Solubility (predicted):</Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 500 }}>{aiProperties.solubility}</Typography>
+                            </Box>
+                          )}
+                          {aiProperties.drugLikeness && (
+                            <Box sx={{ p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                              <Typography variant="caption" color="text.secondary">Drug-likeness:</Typography>
+                              <Typography variant="caption" sx={{ display: 'block', mt: 0.25 }}>{aiProperties.drugLikeness}</Typography>
+                            </Box>
+                          )}
+                        </>
+                      )}
+                      {currentStructure?.smiles && !aiProperties && (
+                        (!chemicalData.physicalProperties?.meltingPoint || !chemicalData.physicalProperties?.boilingPoint) && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={handlePredictMissingProperties}
+                            disabled={aiPropertiesLoading}
+                            startIcon={aiPropertiesLoading ? <CircularProgress size={14} /> : <PsychologyIcon sx={{ fontSize: 14 }} />}
+                            sx={{ fontSize: '0.7rem', mt: 0.5 }}
+                          >
+                            {aiPropertiesLoading ? 'Predicting...' : 'Predict melting & boiling point'}
+                          </Button>
+                        )
+                      )}
                     </Stack>
                   </Box>
                 )
@@ -1764,9 +1896,81 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           </Box>
                         </Box>
                       )}
+                      {aiProperties && (aiProperties.logP != null || aiProperties.tpsa != null) && (
+                        <>
+                          {aiProperties.logP != null && chemicalData.descriptors.logP === undefined && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                              <Typography variant="caption" color="text.secondary">LogP (predicted):</Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 500 }}>{aiProperties.logP.toFixed(2)}</Typography>
+                            </Box>
+                          )}
+                          {aiProperties.tpsa != null && chemicalData.descriptors.tpsa === undefined && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                              <Typography variant="caption" color="text.secondary">TPSA (predicted):</Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 500 }}>{aiProperties.tpsa.toFixed(2)} Å²</Typography>
+                            </Box>
+                          )}
+                        </>
+                      )}
+                      {currentStructure?.smiles && chemicalData.descriptors && (chemicalData.descriptors.logP === undefined || chemicalData.descriptors.tpsa === undefined) && !aiProperties?.logP && !aiProperties?.tpsa && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={handlePredictMissingProperties}
+                          disabled={aiPropertiesLoading}
+                          startIcon={aiPropertiesLoading ? <CircularProgress size={14} /> : <PsychologyIcon sx={{ fontSize: 14 }} />}
+                          sx={{ fontSize: '0.7rem', mt: 0.5 }}
+                        >
+                          {aiPropertiesLoading ? 'Predicting...' : 'Predict logP & TPSA'}
+                        </Button>
+                      )}
                     </Stack>
                   </Box>
                 )
+              )}
+
+              {/* Safety - PubChem or AI summary */}
+              {(chemicalData.safetyData || aiSafetySummary || (recognizedCompound && currentStructure?.smiles)) && (
+                <Box sx={{ p: 1.5, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, pb: 0.75, fontSize: '0.8rem', letterSpacing: '0.03em', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider' }}>
+                    Safety
+                  </Typography>
+                  {aiSafetySummary ? (
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem', lineHeight: 1.5 }}>{aiSafetySummary}</Typography>
+                  ) : chemicalData.safetyData && (chemicalData.safetyData.ghsClassification || chemicalData.safetyData.hazardClass || chemicalData.safetyData.flashPoint) ? (
+                    <Stack spacing={0.5}>
+                      {chemicalData.safetyData.ghsClassification && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', minWidth: 0 }}>
+                          <Typography variant="caption" color="text.secondary">GHS:</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 500 }}>{chemicalData.safetyData.ghsClassification}</Typography>
+                        </Box>
+                      )}
+                      {chemicalData.safetyData.hazardClass && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', minWidth: 0 }}>
+                          <Typography variant="caption" color="text.secondary">Hazard Class:</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 500 }}>{chemicalData.safetyData.hazardClass}</Typography>
+                        </Box>
+                      )}
+                      {chemicalData.safetyData.flashPoint && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', minWidth: 0 }}>
+                          <Typography variant="caption" color="text.secondary">Flash Point:</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 500 }}>{chemicalData.safetyData.flashPoint}</Typography>
+                        </Box>
+                      )}
+                    </Stack>
+                  ) : (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={handleGetSafetySummary}
+                      disabled={aiSafetyLoading}
+                      startIcon={aiSafetyLoading ? <CircularProgress size={14} /> : <PsychologyIcon sx={{ fontSize: 14 }} />}
+                      sx={{ fontSize: '0.7rem' }}
+                    >
+                      {aiSafetyLoading ? 'Generating...' : 'Get safety summary'}
+                    </Button>
+                  )}
+                </Box>
               )}
 
               {/* Stereochemistry (RDKit) */}

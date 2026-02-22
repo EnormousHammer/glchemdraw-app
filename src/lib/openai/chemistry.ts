@@ -83,3 +83,96 @@ export async function aiSmilesToIupac(smiles: string, userContext?: string): Pro
     return null;
   }
 }
+
+/** Parsed AI-estimated physical properties and descriptors */
+export interface AIEstimatedProperties {
+  meltingPoint?: string;
+  boilingPoint?: string;
+  solubility?: string;
+  logP?: number;
+  tpsa?: number;
+  pka?: string[];
+  drugLikeness?: string;
+}
+
+/**
+ * Estimate missing physical properties and descriptors using AI.
+ * Enterprise-level fallback when PubChem data is incomplete.
+ * @param smiles - SMILES string
+ * @param existing - What we already have (AI will skip these)
+ */
+export async function aiEstimatePhysicalProperties(
+  smiles: string,
+  existing?: { meltingPoint?: string; boilingPoint?: string; logP?: number; tpsa?: number }
+): Promise<AIEstimatedProperties | null> {
+  const cleanSmiles = prepareSmilesForAI(smiles, 500);
+  if (!cleanSmiles) return null;
+  const skip: string[] = [];
+  if (existing?.meltingPoint) skip.push('melting point');
+  if (existing?.boilingPoint) skip.push('boiling point');
+  if (existing?.logP != null) skip.push('logP');
+  if (existing?.tpsa != null) skip.push('TPSA');
+  const skipNote = skip.length > 0 ? ` Skip: ${skip.join(', ')} (already known).` : '';
+  try {
+    const content = await chatWithOpenAI([
+      {
+        role: 'system',
+        content: `You are an expert medicinal chemist. Estimate physical/chemical properties for the given SMILES.${skipNote}
+Reply in this exact format (one per line, use N/A if unknown):
+Melting Point: [value with °C]
+Boiling Point: [value with °C]
+Aqueous Solubility: [e.g. "soluble", "slightly soluble", "insoluble", or mg/mL]
+LogP: [number]
+TPSA: [number] Å²
+pKa (acidic/basic sites): [comma-separated values or "N/A"]
+Drug-likeness (Lipinski): [brief assessment]`,
+      },
+      { role: 'user', content: `Estimate properties for SMILES: ${cleanSmiles}` },
+    ]);
+    const result: AIEstimatedProperties = {};
+    const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      const m = line.match(/^([^:]+):\s*(.+)$/);
+      if (!m) continue;
+      const [, key, val] = m;
+      const v = val.trim();
+      if (/melting/i.test(key) && !existing?.meltingPoint) result.meltingPoint = v !== 'N/A' ? v : undefined;
+      else if (/boiling/i.test(key) && !existing?.boilingPoint) result.boilingPoint = v !== 'N/A' ? v : undefined;
+      else if (/solubility/i.test(key)) result.solubility = v !== 'N/A' ? v : undefined;
+      else if (/^logp$/i.test(key.replace(/\s/g, '')) && existing?.logP == null) {
+        const n = parseFloat(v);
+        if (!Number.isNaN(n)) result.logP = n;
+      } else if (/tpsa/i.test(key) && existing?.tpsa == null) {
+        const n = parseFloat(v.replace(/[^\d.-]/g, ''));
+        if (!Number.isNaN(n)) result.tpsa = n;
+      } else if (/pka/i.test(key)) result.pka = v !== 'N/A' ? v.split(/[,;]/).map((s) => s.trim()).filter(Boolean) : undefined;
+      else if (/drug-likeness|lipinski/i.test(key)) result.drugLikeness = v !== 'N/A' ? v : undefined;
+    }
+    return Object.keys(result).length > 0 ? result : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Estimate safety/hazard summary using AI when PubChem safety data is sparse.
+ * @param smiles - SMILES string
+ * @param name - Optional compound name
+ */
+export async function aiEstimateSafety(smiles: string, name?: string): Promise<string | null> {
+  const cleanSmiles = prepareSmilesForAI(smiles, 500);
+  if (!cleanSmiles) return null;
+  try {
+    const compound = name ? `${name} (${cleanSmiles})` : cleanSmiles;
+    const content = await chatWithOpenAI([
+      {
+        role: 'system',
+        content: 'You are a chemical safety expert. Provide a concise safety summary for the compound. Include: GHS hazard class if known, flammability, reactivity, handling precautions, and storage. Be conservative. Reply in 2-4 short paragraphs.',
+      },
+      { role: 'user', content: `Safety summary for: ${compound}` },
+    ]);
+    return content.trim().length > 20 ? content.trim() : null;
+  } catch {
+    return null;
+  }
+}

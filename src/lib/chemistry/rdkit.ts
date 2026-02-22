@@ -25,8 +25,10 @@ export async function initRDKit(): Promise<any> {
   loadingPromise = (async () => {
     try {
       console.log('[RDKit] Loading WASM module...');
-      // @ts-ignore - RDKit types
-      const RDKit = await initRDKitModule;
+      // locateFile: Vite bundles don't serve node_modules; WASM must be in public/ or CDN
+      const RDKit = await initRDKitModule({
+        locateFile: (path: string) => (path.endsWith('.wasm') ? '/RDKit_minimal.wasm' : path),
+      });
       
       // Wait for RDKit to be fully initialized
       let retries = 0;

@@ -32,6 +32,7 @@ import {
   AccountTree as MoleculeIcon,
   Timeline as SpectraIcon,
   SelectAll as SelectAllIcon,
+  ArrowForward as ArrowForwardIcon,
 } from '@mui/icons-material';
 
 interface AppToolbarProps {
@@ -50,6 +51,7 @@ interface AppToolbarProps {
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
   onShortcutsClick?: () => void;
+  onReactionsClick?: () => void;
   onFaqClick?: () => void;
   rightContent?: React.ReactNode;
 }
@@ -70,6 +72,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   darkMode,
   onToggleDarkMode,
   onShortcutsClick,
+  onReactionsClick,
   onFaqClick,
   rightContent,
 }) => {
@@ -230,6 +233,37 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
               size="small"
               variant="outlined"
               onClick={onShortcutsClick}
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                height: 26,
+                bgcolor: 'white !important',
+                borderColor: 'rgba(255,255,255,0.4)',
+                color: '#0f172a !important',
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: 'white !important',
+                  borderColor: 'rgba(255,255,255,0.7)',
+                  color: '#0f172a !important',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.5)',
+                  '& .MuiChip-icon': { color: '#0f172a !important' }
+                }
+              }}
+            />
+          </Tooltip>
+        )}
+
+        <Box sx={{ width: 8 }} />
+
+        {/* Reactions */}
+        {onReactionsClick && (
+          <Tooltip title="Reaction arrows & schemes help" arrow placement="bottom">
+            <Chip
+              icon={<ArrowForwardIcon sx={{ fontSize: 14, color: '#0f172a' }} />}
+              label="Reactions"
+              size="small"
+              variant="outlined"
+              onClick={onReactionsClick}
               sx={{
                 fontSize: '0.7rem',
                 fontWeight: 500,

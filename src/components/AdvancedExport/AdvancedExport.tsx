@@ -3,7 +3,7 @@
  * Export chemical structures in multiple formats with high-quality rendering
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -29,6 +29,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import { FORMAT_EXT, downloadBlob, ensureExtension } from '@lib/export/advancedExport';
 import {
   Close as CloseIcon,
   Download as DownloadIcon,
@@ -53,12 +54,18 @@ interface ExportOptions {
   title?: string;
   author?: string;
   date?: string;
+  fileHandle?: FileSystemFileHandle;
+}
+
+export interface ExportDownloadResult {
+  downloadBlob: Blob;
+  downloadFilename: string;
 }
 
 interface AdvancedExportProps {
   open: boolean;
   onClose: () => void;
-  onExport: (options: ExportOptions) => Promise<void>;
+  onExport: (options: ExportOptions) => Promise<ExportDownloadResult | void>;
   structureData?: {
     molfile?: string;
     smiles?: string;
@@ -112,6 +119,37 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
 
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [downloadResult, setDownloadResult] = useState<ExportDownloadResult | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  // Create object URL from File with correct name (helps some browsers use right filename)
+  useEffect(() => {
+    if (downloadResult) {
+      const file = downloadResult.downloadBlob instanceof File
+        ? downloadResult.downloadBlob
+        : new File([downloadResult.downloadBlob], downloadResult.downloadFilename, { type: downloadResult.downloadBlob.type });
+      const url = URL.createObjectURL(file);
+      setDownloadUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+        setDownloadUrl(null);
+      };
+    } else {
+      setDownloadUrl(null);
+    }
+  }, [downloadResult]);
+
+  // Sync title and reset error when dialog opens or structure changes
+  useEffect(() => {
+    if (open) {
+      setOptions(prev => ({
+        ...prev,
+        title: structureData?.name || 'Chemical Structure',
+      }));
+      setExportError(null);
+      setDownloadResult(null);
+    }
+  }, [open, structureData?.name]);
 
   const handleOptionChange = useCallback((key: keyof ExportOptions, value: any) => {
     setOptions(prev => ({ ...prev, [key]: value }));
@@ -132,19 +170,42 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
     }));
   }, []);
 
+  const downloadLinkRef = React.useRef<HTMLAnchorElement>(null);
+  const downloadSectionRef = React.useRef<HTMLDivElement>(null);
+
   const handleExport = useCallback(async () => {
     if (!structureData?.molfile && !structureData?.smiles) {
-      setExportError('No structure data available for export');
+      setExportError('No structure data available for export. Draw a structure on the canvas first.');
       return;
     }
 
     setIsExporting(true);
     setExportError(null);
+    setDownloadResult(null);
+
+    const format = options.format;
+
+    // Skip showSaveFilePicker - it can hang on some systems. Always use download flow.
+    const exportOptions = { ...options, fileHandle: undefined };
+
+    const EXPORT_TIMEOUT_MS = 30000;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Export timed out. Please try again.')), EXPORT_TIMEOUT_MS)
+    );
 
     try {
-      await onExport(options);
+      const result = await Promise.race([onExport(exportOptions), timeoutPromise]);
+      if (result?.downloadBlob && result?.downloadFilename) {
+        const filename = ensureExtension(result.downloadFilename, format);
+        setDownloadResult({ downloadBlob: result.downloadBlob, downloadFilename: filename });
+        // Do NOT call downloadBlob() here - async breaks user gesture, Chrome uses UUID filename.
+        // User must click the download link for correct filename.
+        setTimeout(() => downloadSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+      }
     } catch (error) {
-      setExportError((error as Error).message || 'Export failed');
+      console.error('[AdvancedExport] Export failed:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      setExportError(msg?.trim() || 'Export failed (see console for details)');
     } finally {
       setIsExporting(false);
     }
@@ -181,6 +242,18 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
 
       <DialogContent dividers>
         <Grid container spacing={3}>
+          {/* Requirements - what user needs to know */}
+          <Grid size={12}>
+            <Alert severity="info" sx={{ mb: 1 }}>
+              <Typography variant="body2" component="span">
+                <strong>Required:</strong> Draw a structure on the canvas before exporting.
+              </Typography>
+              <Typography variant="body2" component="span" display="block" sx={{ mt: 0.5 }}>
+                <strong>Optional:</strong> Author, Title, and Date — leave blank if you prefer.
+              </Typography>
+            </Alert>
+          </Grid>
+
           {/* Format Selection */}
           <Grid size={12}>
             <Typography variant="h6" gutterBottom>
@@ -322,9 +395,10 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
               {options.includeTitle && (
                 <TextField
                   fullWidth
-                  label="Title"
+                  label="Title (optional)"
                   value={options.title}
                   onChange={(e) => handleOptionChange('title', e.target.value)}
+                  placeholder="Optional"
                 />
               )}
               
@@ -338,9 +412,10 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
               
               <TextField
                 fullWidth
-                label="Date"
+                label="Date (optional)"
                 value={options.date}
                 onChange={(e) => handleOptionChange('date', e.target.value)}
+                placeholder="Optional"
               />
             </Stack>
           </Grid>
@@ -394,6 +469,30 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
               </Stack>
             </Paper>
           </Grid>
+
+          {/* Download button - user click = user gesture, ensures correct filename (not UUID) */}
+          {downloadResult && downloadUrl && (
+            <Grid size={12}>
+              <Box ref={downloadSectionRef}>
+              <Alert severity="success" icon={<DownloadIcon />}>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  Export ready as <strong>{options.format}</strong>. Click to download:
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<DownloadIcon />}
+                  onClick={() => {
+                    const filename = ensureExtension(downloadResult.downloadFilename, options.format);
+                    downloadBlob(downloadResult.downloadBlob, filename);
+                  }}
+                  sx={{ mt: 1 }}
+                >
+                  Download {ensureExtension(downloadResult.downloadFilename, options.format)}
+                </Button>
+              </Alert>
+              </Box>
+            </Grid>
+          )}
 
           {/* Error Display */}
           {exportError && (

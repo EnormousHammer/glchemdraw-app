@@ -45,13 +45,15 @@ export async function exportAsMol(
     if (isTauriDesktop()) {
       const { saveMolFile } = await import('../tauri/fileOperations');
       const path = await saveMolFile(molfile, defaultName);
-      return { success: !!path };
+      if (!path) return { success: false, error: 'Save cancelled' };
+      return { success: true };
     } else {
       downloadBlob(molfile, defaultName, 'chemical/x-mdl-molfile');
       return { success: true };
     }
   } catch (err) {
-    return { success: false, error: (err as Error).message };
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg || 'Export failed' };
   }
 }
 
@@ -74,13 +76,15 @@ export async function exportAsSdf(
     if (isTauriDesktop()) {
       const { saveMolFile } = await import('../tauri/fileOperations');
       const path = await saveMolFile(sdfContent, defaultName);
-      return { success: !!path };
+      if (!path) return { success: false, error: 'Save cancelled' };
+      return { success: true };
     } else {
       downloadBlob(sdfContent, defaultName, 'chemical/x-mdl-sdfile');
       return { success: true };
     }
   } catch (err) {
-    return { success: false, error: (err as Error).message };
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg || 'Export failed' };
   }
 }
 
@@ -103,7 +107,7 @@ export async function exportAsSmiles(
         defaultName,
         [{ name: 'SMILES File', extensions: ['smi'] }]
       );
-      if (!path) return { success: false };
+      if (!path) return { success: false, error: 'Save cancelled' };
       await writeTextFile(path, smiles);
       return { success: true };
     } else {
@@ -111,6 +115,7 @@ export async function exportAsSmiles(
       return { success: true };
     }
   } catch (err) {
-    return { success: false, error: (err as Error).message };
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg || 'Export failed' };
   }
 }

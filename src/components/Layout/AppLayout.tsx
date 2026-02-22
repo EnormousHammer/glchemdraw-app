@@ -31,7 +31,7 @@ import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
 import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
 import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 import BiotechIcon from '@mui/icons-material/Biotech';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import { ThemeProvider } from '@mui/material/styles';
@@ -46,7 +46,10 @@ import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
 import { BiopolymerSequenceDialog } from '../BiopolymerSequence';
 import { FunctionalGroupDialog } from '../FunctionalGroup/FunctionalGroupDialog';
+import { TemplateLibraryDialog } from '../TemplateLibrary';
+import { AdvancedExport } from '../AdvancedExport';
 import { AIIntegration } from '../AIIntegration';
+import { performAdvancedExport, type AdvancedExportOptions, type AdvancedExportResult } from '@lib/export/advancedExport';
 import { peptideToHelm, dnaToHelm, rnaToHelm } from '../../lib/chemistry/helmFormat';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { useAIContext } from '@/contexts/AIContext';
@@ -108,6 +111,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showNMRPredictionDialog, setShowNMRPredictionDialog] = useState(false);
   const [showBiopolymerSequenceDialog, setShowBiopolymerSequenceDialog] = useState(false);
   const [showFunctionalGroupDialog, setShowFunctionalGroupDialog] = useState(false);
+  const [showTemplateLibraryDialog, setShowTemplateLibraryDialog] = useState(false);
+  const [showAdvancedExportDialog, setShowAdvancedExportDialog] = useState(false);
   const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [aiSectionExpanded, setAiSectionExpanded] = useState(false);
   const [stereoInfo, setStereoInfo] = useState<{
@@ -333,6 +338,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
     setSnackbarOpen(true);
   }, [currentStructure]);
+
+  const handleAdvancedExport = useCallback(async (options: AdvancedExportOptions): Promise<AdvancedExportResult> => {
+    const ketcher = ketcherRef.current;
+    const struct = currentStructure;
+    if (!struct) throw new Error('No structure to export');
+    const result = await performAdvancedExport(ketcher, options, {
+      molfile: struct.molfile,
+      smiles: struct.smiles,
+      name: recognizedCompound?.name || recognizedCompound?.properties?.IUPACName,
+    });
+    if (!result.success) throw new Error(result.error || 'Export failed');
+    if (!result.downloadBlob) {
+      setShowAdvancedExportDialog(false);
+      setSnackbarMessage(`Exported as ${options.format}`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    }
+    return result;
+  }, [currentStructure, recognizedCompound]);
 
   // Layout: fixes bond lengths & angles (Issue #3 - use Layout not Clean for geometry)
   const handleLayout = useCallback(async () => {
@@ -1051,6 +1075,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onClear={handleClear}
           onSearchByName={handleSearchByName}
           onShortcutsClick={() => setShowShortcutsDialog(true)}
+          onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => window.open('/AIVON_User_Guide_For_GL_Chemdraw.html', '_blank', 'noopener,noreferrer')}
         />
 
@@ -1154,10 +1179,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
                   {/* Toolbar — compact buttons: Tools top, Paste+Analysis centered bottom */}
                   <Box sx={{ px: 1, py: 0.75, minWidth: 0, overflow: 'hidden' }}>
-                    {/* Row 1: Tools (Export, Biopolymer, Reactions) — centered */}
+                    {/* Row 1: Tools (Export, Biopolymer, Add FG) — Reactions in header */}
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 0.5, mb: 0.5, minWidth: 0 }}>
                       <Tooltip title="Export"><span><Button size="small" variant="outlined" onClick={(e) => setExportMenuAnchor(e.currentTarget)} disabled={!currentStructure?.molfile} startIcon={<DownloadIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 12 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Export</Button></span></Tooltip>
                       <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
+                        <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Advanced Export (PNG/SVG/PDF/DPI)</MenuItem>
                         <MenuItem onClick={() => handleExport('mol')}>MOL</MenuItem>
                         <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
                         <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
@@ -1168,8 +1194,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={() => handleBiopolymerOpen('RNA')}>RNA</MenuItem>
                         <MenuItem onClick={() => handleBiopolymerOpen('DNA')}>DNA</MenuItem>
                       </Menu>
-                      <Tooltip title="Reactions"><Button size="small" variant="outlined" onClick={() => setShowReactionHelpDialog(true)} startIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Reactions</Button></Tooltip>
                       <Tooltip title="Add functional group (OMe, OEt, CN, etc.) — AI-powered"><Button size="small" variant="outlined" onClick={() => setShowFunctionalGroupDialog(true)} startIcon={<PsychologyIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Add FG</Button></Tooltip>
+                      <Tooltip title="Template library (amino acids, sugars, rings)"><Button size="small" variant="outlined" onClick={() => setShowTemplateLibraryDialog(true)} startIcon={<LibraryBooksIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Templates</Button></Tooltip>
                     </Box>
                     {/* Row 2: Paste + Analysis — centered, buttons wrap individually */}
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
@@ -1976,7 +2002,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
               )}
 
               {/* Safety - PubChem or AI summary */}
-              {(chemicalData.safetyData || aiSafetySummary || (recognizedCompound && currentStructure?.smiles)) && (
+              {(chemicalData.safetyData || aiSafetySummary || currentStructure?.smiles) && (
                 <Box sx={{ p: 1.5, minWidth: 0, bgcolor: 'background.paper', borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, pb: 0.75, fontSize: '0.8rem', letterSpacing: '0.03em', color: 'text.secondary', borderBottom: '1px solid', borderColor: 'divider' }}>
                     Safety
@@ -2282,6 +2308,23 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onAdd={handleAddFunctionalGroup}
         />
 
+        <TemplateLibraryDialog
+          open={showTemplateLibraryDialog}
+          onClose={() => setShowTemplateLibraryDialog(false)}
+          onAdd={handleAddFunctionalGroup}
+        />
+
+        <AdvancedExport
+          open={showAdvancedExportDialog}
+          onClose={() => setShowAdvancedExportDialog(false)}
+          onExport={handleAdvancedExport}
+          structureData={{
+            molfile: currentStructure?.molfile,
+            smiles: currentStructure?.smiles,
+            name: recognizedCompound?.name || recognizedCompound?.properties?.IUPACName,
+          }}
+        />
+
         {/* Biopolymer Sequence Dialog */}
         <BiopolymerSequenceDialog
           open={showBiopolymerSequenceDialog}
@@ -2447,8 +2490,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     <Typography variant="body2"><strong>Align</strong> — R-groups or align selected</Typography>
                     <Typography variant="body2"><strong>Export</strong> — MOL, SDF, SMILES</Typography>
                     <Typography variant="body2"><strong>Biopolymer</strong> — Peptide/RNA/DNA sequence</Typography>
-                    <Typography variant="body2"><strong>Reactions</strong> — Draw reaction arrows</Typography>
-                    <Typography variant="body2"><strong>Add FG</strong> — Add functional groups (OMe, OEt, CN, etc.) — AI-powered</Typography>
+                    <Typography variant="body2"><strong>Reactions</strong> — Draw reaction arrows (header)</Typography>
+                    <Typography variant="body2"><strong>Add FG</strong> — Add functional groups (OMe, OEt, CN, etc.) — AI-powered (beside Biopolymer)</Typography>
                   </Stack>
                 </Box>
                 <Box sx={{ mb: 2 }}>
@@ -2460,7 +2503,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 <Box>
                   <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Functional Groups</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Use the <strong>Add FG</strong> button in Chemical Info — AI-powered. Select OMe, OEt, CN, etc. or enter a custom name. The fragment is added to the canvas; connect it to your structure.
+                    Use the <strong>Add FG</strong> button beside Biopolymer — AI-powered. Select OMe, OEt, CN, etc. or enter a custom name. The fragment is added to the canvas; connect it to your structure.
                   </Typography>
                 </Box>
               </Grid>

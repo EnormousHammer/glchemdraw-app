@@ -49,7 +49,7 @@ interface PredictedPeak {
   std?: number;
   min?: number;
   max?: number;
-  nbAtoms: number;
+  nbAtoms: number
 }
 
 export type NucleusKey = '1H' | '13C' | '15N' | '31P' | '19F';
@@ -90,11 +90,15 @@ function parseAINMRResponse(content: string): NucleusPeaks {
     /(?:1H|proton|¹H)[:\s]*(?:δ\s*)?([-\d.]+)\s*(?:ppm\s*)?\((\d*)H\)/i,
     /(?:δ\s*)?([-\d.]+)\s*ppm\s*\((\d*)H\)/i,
     /(?:δ\s*)?([-\d.]+)\s*\((\d*)H\)/i,
+    /(?:δ\s*)?([-\d.]+)\s*[,\:]\s*(\d*)H\b/i,
+    /(?:δ\s*)?([-\d.]+)\s+(\d*)H\b/i,
   ], content);
   addAllNucleusPeaks('13C', [
     /(?:13C|carbon|¹³C)[:\s]*(?:δ\s*)?([-\d.]+)\s*(?:ppm\s*)?\((\d*)C\)/i,
     /(?:δ\s*)?([-\d.]+)\s*ppm\s*\((\d*)C\)/i,
     /(?:δ\s*)?([-\d.]+)\s*\((\d*)C\)/i,
+    /(?:δ\s*)?([-\d.]+)\s*[,\:]\s*(\d*)C\b/i,
+    /(?:δ\s*)?([-\d.]+)\s+(\d*)C\b/i,
   ], content);
   addAllNucleusPeaks('15N', [
     /(?:15N|nitrogen|¹⁵N)[:\s]*(?:δ\s*)?([-\d.]+)\s*(?:ppm\s*)?\((\d*)N\)/i,
@@ -299,6 +303,55 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
       setLoading(false);
     }
   }, [smiles, molfile, dbReady, aiContext]);
+
+  /** AI-only retry when nmrdb/nmr-predictor returned 0. Does not fall through to other backends. */
+  const runAIONlyPrediction = useCallback(async () => {
+    if (!smiles && !molfile) {
+      setError('No structure to predict');
+      return;
+    }
+    let smilesForAI = (smiles ?? '').trim();
+    if (!smilesForAI && molfile) {
+      const { molfileToSmiles } = await import('@/lib/chemistry/openchemlib');
+      smilesForAI = molfileToSmiles(molfile) ?? '';
+    }
+    const { prepareSmilesForAI } = await import('@/lib/openai/chemistry');
+    const smiForAI = prepareSmilesForAI(smilesForAI, 500);
+    if (!smiForAI) {
+      setError('No valid SMILES for AI prediction');
+      return;
+    }
+    setLoading(true);
+    setLoadingPhase('openai');
+    setError(null);
+    setExplainText(null);
+    setExplainError(null);
+    try {
+      const { chatWithOpenAI } = await import('@/lib/openai');
+      const userMsg = `Predict ALL NMR chemical shifts for SMILES: ${smiForAI}. This will be reviewed by PhD chemists—provide accurate, literature-typical values. List every ¹H and ¹³C signal. If the molecule contains N, P, or F, also list ¹⁵N, ³¹P, or ¹⁹F. One signal per line. Do not omit any signals.`;
+      const content = await chatWithOpenAI([
+        {
+          role: 'system',
+          content: 'You are an expert organic chemist. Predict NMR chemical shifts from SMILES. Your output will be used by PhD chemists and must be ACCURATE and COMPLETE. Use literature-typical chemical shift values (e.g. aliphatic CH3 ~0.9–1.3, aromatic ~7–8, carbonyl C ~170–220 ppm). List EVERY chemically distinct signal. Format: 1H: δ X.XX ppm (nH), 13C: δ X.XX ppm (nC), 15N: δ X.XX ppm (nN), 31P: δ X.XX ppm (nP), 19F: δ X.XX ppm (nF). Include all ¹H and ¹³C signals. Include ¹⁵N, ³¹P, ¹⁹F only if the molecule contains N, P, or F. Be precise: equivalent nuclei share one signal with correct multiplicity count. Reply with ONLY the signals, one per line. No other text.',
+        },
+        {
+          role: 'user',
+          content: appendUserContext(userMsg, aiContext),
+        },
+      ]);
+      const aiResult = parseAINMRResponse(content);
+      setPeaks(aiResult);
+      const hasAny = Object.values(aiResult).some((arr) => arr.length > 0);
+      if (!hasAny) {
+        setError('AI could not extract NMR signals. Try "Recalculate" for nmrdb/nmr-predictor.');
+      }
+    } catch (err) {
+      console.error('[NMR] AI-only prediction failed:', err);
+      setError(err instanceof Error ? err.message : 'AI NMR prediction failed');
+    } finally {
+      setLoading(false);
+    }
+  }, [smiles, molfile, aiContext]);
 
   useEffect(() => {
     if (open && (smiles || molfile)) {
@@ -653,7 +706,7 @@ No mention of AI or analysis process.`,
                               <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                                 No {NUCLEUS_CONFIG[nuc].label} signals
                               </Typography>
-                              <Button size="small" variant="outlined" onClick={runPrediction} startIcon={<PsychologyIcon />} sx={{ textTransform: 'none' }}>
+                              <Button size="small" variant="outlined" onClick={runAIONlyPrediction} startIcon={<PsychologyIcon />} sx={{ textTransform: 'none' }}>
                                 Ask AI for NMR
                               </Button>
                             </TableCell>

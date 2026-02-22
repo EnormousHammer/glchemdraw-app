@@ -31,7 +31,7 @@
 The application consists of three main panels:
 
 **Left Panel (60%)**: Chemical Structure Editor
-- Ketcher-based drawing canvas
+- Drawing canvas
 - Drawing tools toolbar
 - Structure validation panel
 

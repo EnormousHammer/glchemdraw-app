@@ -225,33 +225,6 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
           Click anywhere to start
         </Typography>
       </Box>
-
-      {/* AIVON logo — fixed at bottom */}
-      <Box
-        sx={{
-          position: 'absolute',
-          bottom: 20,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 2,
-        }}
-      >
-        <Box
-          component="img"
-          src="/Full_logo.png"
-          alt="AIVON"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = '/aivon_logo.png';
-          }}
-          sx={{
-            maxWidth: 120,
-            maxHeight: 60,
-            objectFit: 'contain',
-            opacity: 0.95,
-          }}
-        />
-      </Box>
     </Box>
   );
 };

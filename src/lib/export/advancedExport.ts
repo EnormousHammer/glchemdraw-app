@@ -3,6 +3,7 @@
  * Uses Ketcher generateImage with scaling for DPI
  */
 
+import { ChemicalMimeType } from 'ketcher-core';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from './structureExport';
 import { isTauriDesktop } from '../tauri/detectPlatform';
 
@@ -241,25 +242,36 @@ export async function performAdvancedExport(
     // Image formats - need Ketcher
     if (!ketcher?.generateImage) return { success: false, error: 'Editor not ready' };
 
+    // Prefer molfile + structService.convert (fast, local) over getKet (can hang on complex structures)
     let structStr: string;
-    try {
-      const struct = ketcher.editor?.structSelected?.();
-      if (struct && !struct.isBlank?.()) {
-        const { KetSerializer } = await import('ketcher-core');
-        const serializer = new (KetSerializer as any)();
-        structStr = serializer.serialize(struct);
-      } else {
-        // getKet can hang: use 10s timeout
-        structStr = await Promise.race([
-          ketcher.getKet(),
-          new Promise<string>((_, reject) =>
-            setTimeout(() => reject(new Error('Editor timed out')), 10000)
-          ),
-        ]);
+    const molfile = structureData.molfile?.trim();
+    if (molfile && ketcher.structService?.convert) {
+      try {
+        const result = await ketcher.structService.convert({
+          struct: molfile,
+          output_format: ChemicalMimeType.KET,
+          input_format: ChemicalMimeType.Mol,
+        });
+        structStr = result?.struct ?? '';
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { success: false, error: msg || 'Structure conversion failed' };
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { success: false, error: msg.includes('timed out') ? 'Export timed out. Try again.' : msg };
+    } else {
+      // Fallback: selection via KetSerializer, or getKet (slower, can hang)
+      try {
+        const struct = ketcher.editor?.structSelected?.();
+        if (struct && !struct.isBlank?.()) {
+          const { KetSerializer } = await import('ketcher-core');
+          const serializer = new (KetSerializer as any)();
+          structStr = serializer.serialize(struct);
+        } else {
+          structStr = await ketcher.getKet();
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { success: false, error: msg || 'Could not get structure' };
+      }
     }
     if (!structStr?.trim()) return { success: false, error: 'No structure to export' };
 
@@ -276,12 +288,12 @@ export async function performAdvancedExport(
       blob = await Promise.race([
         ketcher.generateImage(structStr, genOpts),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Image generation timed out')), 15000)
+          setTimeout(() => reject(new Error('Image generation took too long')), 30000)
         ),
       ]);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      return { success: false, error: msg.includes('timed out') ? 'Image generation timed out. Try again.' : msg };
+      return { success: false, error: msg.includes('took too long') ? 'Image generation took too long. Try reducing size or DPI.' : msg };
     }
     if (!blob) return { success: false, error: 'Image generation failed' };
 

@@ -303,8 +303,8 @@
             <div class="pill-container">
                 <span class="pill">Draw Structures</span>
                 <span class="pill">PubChem Lookup</span>
-                <span class="pill">3D Viewer</span>
-                <span class="pill">Export MOL/SDF</span>
+                <span class="pill">NMR Prediction</span>
+                <span class="pill">Export PNG/SVG/PDF/MOL</span>
             </div>
         </div>
     </section>
@@ -343,7 +343,7 @@
                 <div class="cap-card">
                     <span class="cap-icon">📤</span>
                     <h3 class="cap-title">Export</h3>
-                    <p class="cap-desc">Export as MOL, SDF, or SMILES. Copy structure as image (Ctrl+C) for pasting into Word or PowerPoint with transparent background.</p>
+                    <p class="cap-desc">Export menu: MOL, SDF, SMILES. Advanced Export: PNG, SVG, PDF (with DPI), InChI. Copy as image (Ctrl+C) for pasting into Word or PowerPoint with transparent background.</p>
                 </div>
                 <div class="cap-card">
                     <span class="cap-icon">⚗️</span>
@@ -381,12 +381,8 @@
                 <div class="shortcut-group">
                     <h4>Structure</h4>
                     <div class="shortcut-item">
-                        <span class="shortcut-key">Ctrl+L</span>
-                        <span class="shortcut-desc">Layout (bond lengths)</span>
-                    </div>
-                    <div class="shortcut-item">
                         <span class="shortcut-key">Ctrl+Shift+L</span>
-                        <span class="shortcut-desc">Clean (standardize)</span>
+                        <span class="shortcut-desc">Layout (fix bond lengths & angles)</span>
                     </div>
                 </div>
                 <div class="shortcut-group">
@@ -446,7 +442,7 @@
 
                 <div class="faq-item">
                     <div class="faq-question">How do I clean up a messy structure?</div>
-                    <div class="faq-answer">Select the structure and press <code>Ctrl+L</code> for Layout (fixes bond lengths and angles) or <code>Ctrl+Shift+L</code> for Clean (standardizes aromatics, etc.). You can also click the Layout button in the Chemical Info panel below the canvas.</div>
+                    <div class="faq-answer">Press <code>Ctrl+Shift+L</code> for Layout (fixes bond lengths and angles). You can also click the Layout button (magic wand icon) in the Chemical Info panel below the canvas.</div>
                 </div>
 
                 <div class="faq-item">
@@ -461,7 +457,7 @@
 
                 <div class="faq-item">
                     <div class="faq-question">How do I add functional groups (OMe, OEt, CN, etc.)?</div>
-                    <div class="faq-answer">Per Ketcher documentation: Open the Functional Groups window (<code>Shift+F</code> or button next to Custom Templates). Use the <strong>Structure tool</strong> (not Paste): (1) Select the FG from the Functional Groups list. (2) <strong>Click on the atom</strong> where you want to attach — the FG merges to that atom. Or (3) <strong>Click and drag from the atom</strong> — creates a new bond. FGs attach only to atoms, not bonds. If using Paste, known Ketcher bugs may cause disconnected placement; prefer the Structure tool.</div>
+                    <div class="faq-answer">Open the Functional Groups window (<code>Shift+F</code> or button next to Custom Templates). Use the <strong>Structure tool</strong> (not Paste): (1) Select the FG from the Functional Groups list. (2) <strong>Click on the atom</strong> where you want to attach — the FG merges to that atom. Or (3) <strong>Click and drag from the atom</strong> — creates a new bond. FGs attach only to atoms, not bonds. If using Paste, disconnected placement may occur; prefer the Structure tool.</div>
                 </div>
             </div>
 
@@ -474,8 +470,8 @@
                 </div>
 
                 <div class="faq-item">
-                    <div class="faq-question">How do I export to MOL, SDF, or SMILES?</div>
-                    <div class="faq-answer">Use the Export menu in the Chemical Info panel (or File menu). Choose MOL, SDF, or SMILES. The file will be downloaded.</div>
+                    <div class="faq-question">How do I export to MOL, SDF, SMILES, PNG, SVG, or PDF?</div>
+                    <div class="faq-answer">Use the Export menu in the Chemical Info panel. Choose MOL, SDF, or SMILES for data formats. For images (PNG, SVG, PDF with DPI options) or InChI, use <strong>Advanced Export</strong>. After export, click the Download button to save with the correct filename.</div>
                 </div>
 
                 <div class="faq-item">
@@ -509,6 +505,30 @@
                 <div class="faq-item">
                     <div class="faq-question">What is the Align button for?</div>
                     <div class="faq-answer">Align lets you align selected structures (left, right, top, bottom) or arrange R-group labels. Useful for reaction schemes and tidy layouts.</div>
+                </div>
+            </div>
+
+            <div class="faq-category">
+                <h3 class="faq-category-title">NMR & AI</h3>
+
+                <div class="faq-item">
+                    <div class="faq-question">How do I predict NMR spectra?</div>
+                    <div class="faq-answer">Select a structure and click <strong>NMR</strong> in the Chemical Info panel. You get ¹H, ¹³C, ¹⁵N, ³¹P, ¹⁹F predictions. Use "Explain with AI" when data is missing. AI prediction works for all nuclei; nmrdb/nmr-predictor cover ¹H and ¹³C.</div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">What is the Add FG button?</div>
+                    <div class="faq-answer">Add FG (beside Biopolymer) lets you add functional groups (OMe, OEt, CN, etc.) using AI. Enter a name or pick from the list; the fragment is added to the canvas for you to connect.</div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">When does "Get AI Name" appear?</div>
+                    <div class="faq-answer">When PubChem does not recognize your structure, the IUPAC field shows "Get AI Name". Click it to generate an IUPAC name via AI.</div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">What is the Template Library?</div>
+                    <div class="faq-answer">The Templates button (in the Chemical Info panel) opens the Template Library with amino acids, sugars, common rings, and steroid scaffolds. Click a template to insert it into your drawing.</div>
                 </div>
             </div>
         </div>

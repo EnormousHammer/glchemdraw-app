@@ -97,7 +97,7 @@ export const BiopolymerSequenceDialog: React.FC<BiopolymerSequenceDialogProps> =
       </DialogTitle>
       <DialogContent sx={{ bgcolor: 'background.paper', color: 'text.primary' }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Ketcher&apos;s built-in macromolecule mode may not be available. Enter a sequence below to try HELM format import.
+          The built-in macromolecule mode may not be available. Enter a sequence below to try HELM format import.
         </Typography>
         <Tabs value={mode} onChange={(_, v: 'PEPTIDE' | 'DNA' | 'RNA') => { setMode(v); setError(null); }} sx={{ mb: 2 }}>
           <Tab value="PEPTIDE" label="Peptide" />

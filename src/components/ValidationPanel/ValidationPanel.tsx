@@ -142,7 +142,6 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           p: 1.5,
           minWidth: 0,
           minHeight: 48,
-          bgcolor: 'background.paper',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -150,7 +149,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           borderColor: 'divider',
         }}
       >
-        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', fontSize: '0.75rem' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', fontSize: '0.7rem', letterSpacing: '0.04em', fontWeight: 500 }}>
           Draw a structure to see validation feedback
         </Typography>
       </Paper>
@@ -162,13 +161,16 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
     return (
       <Paper
         elevation={0}
+        variant="outlined"
         sx={{
-          p: 2,
+          p: 1.5,
           height: '100%',
-          bgcolor: 'background.default',
+          minHeight: 40,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          borderRadius: 1,
+          borderColor: 'divider',
         }}
       >
         <Stack direction="row" spacing={2} alignItems="center">
@@ -186,16 +188,15 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
       elevation={0}
       variant="outlined"
       sx={{
-        p: 1.5,
+        p: 1.25,
         minWidth: 0,
         height: '100%',
-        bgcolor: 'background.paper',
         overflow: 'auto',
-        borderRadius: 1.5,
+        borderRadius: 1,
         borderColor: 'divider',
       }}
     >
-      <Stack spacing={1}>
+      <Stack spacing={0.5}>
         {/* Validation Status Header */}
         <Box>
           <Stack direction="row" spacing={1} alignItems="center">
@@ -222,7 +223,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           <>
             <Divider />
             <Box>
-              <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+              <Stack direction="row" spacing={0.75} alignItems="center" mb={0.5}>
                 <FormulaIcon fontSize="small" color="primary" />
                 <Typography variant="subtitle2" fontWeight={600}>
                   Molecular Formula
@@ -230,7 +231,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
               </Stack>
               {isMultiStructure && (
                 <Tooltip title="Multiple disconnected structures detected. Formula shows first structure only. Select one structure or bond them for accurate data.">
-                  <Alert severity="warning" sx={{ mb: 1, py: 0.5 }} variant="outlined">
+                  <Alert severity="warning" sx={{ mb: 0.5, py: 0.5 }} variant="outlined">
                     <Typography variant="caption">Disconnected structures — formula for first only</Typography>
                   </Alert>
                 </Tooltip>
@@ -239,10 +240,10 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
                 variant="outlined"
                 sx={{
                   p: 0.5,
-                  bgcolor: 'background.paper',
                   fontFamily: 'monospace',
                   fontSize: '0.85rem',
                   textAlign: 'center',
+                  borderColor: 'divider',
                 }}
               >
                 {molecularFormula}
@@ -256,7 +257,7 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
           <>
             <Divider />
             <Box>
-              <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+              <Stack direction="row" spacing={0.75} alignItems="center" mb={0.5}>
                 <StereoIcon fontSize="small" color="primary" />
                 <Typography variant="subtitle2" fontWeight={600}>
                   Stereochemistry
@@ -344,12 +345,12 @@ export const ValidationPanel: React.FC<ValidationPanelProps> = ({
             variant="outlined"
             sx={{
               p: 0.5,
-              bgcolor: 'background.paper',
               fontFamily: 'monospace',
               fontSize: '0.7rem',
               wordBreak: 'break-all',
               maxHeight: '60px',
               overflow: 'auto',
+              borderColor: 'divider',
             }}
           >
             {smiles}

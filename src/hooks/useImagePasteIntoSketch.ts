@@ -165,17 +165,56 @@ function looksLikeStructure(text: string): boolean {
   return false;
 }
 
+/** Extract text and image from paste event clipboardData (avoids Clipboard API permission). */
+async function getFromClipboardData(cd: DataTransfer | null): Promise<{ text: string | null; dataUrl: string | null }> {
+  if (!cd) return { text: null, dataUrl: null };
+  let text: string | null = cd.getData('text/plain') || cd.getData('text') || null;
+  let dataUrl: string | null = null;
+  for (const mime of IMAGE_MIMES) {
+    const file = Array.from(cd.items || []).find((i) => i.type === mime);
+    if (file?.getAsFile) {
+      const blob = file.getAsFile();
+      if (blob) {
+        dataUrl = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result as string);
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        });
+        break;
+      }
+    }
+  }
+  return { text: text?.trim() || null, dataUrl };
+}
+
 /**
  * Try to paste from clipboard into Ketcher. ChemDraw-style: structure paste adds to canvas.
  * 1. If clipboard has structure text (MOL/SMILES): add to canvas via addFragment (or setMolecule)
  * 2. If image: try OCSR → structure if recognized, else add as image
  * 3. Else Ketcher paste
+ *
+ * Pass clipboardData from paste event when available (no permission needed). Otherwise uses Clipboard API.
  */
-export async function pasteImageIntoSketch(ketcherRef: React.RefObject<any>): Promise<ImagePasteResult> {
+export async function pasteImageIntoSketch(
+  ketcherRef: React.RefObject<any>,
+  clipboardData?: DataTransfer | null
+): Promise<ImagePasteResult> {
   const ketcher = ketcherRef?.current;
   if (!ketcher) return { success: false };
 
-  const text = await getTextFromClipboard();
+  let text: string | null;
+  let dataUrl: string | null;
+
+  if (clipboardData) {
+    const fromEvent = await getFromClipboardData(clipboardData);
+    text = fromEvent.text;
+    dataUrl = fromEvent.dataUrl;
+  } else {
+    // Initiate both reads in same tick as user gesture to preserve clipboard permission
+    [text, dataUrl] = await Promise.all([getTextFromClipboard(), getImageFromClipboard()]);
+  }
+
   if (text?.trim() && looksLikeStructure(text)) {
     try {
       if (typeof ketcher.addFragment === 'function') {
@@ -191,7 +230,6 @@ export async function pasteImageIntoSketch(ketcherRef: React.RefObject<any>): Pr
     }
   }
 
-  const dataUrl = await getImageFromClipboard();
   if (dataUrl) {
     const smiles = await recognizeImageToStructure(dataUrl);
     if (smiles && typeof ketcher.setMolecule === 'function') {
@@ -226,7 +264,8 @@ export function useImagePasteIntoSketch(ketcherRef: React.RefObject<any>) {
       e.preventDefault();
       e.stopPropagation();
 
-      const result = await pasteImageIntoSketch(ketcherRef);
+      // Use event clipboardData when available (no permission needed)
+      const result = await pasteImageIntoSketch(ketcherRef, e.clipboardData);
       if (result.success) {
         return; // image or structure pasted
       }

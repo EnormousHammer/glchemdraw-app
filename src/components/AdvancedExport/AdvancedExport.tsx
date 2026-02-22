@@ -188,7 +188,7 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
     // Skip showSaveFilePicker - it can hang on some systems. Always use download flow.
     const exportOptions = { ...options, fileHandle: undefined };
 
-    const EXPORT_TIMEOUT_MS = 30000;
+    const EXPORT_TIMEOUT_MS = 15000; // 15s - export uses molfile path, should be fast
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Export timed out. Please try again.')), EXPORT_TIMEOUT_MS)
     );
@@ -198,8 +198,8 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
       if (result?.downloadBlob && result?.downloadFilename) {
         const filename = ensureExtension(result.downloadFilename, format);
         setDownloadResult({ downloadBlob: result.downloadBlob, downloadFilename: filename });
-        // Do NOT call downloadBlob() here - async breaks user gesture, Chrome uses UUID filename.
-        // User must click the download link for correct filename.
+        // Auto-download immediately when export finishes
+        downloadBlob(result.downloadBlob, filename);
         setTimeout(() => downloadSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
       }
     } catch (error) {
@@ -476,10 +476,11 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
               <Box ref={downloadSectionRef}>
               <Alert severity="success" icon={<DownloadIcon />}>
                 <Typography variant="body2" sx={{ mb: 1 }}>
-                  Export ready as <strong>{options.format}</strong>. Click to download:
+                  Export complete. Your file is downloading as <strong>{ensureExtension(downloadResult.downloadFilename, options.format)}</strong>.
                 </Typography>
                 <Button
-                  variant="contained"
+                  variant="outlined"
+                  size="small"
                   startIcon={<DownloadIcon />}
                   onClick={() => {
                     const filename = ensureExtension(downloadResult.downloadFilename, options.format);
@@ -487,7 +488,7 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
                   }}
                   sx={{ mt: 1 }}
                 >
-                  Download {ensureExtension(downloadResult.downloadFilename, options.format)}
+                  Download again
                 </Button>
               </Alert>
               </Box>

@@ -356,21 +356,21 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
             <MenuItem value="safety">Safety</MenuItem>
           </Select>
         </FormControl>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 0.5 }}>
           <Button
             size="small"
             variant="contained"
             onClick={handleAIAnalysis}
             disabled={isAnalyzing || (!smiles && !molfile)}
-            startIcon={isAnalyzing ? <CircularProgress size={12} color="inherit" /> : <AIIcon sx={{ fontSize: 14 }} />}
-            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.7rem', px: 1, py: 0.375 }}
+            startIcon={isAnalyzing ? <CircularProgress size={12} color="inherit" /> : <AIIcon sx={{ fontSize: 15 }} />}
+            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.7rem', letterSpacing: '0.04em', px: 1.25, py: 0.5, borderRadius: 1, boxShadow: 'none', '&:hover': { boxShadow: 'none', filter: 'brightness(0.95)' } }}
           >
             {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
           </Button>
-          <Button size="small" variant="outlined" onClick={handleGenerateName} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<ChemistryIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', fontSize: '0.7rem', px: 1, py: 0.375 }}>
+          <Button size="small" variant="text" onClick={handleGenerateName} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<ChemistryIcon sx={{ fontSize: 15, opacity: 0.85 }} />} sx={{ textTransform: 'none', fontWeight: 500, fontSize: '0.7rem', letterSpacing: '0.03em', color: 'text.secondary', px: 1, py: 0.5, borderRadius: 1, '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
             Generate Name
           </Button>
-          <Button size="small" variant="outlined" onClick={handlePredictReactions} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<PlayIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', fontSize: '0.7rem', px: 1, py: 0.375 }}>
+          <Button size="small" variant="text" onClick={handlePredictReactions} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<PlayIcon sx={{ fontSize: 15, opacity: 0.85 }} />} sx={{ textTransform: 'none', fontWeight: 500, fontSize: '0.7rem', letterSpacing: '0.03em', color: 'text.secondary', px: 1, py: 0.5, borderRadius: 1, '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
             Predict Reactions
           </Button>
         </Box>
@@ -392,13 +392,13 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
       {analysis && (
         <Stack ref={resultsRef} spacing={1.5}>
           {analysis.aiRawText && (
-            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden', minWidth: 0 }}>
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden', minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5, py: 1, bgcolor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.75 }}>
                   <SuccessIcon color="success" sx={{ fontSize: 18 }} />
                   Analysis Result
                 </Typography>
-                <Button size="small" variant="text" startIcon={<CopyIcon sx={{ fontSize: 14 }} />} onClick={() => handleCopyResult(formatChemistryText(analysis.aiRawText!))} sx={{ minWidth: 0, px: 1, fontSize: '0.75rem' }}>
+                <Button size="small" variant="text" startIcon={<CopyIcon sx={{ fontSize: 14 }} />} onClick={() => handleCopyResult(formatChemistryText(analysis.aiRawText!))} sx={{ minWidth: 0, px: 1, fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.03em', color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
                   Copy
                 </Button>
               </Box>

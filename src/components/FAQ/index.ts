@@ -1,0 +1,1 @@
+export { FAQDialog } from './FAQDialog';

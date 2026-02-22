@@ -41,6 +41,26 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   // Paste: image or structure (Ctrl+V and Paste button)
   useImagePasteIntoSketch(editorRef);
 
+  // Ensure Delete/Backspace reach the canvas when focus is elsewhere (e.g. after clicking Chemical Info)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+      const inKetcher = target?.closest?.('.Ketcher-root') || target?.closest?.('.Ketcher-polymer-editor-root');
+      if (inKetcher) return; // Already in canvas, let Ketcher handle it
+      const ketcherRoot = document.querySelector('.Ketcher-root') as HTMLElement | null;
+      if (!ketcherRoot) return;
+      e.preventDefault();
+      e.stopPropagation();
+      ketcherRoot.setAttribute('tabindex', '-1');
+      ketcherRoot.focus({ preventScroll: true });
+      ketcherRoot.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, bubbles: true, cancelable: true }));
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, []);
+
   // Block Shift+F (Functional Groups) - feature creates disconnected structures until Ketcher fix
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -56,15 +76,15 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
-  // Block Ketcher About/FAQ/Info modal - white cover + auto-close so nothing appears
+  // Block editor About/FAQ/Info modal - white cover + auto-close so nothing appears
   useEffect(() => {
-    const coverKetcherInfoModal = () => {
+    const coverEditorInfoModal = () => {
       document.querySelectorAll('[role="dialog"], .bp6-dialog, .bp6-overlay').forEach((el) => {
         if ((el as HTMLElement).querySelector?.('[data-glchemdraw-dialog]')) return;
         const html = el.innerHTML || '';
-        const isKetcherModal = html.includes('epam.com') || html.includes('build-version') || html.includes('lifescience.opensource')
-          || (html.includes('Ketcher') && (html.includes('Feedback') || html.includes('FAQ') || html.includes('faq') || html.includes('Help')));
-        if (isKetcherModal) {
+        const isEditorModal = html.includes('epam.com') || html.includes('build-version') || html.includes('lifescience.opensource')
+          || (html.includes('Feedback') && (html.includes('FAQ') || html.includes('faq') || html.includes('Help')));
+        if (isEditorModal) {
           const overlay = el.closest('.bp6-overlay') || el;
           const t = overlay as HTMLElement;
           t.style.setProperty('background', '#fff', 'important');
@@ -78,10 +98,36 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
         }
       });
     };
-    const observer = new MutationObserver(coverKetcherInfoModal);
+    const observer = new MutationObserver(coverEditorInfoModal);
     observer.observe(document.body, { childList: true, subtree: true });
-    coverKetcherInfoModal();
+    coverEditorInfoModal();
     return () => observer.disconnect();
+  }, []);
+
+  // Hide any visible "Ketcher" text from editor library (title, aria-label, text content)
+  useEffect(() => {
+    const hideEditorBranding = () => {
+      const roots = document.querySelectorAll('[class*="Ketcher-root"], [class*="polymer-editor-root"]');
+      roots.forEach((root) => {
+        root.querySelectorAll('[title], [aria-label], span, div, a, button, label').forEach((el) => {
+          const html = el as HTMLElement;
+          const title = html.getAttribute?.('title') || '';
+          const aria = html.getAttribute?.('aria-label') || '';
+          const text = (html.textContent || '').trim();
+          if (/ketcher/i.test(title) || /ketcher/i.test(aria) || (text && /ketcher/i.test(text))) {
+            html.style.setProperty('visibility', 'hidden', 'important');
+            html.style.setProperty('font-size', '0', 'important');
+            html.style.setProperty('line-height', '0', 'important');
+            html.style.setProperty('overflow', 'hidden', 'important');
+          }
+        });
+      });
+    };
+    const obs = new MutationObserver(hideEditorBranding);
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    hideEditorBranding();
+    const t = setInterval(hideEditorBranding, 2000);
+    return () => { obs.disconnect(); clearInterval(t); };
   }, []);
   
   // Create service provider once: standalone + OCSR via /api/ocsr (Vercel)

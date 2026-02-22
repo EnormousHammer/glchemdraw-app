@@ -48,6 +48,8 @@ import { BiopolymerSequenceDialog } from '../BiopolymerSequence';
 import { FunctionalGroupDialog } from '../FunctionalGroup/FunctionalGroupDialog';
 import { TemplateLibraryDialog } from '../TemplateLibrary';
 import { FAQDialog } from '../FAQ';
+import { SettingsDialog } from '../Settings';
+import { AccessibilityMenu } from '../AccessibilityMenu';
 import { AdvancedExport, type ExportDownloadResult } from '../AdvancedExport/AdvancedExport';
 import { AIIntegration } from '../AIIntegration';
 import { performAdvancedExport, type AdvancedExportOptions } from '@lib/export/advancedExport';
@@ -87,11 +89,16 @@ interface StructureData {
   smiles: string;
 }
 
+type ThemeMode = 'light' | 'dark' | 'highContrast';
+
 interface AppLayoutProps {
   onSearchByName?: (name: string) => void;
+  themeMode?: ThemeMode;
+  onThemeChange?: (mode: ThemeMode) => void;
+  onToggleDarkMode?: () => void;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
+const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'light', onThemeChange, onToggleDarkMode }) => {
   // State management
   const [currentStructure, setCurrentStructure] = useState<StructureData | null>(null);
   const [recognizedCompound, setRecognizedCompound] = useState<{
@@ -114,6 +121,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showFunctionalGroupDialog, setShowFunctionalGroupDialog] = useState(false);
   const [showTemplateLibraryDialog, setShowTemplateLibraryDialog] = useState(false);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showAccessibilityMenu, setShowAccessibilityMenu] = useState(false);
   const [showAdvancedExportDialog, setShowAdvancedExportDialog] = useState(false);
   const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [aiSectionExpanded, setAiSectionExpanded] = useState(false);
@@ -1087,8 +1096,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   }, []);
 
   return (
-    <ThemeProvider theme={theme}>
-      <Box sx={{ 
+    <Box sx={{ 
         height: '100vh', 
         width: '100vw',
         display: 'flex', 
@@ -1107,6 +1115,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onShortcutsClick={() => setShowShortcutsDialog(true)}
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
+          onSettingsClick={() => setShowSettingsDialog(true)}
+          darkMode={themeMode !== 'light'}
+          onToggleDarkMode={onToggleDarkMode}
         />
 
         {/* Main Content - Conditional View */}
@@ -2528,6 +2539,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onClose={() => setShowFaqDialog(false)}
         />
 
+        <SettingsDialog
+          open={showSettingsDialog}
+          onClose={() => setShowSettingsDialog(false)}
+          themeMode={themeMode}
+          onThemeChange={onThemeChange ?? (() => {})}
+          onOpenAccessibility={() => {
+            setShowSettingsDialog(false);
+            setShowAccessibilityMenu(true);
+          }}
+        />
+
+        <AccessibilityMenu
+          open={showAccessibilityMenu}
+          onClose={() => setShowAccessibilityMenu(false)}
+        />
+
         <AdvancedExport
           open={showAdvancedExportDialog}
           onClose={() => setShowAdvancedExportDialog(false)}
@@ -2725,7 +2752,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           </DialogContent>
         </Dialog>
       </Box>
-    </ThemeProvider>
   );
 };
 

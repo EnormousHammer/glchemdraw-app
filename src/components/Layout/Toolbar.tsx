@@ -28,6 +28,7 @@ import {
   BarChart as SpectrumIcon,
   Keyboard as KeyboardIcon,
   Help as HelpIcon,
+  Settings as SettingsIcon,
   ExpandMore as ExpandMoreIcon,
   AccountTree as MoleculeIcon,
   Timeline as SpectraIcon,
@@ -53,6 +54,7 @@ interface AppToolbarProps {
   onShortcutsClick?: () => void;
   onReactionsClick?: () => void;
   onFaqClick?: () => void;
+  onSettingsClick?: () => void;
   rightContent?: React.ReactNode;
 }
 
@@ -74,6 +76,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onShortcutsClick,
   onReactionsClick,
   onFaqClick,
+  onSettingsClick,
   rightContent,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -312,6 +315,28 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
                 }
               }}
             />
+          </Tooltip>
+        )}
+
+        <Box sx={{ width: 8 }} />
+
+        {/* Settings */}
+        {onSettingsClick && (
+          <Tooltip title="Settings" arrow placement="bottom">
+            <IconButton
+              onClick={onSettingsClick}
+              size="small"
+              aria-label="Open settings"
+              sx={{
+                color: 'rgba(255,255,255,0.8)',
+                '&:hover': {
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                },
+              }}
+            >
+              <SettingsIcon />
+            </IconButton>
           </Tooltip>
         )}
 

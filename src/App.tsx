@@ -72,7 +72,11 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AIContextProvider>
-          <AppLayout />
+          <AppLayout
+            themeMode={themeMode}
+            onThemeChange={setThemeMode}
+            onToggleDarkMode={toggleDarkMode}
+          />
         </AIContextProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, Suspense } from 'react';
+import React, { useState, useRef, useCallback, useEffect, Suspense } from 'react';
 import {
   Box,
   Typography,
@@ -78,7 +78,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [biotoolMenuAnchor, setBiotoolMenuAnchor] = useState<null | HTMLElement>(null);
   const [showReactionHelpDialog, setShowReactionHelpDialog] = useState(false);
   const [showNMRPredictionDialog, setShowNMRPredictionDialog] = useState(false);
-  const [nmrDialogMode, setNmrDialogMode] = useState<'predict' | 'explain'>('predict');
   const [showBiopolymerSequenceDialog, setShowBiopolymerSequenceDialog] = useState(false);
   const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [aiSectionExpanded, setAiSectionExpanded] = useState(false);
@@ -89,6 +88,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   } | null>(null);
   const [aiIupacName, setAiIupacName] = useState<string | null>(null);
   const [aiIupacLoading, setAiIupacLoading] = useState(false);
+  const [chemicalInfoWidth, setChemicalInfoWidth] = useState(() => {
+    const saved = localStorage.getItem('glchemdraw_chemical_info_width');
+    const n = saved ? parseInt(saved, 10) : 360;
+    return Number.isFinite(n) && n >= 200 ? n : 360;
+  });
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
   const { context: aiContext } = useAIContext();
 
   // Chemical data state for comprehensive information
@@ -112,6 +118,42 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const hasSelectionRef = useRef(false);
   const chemicalInfoScrollRef = useRef<HTMLDivElement>(null);
   const aiSectionRef = useRef<HTMLDivElement>(null);
+
+  // Resize Chemical Info sidebar
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingSidebar(true);
+    resizeStartRef.current = { x: e.clientX, width: chemicalInfoWidth };
+  }, [chemicalInfoWidth]);
+
+  useEffect(() => {
+    if (!isResizingSidebar) return;
+    const handleMove = (e: MouseEvent) => {
+      const start = resizeStartRef.current;
+      if (!start) return;
+      // Inverted: drag handle left = sidebar wider, drag right = narrower (fixes opposite behavior)
+      const delta = start.x - e.clientX;
+      const newWidth = Math.max(200, start.width + delta);
+      setChemicalInfoWidth(newWidth);
+      resizeStartRef.current = { x: e.clientX, width: newWidth };
+    };
+    const handleUp = () => {
+      const finalWidth = resizeStartRef.current?.width ?? 360;
+      setIsResizingSidebar(false);
+      resizeStartRef.current = null;
+      localStorage.setItem('glchemdraw_chemical_info_width', String(finalWidth));
+    };
+    document.addEventListener('mousemove', handleMove, { capture: true });
+    document.addEventListener('mouseup', handleUp, { capture: true });
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    return () => {
+      document.removeEventListener('mousemove', handleMove, { capture: true });
+      document.removeEventListener('mouseup', handleUp, { capture: true });
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingSidebar]);
 
   // Copy to clipboard function
   const handleCopy = useCallback((text: string, label: string) => {
@@ -899,7 +941,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 {/* Left Panel - Drawing Canvas */}
               <Box
                 sx={{
-                  width: '75%', // Increased from 65% for more drawing space
+                  flex: 1,
+                  minWidth: 0,
                   height: '100%',
                   borderRight: 1,
                   borderColor: 'divider',
@@ -929,25 +972,49 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 </Box>
               </Box>
 
-              {/* Right Panel - All Information in One View */}
+              {/* Resize handle - wider hit area for reliable dragging */}
+              <Box
+                onMouseDown={handleResizeStart}
+                sx={{
+                  width: 8,
+                  flexShrink: 0,
+                  height: '100%',
+                  cursor: 'col-resize',
+                  bgcolor: 'transparent',
+                  '&:hover': { bgcolor: 'action.hover' },
+                  '&:active': { bgcolor: 'action.selected' },
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                role="separator"
+                aria-label="Resize Chemical Info panel"
+              >
+                <Box sx={{ width: 2, height: 40, borderRadius: 1, bgcolor: 'divider', opacity: 0.6 }} />
+              </Box>
+
+              {/* Right Panel - Chemical Info (resizable, content adjusts) */}
               <Box
                 sx={{
-                  width: 'min(360px, 28%)', // Min width for readability, max 28% of viewport
+                  width: chemicalInfoWidth,
+                  minWidth: 200,
+                  flexShrink: 0,
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
+                  overflow: 'hidden',
                   bgcolor: 'background.paper',
                   borderLeft: 1,
                   borderColor: 'divider',
                 }}
               >
                 {/* Chemical Info — Enterprise layout */}
-                <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper', minWidth: 0, overflow: 'hidden', flexShrink: 0 }}>
                   {/* Header */}
-                  <Box sx={{ px: 2, py: 1.25, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem', letterSpacing: '0.02em' }}>Chemical Info</Typography>
+                  <Box sx={{ px: 1.5, py: 1.25, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, minWidth: 0, overflow: 'hidden', borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem', letterSpacing: '0.02em', minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Chemical Info</Typography>
                     {recognizedCompound && !isSearching && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
                         <Chip label="Identified" size="small" color="success" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 500 }} />
                         <IconButton size="small" onClick={handleCopyAll} sx={{ width: 28, height: 28 }}>
                           <ContentCopyIcon sx={{ fontSize: 16 }} />
@@ -956,15 +1023,29 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     )}
                   </Box>
 
-                  {/* Toolbar — compact buttons */}
-                  <Box sx={{ px: 1, py: 0.75 }}>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
-                      {/* Structure */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, pr: 0.75, borderRight: 1, borderColor: 'divider' }}>
-                        <Tooltip title="Paste"><Button size="small" variant="outlined" onClick={handlePasteFromClipboard} sx={{ minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Paste</Button></Tooltip>
-                        <Tooltip title="Layout"><Button size="small" variant="outlined" onClick={handleLayout} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><AccountTreeIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
-                        <Tooltip title="Align"><Button size="small" variant="outlined" onClick={(e) => setAlignMenuAnchor(e.currentTarget)} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><FormatAlignLeftIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
-                      </Box>
+                  {/* Toolbar — compact buttons: Tools top, Paste+Analysis centered bottom */}
+                  <Box sx={{ px: 1, py: 0.75, minWidth: 0, overflow: 'hidden' }}>
+                    {/* Row 1: Tools (Export, Biopolymer, Reactions) — centered */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 0.5, mb: 0.5, minWidth: 0 }}>
+                      <Tooltip title="Export"><span><Button size="small" variant="outlined" onClick={(e) => setExportMenuAnchor(e.currentTarget)} disabled={!currentStructure?.molfile} startIcon={<DownloadIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 12 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Export</Button></span></Tooltip>
+                      <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
+                        <MenuItem onClick={() => handleExport('mol')}>MOL</MenuItem>
+                        <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
+                        <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
+                      </Menu>
+                      <Tooltip title="Biopolymer"><Button size="small" variant="outlined" onClick={(e) => setBiotoolMenuAnchor(e.currentTarget)} startIcon={<BiotechIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 12 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Biopolymer</Button></Tooltip>
+                      <Menu anchorEl={biotoolMenuAnchor} open={!!biotoolMenuAnchor} onClose={() => setBiotoolMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
+                        <MenuItem onClick={() => handleBiopolymerOpen('PEPTIDE')}>Peptide</MenuItem>
+                        <MenuItem onClick={() => handleBiopolymerOpen('RNA')}>RNA</MenuItem>
+                        <MenuItem onClick={() => handleBiopolymerOpen('DNA')}>DNA</MenuItem>
+                      </Menu>
+                      <Tooltip title="Reactions"><Button size="small" variant="outlined" onClick={() => setShowReactionHelpDialog(true)} startIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Reactions</Button></Tooltip>
+                    </Box>
+                    {/* Row 2: Paste + Analysis — centered, buttons wrap individually */}
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
+                      <Tooltip title="Paste"><Button size="small" variant="outlined" onClick={handlePasteFromClipboard} sx={{ minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Paste</Button></Tooltip>
+                      <Tooltip title="Layout"><Button size="small" variant="outlined" onClick={handleLayout} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><AccountTreeIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
+                      <Tooltip title="Align"><Button size="small" variant="outlined" onClick={(e) => setAlignMenuAnchor(e.currentTarget)} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><FormatAlignLeftIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
                       <Menu anchorEl={alignMenuAnchor} open={!!alignMenuAnchor} onClose={() => setAlignMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
                         <MenuItem onClick={handleAlignDescriptors}>R-group labels</MenuItem>
                         <MenuItem onClick={() => handleAlignStructures('left')}>Align left</MenuItem>
@@ -972,29 +1053,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={() => handleAlignStructures('top')}>Align top</MenuItem>
                         <MenuItem onClick={() => handleAlignStructures('bottom')}>Align bottom</MenuItem>
                       </Menu>
-                      {/* Analysis */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, pr: 0.75, borderRight: 1, borderColor: 'divider' }}>
-                        {isSearching && <CircularProgress size={12} />}
-                        <Tooltip title="Predict NMR"><span><Button size="small" variant="contained" onClick={() => { setNmrDialogMode('predict'); setShowNMRPredictionDialog(true); }} disabled={!currentStructure?.smiles} startIcon={<ShowChartIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>NMR</Button></span></Tooltip>
-                        <Tooltip title="Explain NMR"><span><Button size="small" variant="outlined" onClick={() => { setNmrDialogMode('explain'); setShowNMRPredictionDialog(true); }} disabled={!currentStructure?.smiles} startIcon={<PsychologyIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Explain</Button></span></Tooltip>
-                        <Tooltip title="AI Assistant"><Button size="small" variant="outlined" onClick={() => { setAiSectionExpanded(true); setTimeout(() => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><PsychologyIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
-                      </Box>
-                      {/* Tools */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                        <Tooltip title="Export"><span><Button size="small" variant="outlined" onClick={(e) => setExportMenuAnchor(e.currentTarget)} disabled={!currentStructure?.molfile} startIcon={<DownloadIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 12 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Export</Button></span></Tooltip>
-                        <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                          <MenuItem onClick={() => handleExport('mol')}>MOL</MenuItem>
-                          <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
-                          <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
-                        </Menu>
-                        <Tooltip title="Biopolymer"><Button size="small" variant="outlined" onClick={(e) => setBiotoolMenuAnchor(e.currentTarget)} startIcon={<BiotechIcon sx={{ fontSize: 14 }} />} endIcon={<ExpandMoreIcon sx={{ fontSize: 12 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Biopolymer</Button></Tooltip>
-                        <Menu anchorEl={biotoolMenuAnchor} open={!!biotoolMenuAnchor} onClose={() => setBiotoolMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                          <MenuItem onClick={() => handleBiopolymerOpen('PEPTIDE')}>Peptide</MenuItem>
-                          <MenuItem onClick={() => handleBiopolymerOpen('RNA')}>RNA</MenuItem>
-                          <MenuItem onClick={() => handleBiopolymerOpen('DNA')}>DNA</MenuItem>
-                        </Menu>
-                        <Tooltip title="Reactions"><Button size="small" variant="outlined" onClick={() => setShowReactionHelpDialog(true)} startIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', px: 0.75, py: 0.25, fontSize: '0.75rem' }}>Reactions</Button></Tooltip>
-                      </Box>
+                      {isSearching && <CircularProgress size={12} sx={{ flexShrink: 0 }} />}
+                      <Tooltip title="NMR prediction and AI explanation"><span><Button size="small" variant="contained" onClick={() => setShowNMRPredictionDialog(true)} disabled={!currentStructure?.smiles} startIcon={<ShowChartIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', minWidth: 0, px: 0.75, py: 0.25, fontSize: '0.75rem' }}>NMR</Button></span></Tooltip>
+                      <Tooltip title="AI Assistant"><Button size="small" variant="outlined" onClick={() => { setAiSectionExpanded(true); setTimeout(() => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }} sx={{ minWidth: 0, px: 0.5, py: 0.25 }}><PsychologyIcon sx={{ fontSize: 14 }} /></Button></Tooltip>
                     </Box>
                   </Box>
                 </Box>
@@ -1032,6 +1093,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
                         gap: 1,
+                        minWidth: 0,
                         p: 0.75,
                         borderRadius: 1,
                         cursor: 'pointer',
@@ -1042,9 +1104,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         }
                       }}
                     >
-                      <Typography variant="caption" color="text.secondary">Name:</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Name:</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {recognizedCompound.name}
                         </Typography>
                         <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1057,6 +1119,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
                         gap: 1,
+                        minWidth: 0,
                         p: 0.75,
                         borderRadius: 1,
                         cursor: (recognizedCompound.properties?.IUPACName || aiIupacName) ? 'pointer' : 'default',
@@ -1067,9 +1130,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         } : {}
                       }}
                     >
-                      <Typography variant="caption" color="text.secondary">IUPAC Name:</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>IUPAC Name:</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {recognizedCompound.properties?.IUPACName || aiIupacName || 'N/A'}
                         </Typography>
                         {(recognizedCompound.properties?.IUPACName || aiIupacName) ? (
@@ -1088,6 +1151,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
                         gap: 1,
+                        minWidth: 0,
                         p: 0.75,
                         borderRadius: 1,
                         cursor: 'pointer',
@@ -1098,9 +1162,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         }
                       }}
                     >
-                      <Typography variant="caption" color="text.secondary">PubChem CID:</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>PubChem CID:</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {recognizedCompound.cid}
                         </Typography>
                         <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1113,6 +1177,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
                         gap: 1,
+                        minWidth: 0,
                         p: 0.75,
                         borderRadius: 1,
                         cursor: chemicalData.regulatory?.casNumber ? 'pointer' : 'default',
@@ -1123,9 +1188,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         } : {}
                       }}
                     >
-                      <Typography variant="caption" color="text.secondary">CAS Number:</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>CAS Number:</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {chemicalData.regulatory?.casNumber || 'N/A'}
                         </Typography>
                         {chemicalData.regulatory?.casNumber && (
@@ -1151,9 +1216,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           }
                         }}
                       >
-                        <Typography variant="caption" color="text.secondary">InChI Key:</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>InChI Key:</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {chemicalData.regulatory.inchiKey}
                           </Typography>
                           <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1178,9 +1243,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           }
                         }}
                       >
-                        <Typography variant="caption" color="text.secondary">SMILES:</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>SMILES:</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {chemicalData.regulatory.smiles}
                           </Typography>
                           <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1205,9 +1270,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           }
                         }}
                       >
-                        <Typography variant="caption" color="text.secondary">InChI:</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>InChI:</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.7rem', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {chemicalData.regulatory.inchi}
                           </Typography>
                           <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1255,9 +1320,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Molecular Weight:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Molecular Weight:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {typeof chemicalData.physicalProperties.molecularWeight === 'number' 
                                 ? chemicalData.physicalProperties.molecularWeight.toFixed(2)
                                 : parseFloat(chemicalData.physicalProperties.molecularWeight).toFixed(2)} g/mol
@@ -1284,9 +1349,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Molecular Formula:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Molecular Formula:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontFamily: 'monospace', fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.physicalProperties.molecularFormula}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1316,9 +1381,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Exact Mass:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Exact Mass:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {typeof chemicalData.physicalProperties.exactMass === 'number' 
                                 ? chemicalData.physicalProperties.exactMass.toFixed(4)
                                 : parseFloat(chemicalData.physicalProperties.exactMass).toFixed(4)} Da
@@ -1350,9 +1415,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Monoisotopic Mass:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Monoisotopic Mass:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {typeof chemicalData.physicalProperties.monoIsotopicMass === 'number' 
                                 ? chemicalData.physicalProperties.monoIsotopicMass.toFixed(4)
                                 : parseFloat(chemicalData.physicalProperties.monoIsotopicMass).toFixed(4)} Da
@@ -1379,9 +1444,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Density:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Density:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.physicalProperties.density}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1406,9 +1471,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Melting Point:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Melting Point:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.physicalProperties.meltingPoint}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1433,9 +1498,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Boiling Point:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Boiling Point:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.physicalProperties.boilingPoint}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1485,9 +1550,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">LogP (Lipophilicity):</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>LogP (Lipophilicity):</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {typeof chemicalData.descriptors.logP === 'number' 
                                 ? chemicalData.descriptors.logP.toFixed(2)
                                 : parseFloat(chemicalData.descriptors.logP).toFixed(2)}
@@ -1519,9 +1584,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">TPSA (Polar Surface Area):</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>TPSA (Polar Surface Area):</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {typeof chemicalData.descriptors.tpsa === 'number' 
                                 ? chemicalData.descriptors.tpsa.toFixed(2)
                                 : parseFloat(chemicalData.descriptors.tpsa).toFixed(2)} Å²
@@ -1548,9 +1613,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">H-Bond Donors:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>H-Bond Donors:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.descriptors.hBondDonors}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1575,9 +1640,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">H-Bond Acceptors:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>H-Bond Acceptors:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.descriptors.hBondAcceptors}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1602,9 +1667,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Rotatable Bonds:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Rotatable Bonds:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.descriptors.rotatableBonds}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1634,9 +1699,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Complexity:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Complexity:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {typeof chemicalData.descriptors.complexity === 'number' 
                                 ? chemicalData.descriptors.complexity.toFixed(1)
                                 : parseFloat(chemicalData.descriptors.complexity).toFixed(1)}
@@ -1663,9 +1728,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Heavy Atom Count:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Heavy Atom Count:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.descriptors.heavyAtomCount}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1690,9 +1755,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">Formal Charge:</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Formal Charge:</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {chemicalData.descriptors.formalCharge}
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
@@ -1711,15 +1776,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     <CenterFocusStrongIcon sx={{ fontSize: 16 }} /> Stereochemistry
                   </Typography>
                   <Stack spacing={0.5}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
-                      <Typography variant="caption" color="text.secondary">Chiral centers:</Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Chiral centers:</Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {stereoInfo.chiralCenters} total
                       </Typography>
                     </Box>
                     {stereoInfo.unspecifiedCenters > 0 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 0.75, borderRadius: 1 }}>
-                        <Typography variant="caption" color="text.secondary">Unspecified (R/S):</Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, p: 0.75, borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Unspecified (R/S):</Typography>
                         <Chip label={`${stereoInfo.unspecifiedCenters}`} size="small" color="warning" sx={{ fontSize: '0.7rem' }} />
                       </Box>
                     )}
@@ -1738,7 +1803,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             '&:hover': { bgcolor: 'action.hover' }
                           }}
                         >
-                          <Typography variant="caption" color="text.secondary">InChI (stereo):</Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>InChI (stereo):</Typography>
                           <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                         </Box>
                       </Tooltip>
@@ -1757,17 +1822,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     </Typography>
                     <Stack spacing={0.5}>
                       {chemicalData.spectral.irSpectrum && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="caption" color="text.secondary">IR Spectrum:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', minWidth: 0 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>IR Spectrum:</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {chemicalData.spectral.irSpectrum}
                           </Typography>
                         </Box>
                       )}
                       {chemicalData.spectral.massSpectrum && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="caption" color="text.secondary">Mass Spectrum:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', minWidth: 0 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Mass Spectrum:</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {chemicalData.spectral.massSpectrum}
                           </Typography>
                         </Box>
@@ -1789,11 +1854,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             onClick={() => handleCopy(aiIupacName, 'IUPAC Name')}
                             sx={{ cursor: 'pointer', p: 0.75, borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}
                           >
-                            <Typography variant="caption" color="text.secondary">IUPAC (AI):</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>IUPAC (AI):</Typography>
                             <Typography variant="body2" sx={{ fontWeight: 500 }}>{aiIupacName}</Typography>
                           </Box>
                         ) : (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
                             <Button
                               size="small"
                               variant="outlined"
@@ -1831,7 +1896,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             AI Assistant
                           </Typography>
                         </AccordionSummary>
-                        <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5 }}>
+                        <AccordionDetails sx={{ pt: 0, px: 1.5, pb: 1.5, minWidth: 0 }}>
                           <AIIntegration
                             smiles={currentStructure?.smiles ?? undefined}
                             molfile={currentStructure?.molfile ?? undefined}
@@ -1958,7 +2023,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onClose={() => setShowNMRPredictionDialog(false)}
           smiles={currentStructure?.smiles ?? null}
           molfile={currentStructure?.molfile ?? undefined}
-          autoExplain={nmrDialogMode === 'explain'}
         />
 
         {/* Biopolymer Sequence Dialog */}

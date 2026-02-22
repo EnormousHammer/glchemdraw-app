@@ -127,8 +127,17 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
                 struct,
                 SupportedFormat.molAuto
               );
-              const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
-              const selSmiles = await molfileToSmiles(selMolfile);
+              let selSmiles: string | null = null;
+              try {
+                const { molfileToSmiles } = await import('../../lib/chemistry/openchemlib');
+                selSmiles = molfileToSmiles(selMolfile);
+              } catch (_) { /* openchemlib sync */ }
+              if (!selSmiles) {
+                try {
+                  const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
+                  selSmiles = await molfileToSmiles(selMolfile);
+                } catch (_) { /* rdkit async */ }
+              }
               onSelectionChange(selMolfile, selSmiles || null);
               return;
             }
@@ -258,8 +267,17 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
                       struct,
                       SupportedFormat.molAuto
                     );
-                    const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
-                    const smiles = await molfileToSmiles(molfile);
+                    let smiles: string | null = null;
+                    try {
+                      const { molfileToSmiles } = await import('../../lib/chemistry/openchemlib');
+                      smiles = molfileToSmiles(molfile);
+                    } catch (_) { /* openchemlib sync */ }
+                    if (!smiles) {
+                      try {
+                        const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
+                        smiles = await molfileToSmiles(molfile);
+                      } catch (_) { /* rdkit async */ }
+                    }
                     onSelectionChange(molfile, smiles || null);
                     return;
                   }
@@ -277,6 +295,8 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
               if (ketcher?.editor?.subscribe && onSelectionChange) {
                 ketcher.editor.subscribe('selectionChange', emitSelectionOrFull);
               }
+              // Emit initial selection state so Chemical Info shows selected struct if any
+              setTimeout(() => emitSelectionOrFull(), 150);
             } catch (e) {
               console.warn('[ChemCanvas] Failed to subscribe selection handler:', e);
             }

@@ -51,17 +51,17 @@ Every AI call sends a `messages` array to `POST /openai/chat`. The proxy forward
 
 | Role   | Content |
 |--------|---------|
-| system | `You are an expert organic chemist and NMR spectroscopist. Give detailed, factual, educational explanations of NMR spectra. Use real chemical shift values and reference typical ranges. Explain the structural reasons for each signal. Be thorough and cite well-established NMR principles. Cover ¹H, ¹³C, and any ¹⁵N, ³¹P, ¹⁹F if present.` |
-| user   | `Explain these predicted NMR signals for the compound with SMILES: ${smiForPrompt}\n\n${signalsStr}\n\nProvide a detailed, factual explanation of what functional groups or chemical environments cause each of these chemical shifts.` |
+| system | Professional in-app style (Mnova/ChemDraw/ACD Labs tone). Prioritize clarity over theoretical justification. Open with structure→NMR outcome link. Concise (20–30% less than textbook). Tight phrasing, no defensive justification of shift ranges. Vary sentence structure. No SMILES/atom indices in output. Plain text, no bullets. |
+| user   | `Interpret this NMR spectrum for the compound (structure: ${smiForPrompt}):\n\n${signalsStr}\n\nWrite a concise, in-app style explanation: link each signal to its structural origin, vary your phrasing, and avoid redundant justification.` |
 
 **Example user content:**
 ```
-Explain these predicted NMR signals for the compound with SMILES: CC(=O)C
+Interpret this NMR spectrum for the compound (structure: CC(=O)C):
 
 ¹H NMR: δ 2.10 ppm (6H)
 ¹³C NMR: δ 205.00 ppm (1C), δ 30.00 ppm (2C)
 
-Provide a detailed, factual explanation...
+Write a concise, in-app style explanation...
 ```
 
 ---

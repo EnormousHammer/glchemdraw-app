@@ -26,7 +26,8 @@ import {
   CheckCircle as SuccessIcon,
   PlayArrow as PlayIcon,
 } from '@mui/icons-material';
-import { stripMarkdown } from '@/lib/utils/stripMarkdown';
+import { formatChemistryText } from '@/lib/utils/stripMarkdown';
+import { CHEMISTRY_FORMATTING_INSTRUCTION } from '@/lib/openai/chemistryFormatting';
 
 interface AIIntegrationProps {
   smiles?: string;
@@ -215,14 +216,14 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
             existingData!.logP != null && 'LogP',
             existingData!.tpsa != null && 'TPSA',
             existingData!.casNumber && 'CAS',
-          ].filter(Boolean).join(', ')}. Do NOT repeat these. Only provide NEW info (reactions, synthesis, safety insights). Plain text only, no markdown.`
-        : '\n\nPlain text only, no markdown (no **, ##, *, etc).';
+          ].filter(Boolean).join(', ')}. Do NOT repeat these. Only provide NEW info (reactions, synthesis, safety insights). ${CHEMISTRY_FORMATTING_INSTRUCTION}`
+        : `\n\n${CHEMISTRY_FORMATTING_INSTRUCTION}`;
 
       const promptByType: Record<string, string> = {
         comprehensive: `Analyze this molecule (SMILES: ${smi}). Provide ONLY information the user does not already have. Focus on: drug-likeness assessment, likely chemical reactions with conditions, safety insights beyond databases, synthesis suggestions.${skipNote}`,
         naming: `Given SMILES: ${smi}, provide the IUPAC name and common name if applicable.${existingData?.iupacName ? ' User already has IUPAC - provide only if you have a different/better name.' : ''}${skipNote}`,
         properties: `For SMILES: ${smi}, list ONLY properties the user might not have: drug-likeness, TPSA interpretation, HBD/HBA, rotatable bonds. Skip MW, LogP, formula if user already has them.${skipNote}`,
-        reactions: `For SMILES: ${smi}, suggest 3-4 likely chemical reactions with realistic conditions, reagents, and products. Explain the chemistry.${skipNote}`,
+        reactions: `For SMILES: ${smi}, suggest 3-4 likely chemical reactions with realistic conditions, reagents, and products. Write equations in plain text (e.g. C6H14 + Cl2 → C6H13Cl + HCl). Use simple lists, not markdown tables.${skipNote}`,
         safety: `For SMILES: ${smi}, provide safety considerations, handling precautions, and hazards.${skipNote}`,
       };
       const userPrompt = appendUserContext(
@@ -235,7 +236,7 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
       const content = await chatWithOpenAI([
         {
           role: 'system',
-          content: 'You are an expert chemist. Provide detailed, factual analysis. Use plain text only—no markdown (no **, ##, *, bullets, or formatting symbols). Do not repeat information the user already has from PubChem.',
+          content: `You are an expert chemist. Provide detailed, factual analysis. ${CHEMISTRY_FORMATTING_INSTRUCTION} Do not repeat information the user already has from PubChem.`,
         },
         { role: 'user', content: userPrompt },
       ]);
@@ -307,7 +308,7 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
       const content = await chatWithOpenAI([
         {
           role: 'system',
-          content: 'You are an expert organic chemist. Provide detailed, factual reaction predictions with realistic conditions, reagents, and products. Explain the chemistry and mechanisms where relevant.',
+          content: `You are an expert organic chemist. Provide detailed, factual reaction predictions with realistic conditions, reagents, and products. ${CHEMISTRY_FORMATTING_INSTRUCTION}`,
         },
         { role: 'user', content: reactionsUserMsg },
       ]);
@@ -338,10 +339,10 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
   }, []);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      {/* Controls: compact layout */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
-        <FormControl size="small" sx={{ minWidth: 120, '& .MuiInputBase-root': { fontSize: '0.8rem' } }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+      {/* Controls: compact, centered layout */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75 }}>
+        <FormControl size="small" sx={{ minWidth: 0, width: '100%', '& .MuiInputBase-root': { fontSize: '0.75rem' } }}>
           <InputLabel>Analysis Type</InputLabel>
           <Select
             value={analysisType}
@@ -355,21 +356,21 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
             <MenuItem value="safety">Safety</MenuItem>
           </Select>
         </FormControl>
-        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.5 }}>
           <Button
             size="small"
             variant="contained"
             onClick={handleAIAnalysis}
             disabled={isAnalyzing || (!smiles && !molfile)}
-            startIcon={isAnalyzing ? <CircularProgress size={14} color="inherit" /> : <AIIcon sx={{ fontSize: 16 }} />}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
+            startIcon={isAnalyzing ? <CircularProgress size={12} color="inherit" /> : <AIIcon sx={{ fontSize: 14 }} />}
+            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.7rem', px: 1, py: 0.375 }}
           >
             {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
           </Button>
-          <Button size="small" variant="outlined" onClick={handleGenerateName} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<ChemistryIcon sx={{ fontSize: 16 }} />} sx={{ textTransform: 'none' }}>
+          <Button size="small" variant="outlined" onClick={handleGenerateName} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<ChemistryIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', fontSize: '0.7rem', px: 1, py: 0.375 }}>
             Generate Name
           </Button>
-          <Button size="small" variant="outlined" onClick={handlePredictReactions} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<PlayIcon sx={{ fontSize: 16 }} />} sx={{ textTransform: 'none' }}>
+          <Button size="small" variant="outlined" onClick={handlePredictReactions} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<PlayIcon sx={{ fontSize: 14 }} />} sx={{ textTransform: 'none', fontSize: '0.7rem', px: 1, py: 0.375 }}>
             Predict Reactions
           </Button>
         </Box>
@@ -391,19 +392,19 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
       {analysis && (
         <Stack ref={resultsRef} spacing={1.5}>
           {analysis.aiRawText && (
-            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden' }}>
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden', minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5, py: 1, bgcolor: 'action.hover', borderBottom: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.75 }}>
                   <SuccessIcon color="success" sx={{ fontSize: 18 }} />
                   Analysis Result
                 </Typography>
-                <Button size="small" variant="text" startIcon={<CopyIcon sx={{ fontSize: 14 }} />} onClick={() => handleCopyResult(stripMarkdown(analysis.aiRawText!))} sx={{ minWidth: 0, px: 1, fontSize: '0.75rem' }}>
+                <Button size="small" variant="text" startIcon={<CopyIcon sx={{ fontSize: 14 }} />} onClick={() => handleCopyResult(formatChemistryText(analysis.aiRawText!))} sx={{ minWidth: 0, px: 1, fontSize: '0.75rem' }}>
                   Copy
                 </Button>
               </Box>
               <Box sx={{ p: 1.5, maxHeight: 320, overflow: 'auto' }}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.8rem' }}>
-                    {stripMarkdown(analysis.aiRawText)}
+                  <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: '0.8rem', wordBreak: 'break-word' }}>
+                    {formatChemistryText(analysis.aiRawText)}
                   </Typography>
               </Box>
             </Box>

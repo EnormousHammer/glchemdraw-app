@@ -31,7 +31,8 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import { useAIContext, appendUserContext } from '@/contexts/AIContext';
-import { stripMarkdown } from '@/lib/utils/stripMarkdown';
+import { formatChemistryText } from '@/lib/utils/stripMarkdown';
+import { CHEMISTRY_FORMATTING_INSTRUCTION } from '@/lib/openai/chemistryFormatting';
 
 interface NMRPredictionDialogProps {
   open: boolean;
@@ -363,12 +364,18 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
         }
       }
       const signalsStr = parts.length > 0 ? parts.join('\n') : 'none';
-      const explainUserMsg = `Explain these predicted NMR signals for the compound with SMILES: ${smiForPrompt}\n\n${signalsStr}\n\nProvide a detailed, factual explanation of what functional groups or chemical environments cause each of these chemical shifts.`;
+      const explainUserMsg = `Interpret this NMR spectrum for the compound (structure: ${smiForPrompt}):\n\n${signalsStr}\n\nWrite a concise, in-app style explanation: link each signal to its structural origin, vary your phrasing, and avoid redundant justification.`;
       const { chatWithOpenAI } = await import('@/lib/openai');
       const content = await chatWithOpenAI([
         {
           role: 'system',
-          content: 'You are an expert organic chemist and NMR spectroscopist. Give detailed, factual, educational explanations of NMR spectra. Use real chemical shift values and reference typical ranges. Explain the structural reasons for each signal. Be thorough and cite well-established NMR principles. Cover ¹H, ¹³C, and any ¹⁵N, ³¹P, ¹⁹F if present. Use plain text only—no markdown (no **, ##, *, bullets). When mentioning chemical structures, use SMILES (e.g. CC(=O)C) or standard formulas (e.g. CH3-CO-CH3) so they display correctly.',
+          content: `You are an expert organic chemist writing an in-app NMR interpretation for professional chemistry software (like Mnova, ChemDraw, ACD Labs). Prioritize clarity and readability over exhaustive theoretical justification.
+
+Structure: Open with one sentence that connects the structure directly to the NMR outcome (e.g. "The molecule contains a symmetrical six-carbon saturated chain, producing three distinct proton and carbon environments."). Then explain each signal or group by linking structure to chemical shift—what atoms, what environment, why that position. Vary your sentence structure; do not repeat the same pattern (assignment → shielding → integration) for every signal. End with a brief confirmation that the pattern fits the structure.
+
+Style: Be concise. Aim for 20–30% less text than a textbook explanation. Use tight phrasing: "These methyl protons are highly shielded because they are attached only to saturated carbons, placing their signal near 1 ppm" rather than long justifications. Do not defend or explain general chemical shift ranges—users trust the tool. Focus on structure → signal. Do not reference structure notation, atom indices, or implementation details. Use standard chemical names (methyl group, aromatic protons, carbonyl carbon).
+
+Format: ${CHEMISTRY_FORMATTING_INSTRUCTION} Clear paragraphs, no bullet points. The tone should feel like professional software interpretation, not a textbook or research paper.`,
         },
         {
           role: 'user',
@@ -391,30 +398,90 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
   }, [open, loading, autoExplain, smiles, molfile, handleExplainNMR]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <ShowChartIcon color="primary" />
-        NMR Prediction (¹H, ¹³C, ¹⁵N, ³¹P, ¹⁹F)
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          margin: '56px auto 48px', // Below top header (56px), above bottom (48px), centered
+          maxHeight: 'calc(100vh - 56px - 48px)', // Fit between top and bottom headers
+          display: 'flex',
+          flexDirection: 'column',
+          borderRadius: 2,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+          border: '1px solid',
+          borderColor: 'divider',
+          overflow: 'hidden',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          flexShrink: 0,
+          flex: '0 0 auto',
+          py: 2,
+          px: 3,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'action.hover',
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 40,
+            height: 40,
+            borderRadius: 1.5,
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+          }}
+        >
+          <ShowChartIcon sx={{ fontSize: 22 }} />
+        </Box>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: '0.02em' }}>
+            NMR Prediction
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '0.04em' }}>
+            ¹H, ¹³C, ¹⁵N, ³¹P, ¹⁹F
+          </Typography>
+        </Box>
       </DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, px: 3, py: 2.5 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          <Alert severity="error" sx={{ mb: 2, borderRadius: 1.5 }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
         {loading ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4, gap: 2 }}>
-            <CircularProgress />
-            <Typography color="text.secondary">
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6, gap: 2.5 }}>
+            <CircularProgress size={48} thickness={4} sx={{ color: 'primary.main' }} />
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
               {loadingPhase === 'openai' && 'Asking AI for NMR prediction...'}
-              {loadingPhase === 'nmrdb' && 'Trying nmrdb.org...'}
+              {loadingPhase === 'nmrdb' && 'Querying nmrdb.org...'}
               {loadingPhase === 'loading-db' && 'Loading NMR databases (first time may take 15–30s)...'}
               {loadingPhase === 'predicting' && 'Predicting chemical shifts...'}
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ mt: 1 }}>
-            <Tabs value={Math.min(activeTab, 4)} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 2 }}>
+          <Box sx={{ mt: 0.5 }}>
+            <Tabs
+              value={Math.min(activeTab, 4)}
+              onChange={(_, v) => setActiveTab(v)}
+              sx={{
+                mb: 2,
+                minHeight: 40,
+                '& .MuiTab-root': { fontWeight: 500, fontSize: '0.8rem', textTransform: 'none' },
+                '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' },
+              }}
+            >
               {(['1H', '13C', '15N', '31P', '19F'] as NucleusKey[]).map((n, i) => (
                 <Tab key={n} label={`${NUCLEUS_CONFIG[n].label} (${nucleusGroups[n].length})`} />
               ))}
@@ -422,41 +489,68 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
             {(() => {
               const nuc = (['1H', '13C', '15N', '31P', '19F'] as NucleusKey[])[activeTab] ?? '1H';
               return (
-                <Stack key={nuc} spacing={1}>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Stack key={nuc} spacing={1.5}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, letterSpacing: '0.05em' }}>
+                      Chemical shifts
+                    </Typography>
                     <Button
                       size="small"
-                      startIcon={<ContentCopyIcon />}
+                      variant="outlined"
+                      startIcon={<ContentCopyIcon sx={{ fontSize: 16 }} />}
                       onClick={() => handleCopyPeaks(nuc)}
                       disabled={nucleusGroups[nuc].length === 0}
+                      sx={{ textTransform: 'none', fontSize: '0.75rem', py: 0.5 }}
                     >
                       Copy
                     </Button>
                   </Box>
-                  <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 280 }}>
+                  <TableContainer
+                    component={Paper}
+                    variant="outlined"
+                    sx={{
+                      maxHeight: 220,
+                      borderRadius: 1.5,
+                      overflow: 'hidden',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  >
                     <Table size="small" stickyHeader>
                       <TableHead>
-                        <TableRow>
-                          <TableCell><strong>δ (ppm)</strong></TableCell>
-                          <TableCell><strong>Count</strong></TableCell>
+                        <TableRow sx={{ '& th': { bgcolor: 'action.hover', fontWeight: 600, fontSize: '0.75rem', letterSpacing: '0.05em', py: 1.25 } }}>
+                          <TableCell>δ (ppm)</TableCell>
+                          <TableCell>Count</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {nucleusGroups[nuc].map((g, i) => (
-                          <TableRow key={i}>
-                            <TableCell sx={{ fontFamily: 'monospace' }}>{g.delta.toFixed(2)}</TableCell>
+                          <TableRow
+                            key={i}
+                            sx={{
+                              '&:hover': { bgcolor: 'action.hover' },
+                              '&:last-child td': { borderBottom: 0 },
+                            }}
+                          >
+                            <TableCell sx={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace', fontSize: '0.875rem', fontWeight: 500 }}>
+                              {g.delta.toFixed(2)}
+                            </TableCell>
                             <TableCell>
-                              <Chip label={`${g.count}${NUCLEUS_CONFIG[nuc].suffix}`} size="small" />
+                              <Chip
+                                label={`${g.count}${NUCLEUS_CONFIG[nuc].suffix}`}
+                                size="small"
+                                sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                              />
                             </TableCell>
                           </TableRow>
                         ))}
                         {nucleusGroups[nuc].length === 0 && !loading && (
                           <TableRow>
-                            <TableCell colSpan={2} align="center" sx={{ py: 2 }}>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            <TableCell colSpan={2} align="center" sx={{ py: 3 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                                 No {NUCLEUS_CONFIG[nuc].label} signals
                               </Typography>
-                              <Button size="small" variant="outlined" onClick={runPrediction} startIcon={<PsychologyIcon />}>
+                              <Button size="small" variant="outlined" onClick={runPrediction} startIcon={<PsychologyIcon />} sx={{ textTransform: 'none' }}>
                                 Ask AI for NMR
                               </Button>
                             </TableCell>
@@ -468,21 +562,25 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
                 </Stack>
               );
             })()}
-            <Alert severity="info" sx={{ mt: 2 }} variant="outlined">
-              <Typography variant="caption" component="div">
-                <strong>NMR:</strong> AI (OpenAI) first; falls back to nmrdb.org or nmr-predictor. Use AI for missing info — run <em>npm run dev:proxy</em> for OpenAI. Not suitable as sole verification for PhD-level synthesis.
-              </Typography>
-            </Alert>
-            <Box ref={explainSectionRef} sx={{ minHeight: explainText || explainError ? undefined : 0 }}>
+            <Box ref={explainSectionRef} sx={{ minHeight: explainText || explainError ? undefined : 0, mt: 2 }}>
               {explainError && (
-                <Alert severity="error" sx={{ mt: 2 }} onClose={() => setExplainError(null)}>
+                <Alert severity="error" sx={{ borderRadius: 1.5 }} onClose={() => setExplainError(null)}>
                   {explainError}
                 </Alert>
               )}
               {explainText && (
-                <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'action.hover' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderRadius: 1.5,
+                    bgcolor: 'action.hover',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontWeight: 600 }}>
                       <PsychologyIcon fontSize="small" color="primary" />
                       AI Explanation
                     </Typography>
@@ -490,8 +588,8 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
                       size="small"
                       variant="text"
                       startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
-                      onClick={() => navigator.clipboard.writeText(stripMarkdown(explainText))}
-                      sx={{ minWidth: 0, px: 1, fontSize: '0.75rem' }}
+                      onClick={() => navigator.clipboard.writeText(formatChemistryText(explainText))}
+                      sx={{ minWidth: 0, px: 1, fontSize: '0.75rem', textTransform: 'none' }}
                     >
                       Copy
                     </Button>
@@ -501,9 +599,11 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
                     sx={{
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
+                      lineHeight: 1.6,
+                      fontSize: '0.8125rem',
                     }}
                   >
-                    {stripMarkdown(explainText)}
+                    {formatChemistryText(explainText)}
                   </Typography>
                 </Paper>
               )}
@@ -511,8 +611,22 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
           </Box>
         )}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
+      <DialogActions
+        sx={{
+          flexShrink: 0,
+          flex: '0 0 auto',
+          px: 3,
+          py: 2,
+          gap: 1,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'action.hover',
+        }}
+      >
+        <Button onClick={onClose} sx={{ textTransform: 'none', fontWeight: 500 }}>
+          Close
+        </Button>
+        <Box sx={{ flex: 1 }} />
         {!loading && (smiles || molfile) && (
           <>
             <Button
@@ -520,10 +634,11 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
               variant="outlined"
               disabled={explainLoading}
               startIcon={explainLoading ? <CircularProgress size={16} /> : <PsychologyIcon />}
+              sx={{ textTransform: 'none', fontWeight: 500 }}
             >
               {explainLoading ? 'Explaining...' : 'Explain with AI'}
             </Button>
-            <Button onClick={runPrediction} variant="outlined">
+            <Button onClick={runPrediction} variant="contained" sx={{ textTransform: 'none', fontWeight: 600 }}>
               Recalculate
             </Button>
           </>

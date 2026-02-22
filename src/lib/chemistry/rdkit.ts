@@ -5,6 +5,7 @@
 
 import type { MolecularProperties, StructureValidation, ChemicalDescriptors } from '../../types/chemistry';
 import initRDKitModule from '@rdkit/rdkit';
+import type { RDKitLoader } from '@rdkit/rdkit';
 
 let rdkitInstance: any = null;
 let loadingPromise: Promise<any> | null = null;
@@ -26,9 +27,12 @@ export async function initRDKit(): Promise<any> {
     try {
       console.log('[RDKit] Loading WASM module...');
       // locateFile: Vite bundles don't serve node_modules; WASM must be in public/ or CDN
-      const RDKit = await initRDKitModule({
+      // Type assertion: @rdkit/rdkit default export is callable but types don't declare it.
+      // RDKitLoaderOptions.locateFile is typed as () => string but Emscripten passes (path: string).
+      const opts = {
         locateFile: (path: string) => (path.endsWith('.wasm') ? '/RDKit_minimal.wasm' : path),
-      });
+      };
+      const RDKit = await (initRDKitModule as unknown as RDKitLoader)(opts as Parameters<RDKitLoader>[0]);
       
       // Wait for RDKit to be fully initialized
       let retries = 0;

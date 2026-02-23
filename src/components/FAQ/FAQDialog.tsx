@@ -31,7 +31,7 @@ const FAQ_ITEMS = [
   { q: 'How do I clean up a messy structure?', a: 'Press Ctrl+Shift+L for Layout (fixes bond lengths and angles). Or click the Layout button (magic wand icon) in the Chemical Info panel.' },
   { q: 'How do I draw peptides, RNA, or DNA?', a: 'Click the Biopolymer button in the Chemical Info panel, or use Ctrl+Alt+P (Peptide), Ctrl+Alt+R (RNA), Ctrl+Alt+D (DNA). Enter the sequence.' },
   { q: 'How do I add functional groups (OMe, OEt, CN)?', a: 'Open Functional Groups (Shift+F). Use the Structure tool: select an FG, then click on the atom to attach. Or use the Add FG button (AI-powered).' },
-  { q: 'How do I copy as image?', a: 'Select the structure and press Ctrl+C. The structure is copied as PNG with transparent background. Paste into Word or PowerPoint.' },
+  { q: 'How do I copy as image?', a: 'Press Ctrl+Shift+F to copy the structure as PNG (transparent background). Or use the Copy icon in the top toolbar above the canvas — click the dropdown arrow and choose "Copy Image". Paste into Word or PowerPoint.' },
   { q: 'How do I export?', a: 'Use the Export menu for MOL, SDF, SMILES. Use Advanced Export for PNG, SVG, PDF (with DPI), InChI. Click Download after export.' },
   { q: 'How do I paste?', a: 'Press Ctrl+V or click the Paste button in the Chemical Info panel. Use Paste button when Ctrl+V does not work.' },
   { q: 'How do I predict NMR?', a: 'Select a structure and click NMR in the Chemical Info panel. You get ¹H, ¹³C, ¹⁵N, ³¹P, ¹⁹F predictions. Use "Explain with AI" when data is missing.' },

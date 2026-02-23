@@ -153,11 +153,12 @@ export function useCopyImageToClipboard(
 
   useEffect(() => {
     const keydownHandler = async (e: KeyboardEvent) => {
-      if (!(e.ctrlKey && e.key === 'c' && !e.shiftKey)) return;
+      const isCopyImage = (e.ctrlKey && e.key === 'c' && !e.shiftKey) || (e.ctrlKey && e.shiftKey && e.key === 'F');
+      if (!isCopyImage) return;
       const target = e.target as HTMLElement;
       const inKetcher = target.closest?.('.Ketcher-root');
       if (!inKetcher || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        clearStoredMol(); // User copied elsewhere - don't use our stored MOL on paste
+        if (!(e.ctrlKey && e.shiftKey && e.key === 'F')) clearStoredMol();
         return;
       }
 

@@ -2747,9 +2747,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                       <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                         <KbdKey>Ctrl</KbdKey>
                         <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>Shift</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
+                        <KbdKey>F</KbdKey>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">Copy image as PNG (or use Copy dropdown in toolbar above canvas)</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <KbdKey>Ctrl</KbdKey>
+                        <Typography component="span" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>+</Typography>
                         <KbdKey>C</KbdKey>
                       </Box>
-                      <Typography variant="body2" color="text.secondary">Copy image + structure</Typography>
+                      <Typography variant="body2" color="text.secondary">Copy structure (image + editable for canvas paste)</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                       <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>

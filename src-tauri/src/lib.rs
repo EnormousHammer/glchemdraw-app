@@ -1,5 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
+mod clipboard_emf;
+
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -235,6 +237,26 @@ async fn read_directory(path: String, filter_ext: Option<Vec<String>>) -> Comman
     Ok(files)
 }
 
+/// Copy PNG bytes to clipboard as EMF (Windows only, ChemDraw-style for FindMolecule)
+#[tauri::command]
+async fn copy_png_as_emf(png_bytes: Vec<u8>) -> Result<(), String> {
+    clipboard_emf::write_png_as_emf_to_clipboard(&png_bytes)
+}
+
+/// Copy ChemDraw-style: EMF + MOL + CDX (Windows only)
+#[tauri::command]
+async fn copy_chemdraw_style(
+    png_bytes: Vec<u8>,
+    mol_text: String,
+    cdx_bytes: Option<Vec<u8>>,
+) -> Result<(), String> {
+    clipboard_emf::write_chemdraw_style_to_clipboard(
+        &png_bytes,
+        &mol_text,
+        cdx_bytes.as_deref(),
+    )
+}
+
 /// Validate MOL file format
 #[tauri::command]
 async fn validate_mol_format(content: String) -> CommandResult<bool> {
@@ -332,6 +354,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
+            copy_png_as_emf,
+            copy_chemdraw_style,
             read_mol_file,
             write_mol_file,
             read_text_file,

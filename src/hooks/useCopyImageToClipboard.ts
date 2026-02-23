@@ -70,8 +70,120 @@ async function getStructureMolfile(ketcher: any): Promise<string | null> {
   }
 }
 
+async function getStructureCdxBytes(ketcher: any): Promise<Uint8Array | null> {
+  const struct = ketcher.editor?.structSelected?.();
+  const targetStruct = struct && !struct.isBlank?.() ? struct : ketcher.editor?.struct?.();
+  if (!targetStruct?.isBlank?.()) {
+    try {
+      const { getStructure } = await import('ketcher-core');
+      const { SupportedFormat } = await import('ketcher-core');
+      // binaryCdx or cdx returns base64; decode to bytes for clipboard
+      const str = await getStructure(
+        ketcher.id,
+        ketcher.formatterFactory,
+        targetStruct,
+        SupportedFormat.binaryCdx
+      );
+      if (str && typeof str === 'string' && str.length > 0) {
+        try {
+          const binary = atob(str);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return bytes;
+        } catch {
+          /* not base64, skip */
+        }
+      }
+    } catch {
+      try {
+        const { getStructure } = await import('ketcher-core');
+        const { SupportedFormat } = await import('ketcher-core');
+        const str = await getStructure(
+          ketcher.id,
+          ketcher.formatterFactory,
+          targetStruct,
+          SupportedFormat.cdx
+        );
+        if (str && typeof str === 'string' && str.length > 0) {
+          try {
+            const binary = atob(str);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return bytes;
+          } catch {
+            /* not base64, skip */
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return null;
+}
+
 export interface UseCopyImageToClipboardOptions {
   onCopySuccess?: () => void;
+}
+
+/** Copy structure as PNG to clipboard. Uses selection if any, else full canvas. */
+async function copyStructureAsImage(ketcher: any): Promise<boolean> {
+  if (!ketcher?.generateImage) return false;
+  try {
+    let structStr: string;
+    const struct = ketcher.editor?.structSelected?.();
+    if (struct && !struct.isBlank?.()) {
+      const ketSerializer = new KetSerializer();
+      structStr = ketSerializer.serialize(struct);
+    } else {
+      structStr = await ketcher.getKet();
+      if (!structStr?.trim()) return false;
+    }
+    const rawBlob = await ketcher.generateImage(structStr, { outputFormat: 'png', backgroundColor: 'transparent' });
+    const cropped = await cropPngToContent(rawBlob);
+    const blob = await scalePngToDpi(cropped, CLIPBOARD_IMAGE_DPI);
+    const molfile = await getStructureMolfile(ketcher);
+    if (molfile?.trim()) setStoredMol(molfile.trim());
+    const cdxBytes = await getStructureCdxBytes(ketcher);
+    if (isTauri) {
+      // Windows: use ChemDraw-style (EMF + MOL + CDX) for FindMolecule compatibility
+      const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
+      if (isWin) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const pngBytes = new Uint8Array(await blob.arrayBuffer());
+          await invoke('copy_chemdraw_style', {
+            pngBytes: Array.from(pngBytes),
+            molText: molfile?.trim() ?? '',
+            cdxBytes: cdxBytes ? Array.from(cdxBytes) : null,
+          });
+        } catch (err) {
+          console.warn('[copyStructureAsImage] ChemDraw-style failed, fallback to EMF only:', err);
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const pngBytes = new Uint8Array(await blob.arrayBuffer());
+            await invoke('copy_png_as_emf', { pngBytes: Array.from(pngBytes) });
+          } catch (err2) {
+            console.warn('[copyStructureAsImage] EMF failed, fallback to PNG:', err2);
+            const { clear, writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
+            await clear();
+            await writeImage(new Uint8Array(await blob.arrayBuffer()));
+          }
+        }
+      } else {
+        const { clear, writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
+        await clear();
+        await writeImage(new Uint8Array(await blob.arrayBuffer()));
+      }
+    } else {
+      const pngBlob = blob.type === 'image/png' ? blob : new Blob([await blob.arrayBuffer()], { type: 'image/png' });
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+    }
+    return true;
+  } catch (err) {
+    console.error('[copyStructureAsImage] Failed:', err);
+    return false;
+  }
 }
 
 export function useCopyImageToClipboard(
@@ -82,73 +194,12 @@ export function useCopyImageToClipboard(
 
   const copyImage = useCallback(async () => {
     const ketcher = ketcherRef.current;
-    if (!ketcher?.generateImage) return;
-
-    try {
-      let structStr: string;
-      const struct = ketcher.editor?.structSelected?.();
-      if (struct && !struct.isBlank?.()) {
-        const ketSerializer = new KetSerializer();
-        structStr = ketSerializer.serialize(struct);
-      } else {
-        structStr = await ketcher.getKet();
-        if (!structStr?.trim()) return;
-      }
-
-      const rawBlob = await ketcher.generateImage(structStr, {
-        outputFormat: 'png',
-        backgroundColor: 'transparent',
-      });
-
-      const cropped = await cropPngToContent(rawBlob);
-      const blob = await scalePngToDpi(cropped, CLIPBOARD_IMAGE_DPI);
-
-      const molfile = await getStructureMolfile(ketcher);
-      if (molfile?.trim()) {
-        setStoredMol(molfile.trim());
-      }
-
-      // Copy image - Word/PPT/other apps get image; canvas paste uses stored MOL
-      const writeClipboardImage = async () => {
-        if (isTauri) {
-          const { clear, writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
-          await clear();
-          const buffer = await blob.arrayBuffer();
-          await writeImage(new Uint8Array(buffer));
-        } else {
-          // Ensure PNG MIME type; add text/html for better Office (Word) compatibility
-          const pngBlob = blob.type === 'image/png' ? blob : new Blob([await blob.arrayBuffer()], { type: 'image/png' });
-          const items: Record<string, Blob> = { 'image/png': pngBlob };
-          try {
-            const dataUrl = await new Promise<string>((res, rej) => {
-              const r = new FileReader();
-              r.onload = () => res(r.result as string);
-              r.onerror = rej;
-              r.readAsDataURL(pngBlob);
-            });
-            items['text/html'] = new Blob([`<img src="${dataUrl}" alt="Structure" />`], { type: 'text/html' });
-          } catch (_) {
-            /* omit HTML if conversion fails */
-          }
-          try {
-            await navigator.clipboard.write([new ClipboardItem(items)]);
-          } catch (clipErr) {
-            // Fallback: image-only if combined write fails (e.g. large data URL)
-            if (Object.keys(items).length > 1) {
-              await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-            } else {
-              throw clipErr;
-            }
-          }
-        }
-      };
-      await writeClipboardImage();
-      // Ketcher's copy event may fire after us and overwrite with MOL; re-write image
-      setTimeout(() => writeClipboardImage().catch(() => {}), 100);
-      setTimeout(() => writeClipboardImage().catch(() => {}), 250);
+    const ok = await copyStructureAsImage(ketcher);
+    if (ok) {
+      // Ketcher's copy event may fire after us; re-write image
+      setTimeout(() => copyStructureAsImage(ketcher).catch(() => {}), 100);
+      setTimeout(() => copyStructureAsImage(ketcher).catch(() => {}), 250);
       onCopySuccess?.();
-    } catch (err) {
-      console.error('[useCopyImageToClipboard] Failed:', err);
     }
   }, [ketcherRef, onCopySuccess]);
 

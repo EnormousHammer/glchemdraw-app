@@ -10,6 +10,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { fromImageCreation, Vec2, Scale } from 'ketcher-core';
+import { takeStoredMol } from './clipboardStructureStore';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 const OCSR_API = '/api/ocsr';
@@ -202,6 +203,23 @@ export async function pasteImageIntoSketch(
 ): Promise<ImagePasteResult> {
   const ketcher = ketcherRef?.current;
   if (!ketcher) return { success: false };
+
+  // Stored MOL from our Ctrl+C (image-only clipboard) - use for exact canvas duplicate
+  const storedMol = takeStoredMol();
+  if (storedMol && looksLikeStructure(storedMol)) {
+    try {
+      if (typeof ketcher.addFragment === 'function') {
+        await ketcher.addFragment(storedMol);
+        return { success: true, type: 'structure' };
+      }
+      if (typeof ketcher.setMolecule === 'function') {
+        await ketcher.setMolecule(storedMol);
+        return { success: true, type: 'structure' };
+      }
+    } catch (err) {
+      console.warn('[pasteImageIntoSketch] Stored structure paste failed:', err);
+    }
+  }
 
   let text: string | null;
   let dataUrl: string | null;

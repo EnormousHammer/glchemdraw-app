@@ -1,12 +1,12 @@
 /**
  * Intercepts Ctrl+C in Ketcher canvas.
- * Copies BOTH image (PNG, 150 DPI) for Word/PPT AND MOL for canvas paste.
- * - Paste elsewhere (Word, etc.) → gets the image
- * - Paste on canvas → gets editable structure (exact duplicate)
+ * Clipboard: image only (PNG, 150 DPI) so Word/PPT gets image.
+ * MOL stored separately for canvas paste (exact duplicate).
  */
 
 import { useEffect, useCallback } from 'react';
 import { KetSerializer } from 'ketcher-core';
+import { setStoredMol, clearStoredMol } from './clipboardStructureStore';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
@@ -100,22 +100,18 @@ export function useCopyImageToClipboard(
       const blob = await scalePngToDpi(rawBlob, CLIPBOARD_IMAGE_DPI);
 
       const molfile = await getStructureMolfile(ketcher);
+      if (molfile?.trim()) {
+        setStoredMol(molfile.trim());
+      }
 
-      // Copy image + MOL: image for Word/PPT, MOL for canvas paste (exact duplicate)
+      // Copy image only - Word/PPT gets image; canvas paste uses stored MOL
       if (isTauri) {
-        const { clear, writeImage, writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-        await clear(); // Start fresh so we control contents
+        const { clear, writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
+        await clear();
         const buffer = await blob.arrayBuffer();
         await writeImage(new Uint8Array(buffer));
-        if (molfile?.trim()) {
-          await writeText(molfile.trim());
-        }
       } else {
-        const items: Record<string, Blob> = { [blob.type]: blob };
-        if (molfile?.trim()) {
-          items['text/plain'] = new Blob([molfile.trim()], { type: 'text/plain' });
-        }
-        await navigator.clipboard.write([new ClipboardItem(items)]);
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
       }
       onCopySuccess?.();
     } catch (err) {
@@ -127,8 +123,11 @@ export function useCopyImageToClipboard(
     const keydownHandler = async (e: KeyboardEvent) => {
       if (!(e.ctrlKey && e.key === 'c' && !e.shiftKey)) return;
       const target = e.target as HTMLElement;
-      if (!target.closest?.('.Ketcher-root')) return;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      const inKetcher = target.closest?.('.Ketcher-root');
+      if (!inKetcher || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        clearStoredMol(); // User copied elsewhere - don't use our stored MOL on paste
+        return;
+      }
 
       const ketcher = ketcherRef.current;
       if (!ketcher?.editor) return;

@@ -10,6 +10,9 @@ import { setStoredMol, clearStoredMol } from './clipboardStructureStore';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
+/** Set when we handle Ctrl+C from canvas; copy event handler uses this to block Ketcher. */
+let copyingFromCanvas = false;
+
 /** Ketcher generates at 72 DPI. Scale to target DPI for good quality paste elsewhere. */
 const CLIPBOARD_IMAGE_DPI = 150;
 
@@ -104,15 +107,44 @@ export function useCopyImageToClipboard(
         setStoredMol(molfile.trim());
       }
 
-      // Copy image only - Word/PPT gets image; canvas paste uses stored MOL
-      if (isTauri) {
-        const { clear, writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
-        await clear();
-        const buffer = await blob.arrayBuffer();
-        await writeImage(new Uint8Array(buffer));
-      } else {
-        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-      }
+      // Copy image - Word/PPT/other apps get image; canvas paste uses stored MOL
+      const writeClipboardImage = async () => {
+        if (isTauri) {
+          const { clear, writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
+          await clear();
+          const buffer = await blob.arrayBuffer();
+          await writeImage(new Uint8Array(buffer));
+        } else {
+          // Ensure PNG MIME type; add text/html for better Office (Word) compatibility
+          const pngBlob = blob.type === 'image/png' ? blob : new Blob([await blob.arrayBuffer()], { type: 'image/png' });
+          const items: Record<string, Blob> = { 'image/png': pngBlob };
+          try {
+            const dataUrl = await new Promise<string>((res, rej) => {
+              const r = new FileReader();
+              r.onload = () => res(r.result as string);
+              r.onerror = rej;
+              r.readAsDataURL(pngBlob);
+            });
+            items['text/html'] = new Blob([`<img src="${dataUrl}" alt="Structure" />`], { type: 'text/html' });
+          } catch (_) {
+            /* omit HTML if conversion fails */
+          }
+          try {
+            await navigator.clipboard.write([new ClipboardItem(items)]);
+          } catch (clipErr) {
+            // Fallback: image-only if combined write fails (e.g. large data URL)
+            if (Object.keys(items).length > 1) {
+              await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+            } else {
+              throw clipErr;
+            }
+          }
+        }
+      };
+      await writeClipboardImage();
+      // Ketcher's copy event may fire after us and overwrite with MOL; re-write image
+      setTimeout(() => writeClipboardImage().catch(() => {}), 100);
+      setTimeout(() => writeClipboardImage().catch(() => {}), 250);
       onCopySuccess?.();
     } catch (err) {
       console.error('[useCopyImageToClipboard] Failed:', err);
@@ -132,16 +164,20 @@ export function useCopyImageToClipboard(
       const ketcher = ketcherRef.current;
       if (!ketcher?.editor) return;
 
+      copyingFromCanvas = true;
       e.preventDefault();
       e.stopPropagation();
-      await copyImage();
+      try {
+        await copyImage();
+      } finally {
+        // Copy event may fire after our write; keep blocking briefly
+        setTimeout(() => { copyingFromCanvas = false; }, 100);
+      }
     };
 
-    // Block Ketcher's copy event from adding MOL text (runs before Ketcher's handler)
+    // Block Ketcher's copy event from adding MOL (activeElement often not in Ketcher when canvas focused)
     const copyHandler = (e: ClipboardEvent) => {
-      const active = document.activeElement as HTMLElement;
-      if (!active?.closest?.('.Ketcher-root')) return;
-      if (active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA') return;
+      if (!copyingFromCanvas) return;
       e.preventDefault();
       e.stopPropagation();
     };

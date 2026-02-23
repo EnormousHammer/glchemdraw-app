@@ -471,12 +471,36 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
     setSnackbarOpen(true);
   }, []);
 
+  /** Re-apply Ketcher layout after mode switch - fixes bottom toolbar disappearing and shift. */
+  const reapplyKetcherLayout = useCallback(() => {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const root = document.querySelector('.Ketcher-root') as HTMLElement | null;
+        if (root) {
+          root.style.height = '100%';
+          root.style.display = 'flex';
+          root.style.flexDirection = 'column';
+          root.style.overflow = 'hidden';
+        }
+        const bottom = document.querySelector('[data-testid="bottom-toolbar"]') as HTMLElement | null;
+        if (bottom) {
+          bottom.style.display = 'flex';
+          bottom.style.visibility = 'visible';
+          bottom.style.opacity = '1';
+          bottom.style.minHeight = '48px';
+          bottom.style.flexShrink = '0';
+        }
+      }, 150);
+    });
+  }, []);
+
   /** Switch back to Molecules mode using Ketcher's built-in API. Falls back to remount only if API unavailable. */
   const handleBackToMolecules = useCallback(() => {
     const ketcher = ketcherRef.current;
     if (ketcher?.switchToMoleculesMode) {
       try {
         ketcher.switchToMoleculesMode();
+        reapplyKetcherLayout();
         setSnackbarMessage('Switched to Molecules mode');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
@@ -491,7 +515,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
     setSnackbarMessage('Switched to Molecules mode');
     setSnackbarSeverity('success');
     setSnackbarOpen(true);
-  }, []);
+  }, [reapplyKetcherLayout]);
 
   // Biopolymer: open sequence input dialog (Ketcher changeSequenceTypeEnterMode often unavailable)
   const handleBiopolymerOpen = useCallback((mode: 'PEPTIDE' | 'RNA' | 'DNA') => {
@@ -1183,7 +1207,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                     onStructureChange={handleStructureChange}
                     onSelectionChange={handleSelectionChange}
                     onError={(error) => console.error('[AppLayout] ChemCanvas error:', error)}
-                    onKetcherInit={(instance) => (ketcherRef.current = instance)}
+                    onKetcherInit={(instance) => {
+                      ketcherRef.current = instance;
+                      const ev = (instance?.editor as any)?.events;
+                      ev?.switchToMoleculesMode?.add?.(reapplyKetcherLayout);
+                    }}
                     onCopyImageSuccess={() => {
                       setSnackbarMessage('Structure copied to clipboard!');
                       setSnackbarSeverity('success');
@@ -2845,6 +2873,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                   </Typography>
                 </Box>
               </Grid>
+                                                                                                                                                                                                                                                                                                                                                                
             </Grid>
           </DialogContent>
         </Dialog>

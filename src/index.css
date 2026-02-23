@@ -23,10 +23,11 @@ body {
 
 /* NO desktop-specific overrides - desktop should match web exactly */
 
-/* Ketcher Canvas: Proper sizing to fit under header */
-.Ketcher-root {
+/* Ketcher Canvas: Proper sizing - no margin (container handles header offset) */
+.Ketcher-root,
+.Ketcher-polymer-editor-root {
   height: 100% !important;
-  max-height: calc(100vh - 56px) !important; /* Account for 56px header */
+  max-height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
@@ -34,27 +35,32 @@ body {
 
 /* Canvas area takes available space */
 .Ketcher-root .canvas-container,
-.Ketcher-root [class*="editor"] {
+.Ketcher-root [class*="editor"],
+.Ketcher-polymer-editor-root .canvas-container,
+.Ketcher-polymer-editor-root [class*="editor"] {
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow: auto !important;
 }
 
-/* Bottom toolbar stays at natural position */
+/* Bottom toolbar stays at natural position - both modes */
 .Ketcher-root [class*="bottom"],
-.Ketcher-root [class*="Bottom"] {
+.Ketcher-root [class*="Bottom"],
+.Ketcher-polymer-editor-root [class*="bottom"],
+.Ketcher-polymer-editor-root [class*="Bottom"] {
   flex: 0 0 auto !important;
 }
 
-/* Issue 1: Restore bottom toolbar after molecules↔macromolecules mode switch.
-   Ketcher bug: toolbar disappears when switching back to molecules.
-   Target bottom-toolbar (ring templates + Structure Library button). */
-.Ketcher-root [data-testid="bottom-toolbar"] {
+/* Restore bottom toolbar after molecules↔macromolecules switch.
+   Ketcher bug: toolbar disappears when switching back to molecules. */
+.Ketcher-root [data-testid="bottom-toolbar"],
+.Ketcher-polymer-editor-root [data-testid="bottom-toolbar"] {
   display: flex !important;
   visibility: visible !important;
   opacity: 1 !important;
   min-height: 48px !important;
   flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
 }
 
 /* Fix: Ketcher mode dropdown (Molecules/Macromolecules) disappearing when opened.
@@ -269,11 +275,8 @@ body .bp6-overlay:has(a[href*="lifescience.opensource"]) [role="dialog"] {
   pointer-events: auto !important;
 }
 
-/* Prevent Ketcher from taking over the top area */
-.Ketcher-root {
-  margin-top: 56px !important;
-  height: calc(100vh - 56px) !important;
-}
+/* Do NOT add margin-top to Ketcher - it's inside a container already below the header.
+   Adding margin here caused double offset and layout shift when switching modes. */
 
 /* Ensure NMRium can receive keyboard events and clicks */
 .nmrium-container,

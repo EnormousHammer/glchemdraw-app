@@ -91,6 +91,81 @@ export function downloadBlob(blob: Blob, filename: string): void {
   }, 1000);
 }
 
+/** Crop PNG to content bounds (removes excess padding). Adds padding pixels around content. */
+export async function cropPngToContent(blob: Blob, padding = 12): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.width;
+      const h = img.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(blob);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, w, h);
+      const d = data.data;
+      let minX = w;
+      let minY = h;
+      let maxX = 0;
+      let maxY = 0;
+      const isContent = (i: number) => {
+        const a = d[i + 3];
+        if (a < 20) return false;
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        const isWhite = r > 250 && g > 250 && b > 250;
+        const isBlack = r < 5 && g < 5 && b < 5;
+        return !isWhite && !isBlack; // Exclude transparent, white bg, black bg
+      };
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          if (isContent(i)) {
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
+        }
+      }
+      if (minX > maxX || minY > maxY) {
+        resolve(blob);
+        return;
+      }
+      const pad = Math.max(0, padding);
+      const x1 = Math.max(0, minX - pad);
+      const y1 = Math.max(0, minY - pad);
+      const x2 = Math.min(w, maxX + pad + 1);
+      const y2 = Math.min(h, maxY + pad + 1);
+      const cw = x2 - x1;
+      const ch = y2 - y1;
+      const out = document.createElement('canvas');
+      out.width = cw;
+      out.height = ch;
+      const outCtx = out.getContext('2d');
+      if (!outCtx) {
+        resolve(blob);
+        return;
+      }
+      outCtx.drawImage(img, x1, y1, cw, ch, 0, 0, cw, ch);
+      out.toBlob((b) => (b ? resolve(b) : resolve(blob)), 'image/png', 1.0);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(blob);
+    };
+    img.src = url;
+  });
+}
+
 /** Scale PNG blob to target DPI. If width/height provided, scale to fit within that box (at dpi) while keeping aspect ratio. */
 async function scalePngToDpi(
   blob: Blob,
@@ -279,7 +354,8 @@ export async function performAdvancedExport(
     }
 
     if (format === 'PNG') {
-      const scaled = await scalePngToDpi(blob, dpi, options.width, options.height);
+      const cropped = await cropPngToContent(blob);
+      const scaled = await scalePngToDpi(cropped, dpi, options.width, options.height);
       const filename = `${baseName}.png`;
       if (fileHandle) {
         await writeBlobToHandle(fileHandle, scaled);

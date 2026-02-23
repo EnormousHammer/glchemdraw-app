@@ -7,6 +7,7 @@
 import { useEffect, useCallback } from 'react';
 import { KetSerializer } from 'ketcher-core';
 import { setStoredMol, clearStoredMol } from './clipboardStructureStore';
+import { cropPngToContent } from '@/lib/export/advancedExport';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
@@ -99,8 +100,8 @@ export function useCopyImageToClipboard(
         backgroundColor: 'transparent',
       });
 
-      // Scale to higher DPI for good quality when pasting into Word, PowerPoint, etc.
-      const blob = await scalePngToDpi(rawBlob, CLIPBOARD_IMAGE_DPI);
+      const cropped = await cropPngToContent(rawBlob);
+      const blob = await scalePngToDpi(cropped, CLIPBOARD_IMAGE_DPI);
 
       const molfile = await getStructureMolfile(ketcher);
       if (molfile?.trim()) {

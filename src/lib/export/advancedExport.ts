@@ -354,8 +354,7 @@ export async function performAdvancedExport(
     }
 
     if (format === 'PNG') {
-      const cropped = await cropPngToContent(blob);
-      const scaled = await scalePngToDpi(cropped, dpi, options.width, options.height);
+      const scaled = await scalePngToDpi(blob, dpi, options.width, options.height);
       const filename = `${baseName}.png`;
       if (fileHandle) {
         await writeBlobToHandle(fileHandle, scaled);

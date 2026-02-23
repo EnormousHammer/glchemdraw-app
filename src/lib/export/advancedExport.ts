@@ -166,6 +166,45 @@ export async function cropPngToContent(blob: Blob, padding = 12): Promise<Blob> 
   });
 }
 
+/** Add padding by scaling structure down and centering. structureScale 0.5 = structure takes 50% of frame. */
+async function addPaddingToPng(blob: Blob, structureScale = 0.5, bgColor: 'white' | 'transparent' | 'black' = 'white'): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.width;
+      const h = img.height;
+      const outW = Math.round(w / structureScale);
+      const outH = Math.round(h / structureScale);
+      const canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(blob);
+        return;
+      }
+      if (bgColor === 'white') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, outW, outH);
+      } else if (bgColor === 'black') {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, outW, outH);
+      }
+      const dx = (outW - w) / 2;
+      const dy = (outH - h) / 2;
+      ctx.drawImage(img, dx, dy, w, h);
+      canvas.toBlob((b) => (b ? resolve(b) : resolve(blob)), 'image/png', 1.0);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(blob);
+    };
+    img.src = url;
+  });
+}
+
 /** Scale PNG blob to target DPI. If width/height provided, scale to fit within that box (at dpi) while keeping aspect ratio. */
 async function scalePngToDpi(
   blob: Blob,
@@ -354,7 +393,8 @@ export async function performAdvancedExport(
     }
 
     if (format === 'PNG') {
-      const scaled = await scalePngToDpi(blob, dpi, options.width, options.height);
+      const padded = await addPaddingToPng(blob, 0.5, options.backgroundColor);
+      const scaled = await scalePngToDpi(padded, dpi, options.width, options.height);
       const filename = `${baseName}.png`;
       if (fileHandle) {
         await writeBlobToHandle(fileHandle, scaled);

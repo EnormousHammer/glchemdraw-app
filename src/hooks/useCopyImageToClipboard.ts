@@ -2,12 +2,46 @@
  * Intercepts Ctrl+C in Ketcher canvas.
  * Copies BOTH image (for Word/PPT) AND structure (MOL) for canvas paste/duplicate.
  * ChemDraw-style: paste within canvas duplicates structure; paste elsewhere gets image.
+ * Image is scaled to 150 DPI for good quality when pasting into Word, PowerPoint, etc.
  */
 
 import { useEffect, useCallback } from 'react';
 import { KetSerializer } from 'ketcher-core';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
+/** Ketcher generates at 72 DPI. Scale to target DPI for good quality paste elsewhere. */
+const CLIPBOARD_IMAGE_DPI = 150;
+
+async function scalePngToDpi(blob: Blob, targetDpi: number): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = targetDpi / 72;
+      const outW = Math.round(img.width * scale);
+      const outH = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(blob);
+        return;
+      }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, outW, outH);
+      canvas.toBlob((b) => (b ? resolve(b) : resolve(blob)), 'image/png', 1.0);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(blob);
+    };
+    img.src = url;
+  });
+}
 
 export interface UseCopyImageToClipboardOptions {
   onCopySuccess?: () => void;
@@ -57,10 +91,13 @@ export function useCopyImageToClipboard(
         if (!structStr?.trim()) return;
       }
 
-      const blob = await ketcher.generateImage(structStr, {
+      const rawBlob = await ketcher.generateImage(structStr, {
         outputFormat: 'png',
         backgroundColor: 'transparent',
       });
+
+      // Scale to higher DPI for good quality when pasting into Word, PowerPoint, etc.
+      const blob = await scalePngToDpi(rawBlob, CLIPBOARD_IMAGE_DPI);
 
       const molfile = await getStructureMolfile(ketcher);
 

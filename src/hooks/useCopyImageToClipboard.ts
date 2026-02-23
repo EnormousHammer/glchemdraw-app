@@ -1,7 +1,8 @@
 /**
  * Intercepts Ctrl+C in Ketcher canvas.
- * Copies structure as image only (PNG, 150 DPI) for pasting into Word, PowerPoint, etc.
- * No MOL/SMILES text - clipboard contains only the image.
+ * Copies BOTH image (PNG, 150 DPI) for Word/PPT AND MOL for canvas paste.
+ * - Paste elsewhere (Word, etc.) → gets the image
+ * - Paste on canvas → gets editable structure (exact duplicate)
  */
 
 import { useEffect, useCallback } from 'react';
@@ -42,6 +43,29 @@ async function scalePngToDpi(blob: Blob, targetDpi: number): Promise<Blob> {
   });
 }
 
+async function getStructureMolfile(ketcher: any): Promise<string | null> {
+  const struct = ketcher.editor?.structSelected?.();
+  if (struct && !struct.isBlank?.()) {
+    try {
+      const { getStructure } = await import('ketcher-core');
+      const { SupportedFormat } = await import('ketcher-core');
+      return await getStructure(
+        ketcher.id,
+        ketcher.formatterFactory,
+        struct,
+        SupportedFormat.molAuto
+      );
+    } catch {
+      return null;
+    }
+  }
+  try {
+    return await ketcher.getMolfile();
+  } catch {
+    return null;
+  }
+}
+
 export interface UseCopyImageToClipboardOptions {
   onCopySuccess?: () => void;
 }
@@ -75,13 +99,23 @@ export function useCopyImageToClipboard(
       // Scale to higher DPI for good quality when pasting into Word, PowerPoint, etc.
       const blob = await scalePngToDpi(rawBlob, CLIPBOARD_IMAGE_DPI);
 
-      // Copy image only (no MOL/SMILES text) so paste elsewhere gets the image
+      const molfile = await getStructureMolfile(ketcher);
+
+      // Copy image + MOL: image for Word/PPT, MOL for canvas paste (exact duplicate)
       if (isTauri) {
-        const { writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
+        const { clear, writeImage, writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await clear(); // Start fresh so we control contents
         const buffer = await blob.arrayBuffer();
         await writeImage(new Uint8Array(buffer));
+        if (molfile?.trim()) {
+          await writeText(molfile.trim());
+        }
       } else {
-        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+        const items: Record<string, Blob> = { [blob.type]: blob };
+        if (molfile?.trim()) {
+          items['text/plain'] = new Blob([molfile.trim()], { type: 'text/plain' });
+        }
+        await navigator.clipboard.write([new ClipboardItem(items)]);
       }
       onCopySuccess?.();
     } catch (err) {
@@ -90,7 +124,7 @@ export function useCopyImageToClipboard(
   }, [ketcherRef, onCopySuccess]);
 
   useEffect(() => {
-    const handler = async (e: KeyboardEvent) => {
+    const keydownHandler = async (e: KeyboardEvent) => {
       if (!(e.ctrlKey && e.key === 'c' && !e.shiftKey)) return;
       const target = e.target as HTMLElement;
       if (!target.closest?.('.Ketcher-root')) return;
@@ -104,7 +138,20 @@ export function useCopyImageToClipboard(
       await copyImage();
     };
 
-    window.addEventListener('keydown', handler, true);
-    return () => window.removeEventListener('keydown', handler, true);
+    // Block Ketcher's copy event from adding MOL text (runs before Ketcher's handler)
+    const copyHandler = (e: ClipboardEvent) => {
+      const active = document.activeElement as HTMLElement;
+      if (!active?.closest?.('.Ketcher-root')) return;
+      if (active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA') return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    window.addEventListener('keydown', keydownHandler, true);
+    document.addEventListener('copy', copyHandler, true);
+    return () => {
+      window.removeEventListener('keydown', keydownHandler, true);
+      document.removeEventListener('copy', copyHandler, true);
+    };
   }, [ketcherRef, copyImage]);
 }

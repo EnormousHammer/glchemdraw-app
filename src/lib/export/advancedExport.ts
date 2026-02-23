@@ -3,7 +3,6 @@
  * Uses Ketcher generateImage with scaling for DPI
  */
 
-import { ChemicalMimeType } from 'ketcher-core';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from './structureExport';
 import { isTauriDesktop } from '../tauri/detectPlatform';
 
@@ -242,38 +241,16 @@ export async function performAdvancedExport(
     // Image formats - need Ketcher
     if (!ketcher?.generateImage) return { success: false, error: 'Editor not ready' };
 
-    // Prefer molfile + structService.convert (fast, local) over getKet (can hang on complex structures)
+    // Use ketcher.getKet() directly - avoids Indigo conversion errors (molfile→KET can fail for
+    // reactions, polymers, or malformed data). getKet returns native format generateImage expects.
     let structStr: string;
-    const molfile = structureData.molfile?.trim();
-    if (molfile && ketcher.structService?.convert) {
-      try {
-        const result = await ketcher.structService.convert({
-          struct: molfile,
-          output_format: ChemicalMimeType.KET,
-          input_format: ChemicalMimeType.Mol,
-        });
-        structStr = result?.struct ?? '';
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        return { success: false, error: msg || 'Structure conversion failed' };
-      }
-    } else {
-      // Fallback: selection via KetSerializer, or getKet (slower, can hang)
-      try {
-        const struct = ketcher.editor?.structSelected?.();
-        if (struct && !struct.isBlank?.()) {
-          const { KetSerializer } = await import('ketcher-core');
-          const serializer = new (KetSerializer as any)();
-          structStr = serializer.serialize(struct);
-        } else {
-          structStr = await ketcher.getKet();
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        return { success: false, error: msg || 'Could not get structure' };
-      }
+    try {
+      structStr = await ketcher.getKet();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { success: false, error: msg || 'Could not get structure' };
     }
-    if (!structStr?.trim()) return { success: false, error: 'No structure to export' };
+    if (!structStr?.trim()) return { success: false, error: 'No structure to export. Draw a molecule on the canvas first.' };
 
     const genOpts: Record<string, unknown> = {
       outputFormat: format === 'SVG' ? 'svg' : 'png',

@@ -1141,7 +1141,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
           onSettingsClick={() => setShowSettingsDialog(true)}
-          onBackToMolecules={handleBackToMolecules}
           darkMode={themeMode !== 'light'}
           onToggleDarkMode={onToggleDarkMode}
         />
@@ -1588,7 +1587,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                     >
                       <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>IUPAC Name:</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>
-                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'primary.main' }}>
                           {recognizedCompound.properties?.IUPACName || aiIupacName || 'N/A'}
                         </Typography>
                         {(recognizedCompound.properties?.IUPACName || aiIupacName) ? (
@@ -2425,7 +2424,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                             sx={{ cursor: 'pointer', p: 0.5, borderRadius: 1, '&:hover': { bgcolor: 'action.hover' } }}
                           >
                             <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>IUPAC (AI):</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{aiIupacName}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: 'primary.main' }}>{aiIupacName}</Typography>
                           </Box>
                         ) : (
                           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5, minWidth: 0, flex: 1, overflow: 'hidden' }}>

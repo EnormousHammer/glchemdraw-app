@@ -76,7 +76,6 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onReactionsClick,
   onFaqClick,
   onSettingsClick,
-  onBackToMolecules,
   rightContent,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');

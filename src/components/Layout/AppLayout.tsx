@@ -42,6 +42,7 @@ import { BondTypeBar } from '../BondTypeBar';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
+import { generateSDFFile } from '@lib/chemistry/sdf';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
@@ -114,6 +115,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
   const [show3DViewer, setShow3DViewer] = useState(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
+  const [findMoleculeSubmenuAnchor, setFindMoleculeSubmenuAnchor] = useState<null | HTMLElement>(null);
   const [alignMenuAnchor, setAlignMenuAnchor] = useState<null | HTMLElement>(null);
   const [biotoolMenuAnchor, setBiotoolMenuAnchor] = useState<null | HTMLElement>(null);
   const [showReactionHelpDialog, setShowReactionHelpDialog] = useState(false);
@@ -373,6 +375,44 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
     }
     setSnackbarOpen(true);
   }, [currentStructure]);
+
+  // Export to FindMolecule: copy MOL/SDF to clipboard or save file (for paste into FindMolecule ELN)
+  const writeTextToClipboard = useCallback(async (text: string): Promise<boolean> => {
+    const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+    try {
+      if (isTauri) {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(text);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+      return true;
+    } catch (err) {
+      console.error('[AppLayout] Clipboard write failed:', err);
+      return false;
+    }
+  }, []);
+
+  const handleCopyToFindMolecule = useCallback(async (format: 'mol' | 'sdf') => {
+    setExportMenuAnchor(null);
+    const struct = currentStructure;
+    if (!struct?.molfile?.trim()) {
+      setSnackbarMessage('No structure to copy');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+      return;
+    }
+    const text = format === 'mol' ? struct.molfile.trim() : generateSDFFile([{ molfile: struct.molfile, properties: {}, name: 'Structure' }]);
+    const ok = await writeTextToClipboard(text);
+    if (ok) {
+      setSnackbarMessage(format === 'mol' ? 'MOL copied – paste into FindMolecule ELN' : 'SDF copied – paste into FindMolecule ELN');
+      setSnackbarSeverity('success');
+    } else {
+      setSnackbarMessage('Failed to copy to clipboard');
+      setSnackbarSeverity('error');
+    }
+    setSnackbarOpen(true);
+  }, [currentStructure, writeTextToClipboard]);
 
   const handleAdvancedExport = useCallback(async (options: AdvancedExportOptions): Promise<ExportDownloadResult | void> => {
     const ketcher = ketcherRef.current;
@@ -1328,6 +1368,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                         <MenuItem onClick={() => handleExport('mol')}>MOL</MenuItem>
                         <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
                         <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
+                        <Divider />
+                        <MenuItem onClick={() => handleCopyToFindMolecule('mol')}>Copy MOL (FindMolecule ELN)</MenuItem>
+                        <MenuItem onClick={() => handleCopyToFindMolecule('sdf')}>Copy SDF (FindMolecule)</MenuItem>
+                        <MenuItem onClick={() => handleExport('mol')}>Save MOL file</MenuItem>
+                        <MenuItem onClick={() => handleExport('sdf')}>Save SDF file</MenuItem>
                       </Menu>
                       <Tooltip title="Biopolymer">
                         <Button

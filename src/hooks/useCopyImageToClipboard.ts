@@ -47,7 +47,8 @@ async function scalePngToDpi(blob: Blob, targetDpi: number): Promise<Blob> {
   });
 }
 
-async function getStructureMolfile(ketcher: any): Promise<string | null> {
+/** Exported for use by Export menu copy handlers. */
+export async function getStructureMolfile(ketcher: any): Promise<string | null> {
   const struct = ketcher.editor?.structSelected?.();
   if (struct && !struct.isBlank?.()) {
     try {
@@ -70,7 +71,8 @@ async function getStructureMolfile(ketcher: any): Promise<string | null> {
   }
 }
 
-async function getStructureCdxBytes(ketcher: any): Promise<Uint8Array | null> {
+/** Exported for use by Export menu copy handlers. */
+export async function getStructureCdxBytes(ketcher: any): Promise<Uint8Array | null> {
   const struct = ketcher.editor?.structSelected?.();
   const targetStruct = struct && !struct.isBlank?.() ? struct : ketcher.editor?.struct?.();
   if (!targetStruct?.isBlank?.()) {
@@ -120,6 +122,27 @@ async function getStructureCdxBytes(ketcher: any): Promise<Uint8Array | null> {
     }
   }
   return null;
+}
+
+/** Get PNG blob for clipboard (scaled, cropped). Exported for Export menu. */
+export async function getClipboardPngBlob(ketcher: any): Promise<Blob | null> {
+  if (!ketcher?.generateImage) return null;
+  try {
+    let structStr: string;
+    const struct = ketcher.editor?.structSelected?.();
+    if (struct && !struct.isBlank?.()) {
+      const ketSerializer = new KetSerializer();
+      structStr = ketSerializer.serialize(struct);
+    } else {
+      structStr = await ketcher.getKet();
+      if (!structStr?.trim()) return null;
+    }
+    const rawBlob = await ketcher.generateImage(structStr, { outputFormat: 'png', backgroundColor: 'transparent' });
+    const cropped = await cropPngToContent(rawBlob);
+    return await scalePngToDpi(cropped, CLIPBOARD_IMAGE_DPI);
+  } catch {
+    return null;
+  }
 }
 
 export interface UseCopyImageToClipboardOptions {

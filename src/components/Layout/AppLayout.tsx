@@ -43,6 +43,7 @@ import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
 import { generateSDFFile } from '@lib/chemistry/sdf';
+import { getStructureMolfile, getStructureCdxBytes, getClipboardPngBlob } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
@@ -115,7 +116,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
   const [show3DViewer, setShow3DViewer] = useState(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
-  const [findMoleculeSubmenuAnchor, setFindMoleculeSubmenuAnchor] = useState<null | HTMLElement>(null);
   const [alignMenuAnchor, setAlignMenuAnchor] = useState<null | HTMLElement>(null);
   const [biotoolMenuAnchor, setBiotoolMenuAnchor] = useState<null | HTMLElement>(null);
   const [showReactionHelpDialog, setShowReactionHelpDialog] = useState(false);
@@ -376,43 +376,130 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
     setSnackbarOpen(true);
   }, [currentStructure]);
 
-  // Export to FindMolecule: copy MOL/SDF to clipboard or save file (for paste into FindMolecule ELN)
-  const writeTextToClipboard = useCallback(async (text: string): Promise<boolean> => {
-    const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-    try {
-      if (isTauri) {
-        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-        await writeText(text);
-      } else {
-        await navigator.clipboard.writeText(text);
-      }
-      return true;
-    } catch (err) {
-      console.error('[AppLayout] Clipboard write failed:', err);
-      return false;
-    }
-  }, []);
-
-  const handleCopyToFindMolecule = useCallback(async (format: 'mol' | 'sdf') => {
+  // Copy to clipboard for FindMolecule testing (each format separately)
+  const showCopyResult = useCallback((ok: boolean, format: string, err?: string) => {
     setExportMenuAnchor(null);
-    const struct = currentStructure;
-    if (!struct?.molfile?.trim()) {
-      setSnackbarMessage('No structure to copy');
-      setSnackbarSeverity('warning');
-      setSnackbarOpen(true);
-      return;
-    }
-    const text = format === 'mol' ? struct.molfile.trim() : generateSDFFile([{ molfile: struct.molfile, properties: {}, name: 'Structure' }]);
-    const ok = await writeTextToClipboard(text);
     if (ok) {
-      setSnackbarMessage(format === 'mol' ? 'MOL copied – paste into FindMolecule ELN' : 'SDF copied – paste into FindMolecule ELN');
+      setSnackbarMessage(`Copied ${format} – paste into FindMolecule to test`);
       setSnackbarSeverity('success');
     } else {
-      setSnackbarMessage('Failed to copy to clipboard');
+      setSnackbarMessage(err || `Failed to copy ${format}`);
       setSnackbarSeverity('error');
     }
     setSnackbarOpen(true);
-  }, [currentStructure, writeTextToClipboard]);
+  }, []);
+
+  const handleCopyMOL = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    const mol = currentStructure?.molfile?.trim() || (ketcher ? await getStructureMolfile(ketcher) : null);
+    if (!mol) {
+      showCopyResult(false, 'MOL', 'No structure');
+      return;
+    }
+    try {
+      const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+      if (isTauri) {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(mol);
+      } else {
+        await navigator.clipboard.writeText(mol);
+      }
+      showCopyResult(true, 'MOL');
+    } catch (e) {
+      showCopyResult(false, 'MOL', (e as Error).message);
+    }
+  }, [currentStructure, ketcherRef, showCopyResult]);
+
+  const handleCopySDF = useCallback(async () => {
+    const mol = currentStructure?.molfile?.trim();
+    if (!mol) {
+      showCopyResult(false, 'SDF', 'No structure');
+      return;
+    }
+    const sdf = generateSDFFile([{ molfile: mol, properties: {}, name: 'Structure' }]);
+    try {
+      const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+      if (isTauri) {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(sdf);
+      } else {
+        await navigator.clipboard.writeText(sdf);
+      }
+      showCopyResult(true, 'SDF');
+    } catch (e) {
+      showCopyResult(false, 'SDF', (e as Error).message);
+    }
+  }, [currentStructure, showCopyResult]);
+
+  const handleCopyEMF = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) {
+      showCopyResult(false, 'EMF', 'No canvas');
+      return;
+    }
+    const blob = await getClipboardPngBlob(ketcher);
+    if (!blob) {
+      showCopyResult(false, 'EMF', 'Could not generate image');
+      return;
+    }
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const pngBytes = new Uint8Array(await blob.arrayBuffer());
+      await invoke('copy_png_as_emf', { pngBytes: Array.from(pngBytes) });
+      showCopyResult(true, 'EMF');
+    } catch (e) {
+      showCopyResult(false, 'EMF', (e as Error).message);
+    }
+  }, [ketcherRef, showCopyResult]);
+
+  const handleCopyCDX = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) {
+      showCopyResult(false, 'CDX', 'No canvas');
+      return;
+    }
+    const cdxBytes = await getStructureCdxBytes(ketcher);
+    if (!cdxBytes || cdxBytes.length === 0) {
+      showCopyResult(false, 'CDX', 'No CDX data (Ketcher may not support CDX export)');
+      return;
+    }
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('copy_cdx_to_clipboard', { cdxBytes: Array.from(cdxBytes) });
+      showCopyResult(true, 'CDX');
+    } catch (e) {
+      showCopyResult(false, 'CDX', (e as Error).message);
+    }
+  }, [ketcherRef, showCopyResult]);
+
+  const handleCopyChemDrawStyle = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) {
+      showCopyResult(false, 'ChemDraw-style', 'No canvas');
+      return;
+    }
+    const [blob, mol, cdxBytes] = await Promise.all([
+      getClipboardPngBlob(ketcher),
+      getStructureMolfile(ketcher),
+      getStructureCdxBytes(ketcher),
+    ]);
+    if (!blob) {
+      showCopyResult(false, 'ChemDraw-style', 'Could not generate image');
+      return;
+    }
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const pngBytes = new Uint8Array(await blob.arrayBuffer());
+      await invoke('copy_chemdraw_style', {
+        pngBytes: Array.from(pngBytes),
+        molText: mol?.trim() ?? '',
+        cdxBytes: cdxBytes ? Array.from(cdxBytes) : null,
+      });
+      showCopyResult(true, 'EMF+MOL+CDX (ChemDraw-style)');
+    } catch (e) {
+      showCopyResult(false, 'ChemDraw-style', (e as Error).message);
+    }
+  }, [ketcherRef, showCopyResult]);
 
   const handleAdvancedExport = useCallback(async (options: AdvancedExportOptions): Promise<ExportDownloadResult | void> => {
     const ketcher = ketcherRef.current;
@@ -1369,10 +1456,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                         <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
                         <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
                         <Divider />
-                        <MenuItem onClick={() => handleCopyToFindMolecule('mol')}>Copy MOL (FindMolecule ELN)</MenuItem>
-                        <MenuItem onClick={() => handleCopyToFindMolecule('sdf')}>Copy SDF (FindMolecule)</MenuItem>
-                        <MenuItem onClick={() => handleExport('mol')}>Save MOL file</MenuItem>
-                        <MenuItem onClick={() => handleExport('sdf')}>Save SDF file</MenuItem>
+                        <MenuItem onClick={handleCopyMOL}>Copy MOL (FindMolecule)</MenuItem>
+                        <MenuItem onClick={handleCopySDF}>Copy SDF (FindMolecule)</MenuItem>
+                        <MenuItem onClick={handleCopyEMF}>Copy EMF (FindMolecule)</MenuItem>
+                        <MenuItem onClick={handleCopyCDX}>Copy CDX (FindMolecule)</MenuItem>
+                        <MenuItem onClick={handleCopyChemDrawStyle}>Copy ChemDraw-style (EMF+MOL+CDX)</MenuItem>
                       </Menu>
                       <Tooltip title="Biopolymer">
                         <Button

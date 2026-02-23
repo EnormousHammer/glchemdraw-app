@@ -166,6 +166,35 @@ fn create_emf_from_png(png_bytes: &[u8]) -> Result<windows::Win32::Graphics::Gdi
     }
 }
 
+/// Write CDX only to clipboard (Windows).
+#[cfg(windows)]
+pub fn write_cdx_only_to_clipboard(cdx_bytes: &[u8]) -> Result<(), String> {
+    if cdx_bytes.is_empty() {
+        return Err("Empty CDX data".to_string());
+    }
+    let name: Vec<u16> = "CDX\0".encode_utf16().collect();
+    let cdx_format = RegisterClipboardFormatW(PCWSTR::from_raw(name.as_ptr()));
+    if cdx_format == 0 {
+        return Err("RegisterClipboardFormat CDX failed".to_string());
+    }
+    unsafe {
+        if !OpenClipboard(HWND::default()).as_bool() {
+            return Err("OpenClipboard failed".to_string());
+        }
+        let _ = EmptyClipboard();
+        let size = cdx_bytes.len();
+        if let Some(h_cdx) = GlobalAlloc(GMEM_MOVEABLE, size).ok() {
+            if let Some(ptr) = GlobalLock(h_cdx) {
+                std::ptr::copy_nonoverlapping(cdx_bytes.as_ptr(), ptr as *mut u8, size);
+                let _ = GlobalUnlock(h_cdx);
+                let _ = SetClipboardData(cdx_format, h_cdx);
+            }
+        }
+        let _ = CloseClipboard();
+        Ok(())
+    }
+}
+
 /// Legacy: EMF only (for backward compat).
 #[cfg(windows)]
 pub fn write_png_as_emf_to_clipboard(png_bytes: &[u8]) -> Result<(), String> {
@@ -179,6 +208,11 @@ pub fn write_chemdraw_style_to_clipboard(
     _cdx_bytes: Option<&[u8]>,
 ) -> Result<(), String> {
     Err("ChemDraw-style clipboard is only supported on Windows".to_string())
+}
+
+#[cfg(not(windows))]
+pub fn write_cdx_only_to_clipboard(_cdx_bytes: &[u8]) -> Result<(), String> {
+    Err("CDX clipboard is only supported on Windows".to_string())
 }
 
 #[cfg(not(windows))]

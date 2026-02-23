@@ -243,6 +243,12 @@ async fn copy_png_as_emf(png_bytes: Vec<u8>) -> Result<(), String> {
     clipboard_emf::write_png_as_emf_to_clipboard(&png_bytes)
 }
 
+/// Copy CDX only to clipboard (Windows only)
+#[tauri::command]
+async fn copy_cdx_to_clipboard(cdx_bytes: Vec<u8>) -> Result<(), String> {
+    clipboard_emf::write_cdx_only_to_clipboard(&cdx_bytes)
+}
+
 /// Copy ChemDraw-style: EMF + MOL + CDX (Windows only)
 #[tauri::command]
 async fn copy_chemdraw_style(
@@ -355,6 +361,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             copy_png_as_emf,
+            copy_cdx_to_clipboard,
             copy_chemdraw_style,
             read_mol_file,
             write_mol_file,

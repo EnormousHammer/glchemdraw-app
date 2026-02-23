@@ -1,8 +1,7 @@
 /**
  * Intercepts Ctrl+C in Ketcher canvas.
- * Copies BOTH image (for Word/PPT) AND structure (MOL) for canvas paste/duplicate.
- * ChemDraw-style: paste within canvas duplicates structure; paste elsewhere gets image.
- * Image is scaled to 150 DPI for good quality when pasting into Word, PowerPoint, etc.
+ * Copies structure as image only (PNG, 150 DPI) for pasting into Word, PowerPoint, etc.
+ * No MOL/SMILES text - clipboard contains only the image.
  */
 
 import { useEffect, useCallback } from 'react';
@@ -47,29 +46,6 @@ export interface UseCopyImageToClipboardOptions {
   onCopySuccess?: () => void;
 }
 
-async function getStructureMolfile(ketcher: any): Promise<string | null> {
-  const struct = ketcher.editor?.structSelected?.();
-  if (struct && !struct.isBlank?.()) {
-    try {
-      const { getStructure } = await import('ketcher-core');
-      const { SupportedFormat } = await import('ketcher-core');
-      return await getStructure(
-        ketcher.id,
-        ketcher.formatterFactory,
-        struct,
-        SupportedFormat.molAuto
-      );
-    } catch {
-      return null;
-    }
-  }
-  try {
-    return await ketcher.getMolfile();
-  } catch {
-    return null;
-  }
-}
-
 export function useCopyImageToClipboard(
   ketcherRef: React.RefObject<any>,
   options?: UseCopyImageToClipboardOptions
@@ -99,21 +75,13 @@ export function useCopyImageToClipboard(
       // Scale to higher DPI for good quality when pasting into Word, PowerPoint, etc.
       const blob = await scalePngToDpi(rawBlob, CLIPBOARD_IMAGE_DPI);
 
-      const molfile = await getStructureMolfile(ketcher);
-
+      // Copy image only (no MOL/SMILES text) so paste elsewhere gets the image
       if (isTauri) {
-        const { writeImage, writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        const { writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
         const buffer = await blob.arrayBuffer();
         await writeImage(new Uint8Array(buffer));
-        if (molfile?.trim()) {
-          await writeText(molfile.trim());
-        }
       } else {
-        const items: Record<string, Blob> = { [blob.type]: blob };
-        if (molfile?.trim()) {
-          items['text/plain'] = new Blob([molfile.trim()], { type: 'text/plain' });
-        }
-        await navigator.clipboard.write([new ClipboardItem(items)]);
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
       }
       onCopySuccess?.();
     } catch (err) {

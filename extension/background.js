@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   chrome.runtime.sendNativeMessage(
     HOST_NAME,
-    { cdx: message.cdxBase64 },
+    { cdx: message.cdxBase64, cdxml: message.cdxml || null },
     (response) => {
       if (chrome.runtime.lastError) {
         sendResponse({

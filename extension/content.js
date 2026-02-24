@@ -8,6 +8,7 @@
   document.addEventListener('glchemdraw-copy-cdx', async function (ev) {
     const detail = ev.detail || {};
     const cdxBase64 = detail.cdxBase64;
+    const cdxml = detail.cdxml || null;
     if (!cdxBase64 || typeof cdxBase64 !== 'string') {
       dispatchDone(false, 'Missing CDX data');
       return;
@@ -17,6 +18,7 @@
       const response = await chrome.runtime.sendMessage({
         type: 'copy-cdx',
         cdxBase64: cdxBase64,
+        cdxml: cdxml,
       });
       if (response && response.success) {
         dispatchDone(true);

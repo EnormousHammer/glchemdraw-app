@@ -1,6 +1,6 @@
 /**
  * Intercepts Ctrl+C in Ketcher canvas.
- * Clipboard: image only (PNG, 150 DPI) so Word/PPT gets image.
+ * Clipboard: PNG (150 DPI) + CDXML text – ChemDraw-style for Word/PPT (image) and FindMolecule (structure).
  * MOL stored separately for canvas paste (exact duplicate).
  */
 

@@ -451,9 +451,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       return;
     }
 
-    // Browser: get CDX from Ketcher (no API), send to extension. Fallback: CDXML text.
+    // Browser: get CDX + CDXML from Ketcher, send to extension. Native host puts both on clipboard (ChemDraw-style).
     try {
       const cdxBytes = await getStructureCdxBytes(ketcher);
+      const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
       if (cdxBytes?.length) {
         let b64 = '';
         for (let i = 0; i < cdxBytes.length; i++) b64 += String.fromCharCode(cdxBytes[i]);
@@ -468,7 +469,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
             resolve((e as CustomEvent).detail || { success: false });
           };
           document.addEventListener('glchemdraw-copy-cdx-done', handler);
-          document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', { detail: { cdxBase64 } }));
+          document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', { detail: { cdxBase64, cdxml: cdxml?.trim() || null } }));
           setTimeout(() => {
             if (resolved) return;
             resolved = true;
@@ -486,17 +487,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         }
       }
 
-      // Fallback: CDXML text (no extension needed). FindMolecule supports CDXML paste.
+      // Fallback: CDXML text. FindMolecule paste needs binary CDX (extension + native host).
+      // CDXML paste may not work; use Save CDXML + upload, or Send to FindMolecule (URL).
       const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
       if (cdxml?.trim()) {
         await navigator.clipboard.writeText(cdxml.trim());
-        setSnackbarMessage('Copied CDXML – paste (Ctrl+V) into FindMolecule');
-        setSnackbarSeverity('success');
+        setSnackbarMessage('Copied CDXML. For FindMolecule: install extension, or use Save CDXML + upload, or Send to FindMolecule');
+        setSnackbarSeverity('info');
         setSnackbarOpen(true);
         return;
       }
 
-      setSnackbarMessage('No structure to copy');
+      setSnackbarMessage('No structure to copy. Install extension + native host for FindMolecule paste.');
       setSnackbarSeverity('warning');
       setSnackbarOpen(true);
     } catch (e) {

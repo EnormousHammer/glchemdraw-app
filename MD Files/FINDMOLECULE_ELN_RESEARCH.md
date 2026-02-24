@@ -6,6 +6,13 @@
 
 **What FindMolecule actually needs:** Unknown. Their FAQ says "a small software installation" for ChemDraw copy/paste but does not document which clipboard format that software reads.
 
+**Research findings (confirmed):**
+- FindMolecule FAQ: "Can I copy/paste from/to Chemdraw? Yes, you will simply need to make a small software installation." – no format details.
+- ChemDraw uses "ChemDraw Interchange Format" (binary CDX) on Windows clipboard – standard registered format.
+- Browser Clipboard API cannot set custom formats like "ChemDraw Interchange Format" – only text/plain, image/png, etc.
+- CDXML as text/plain on clipboard: **not confirmed** to work for FindMolecule paste. User testing reported it does not work.
+- FindMolecule supports CDXML **file import** (upload) – not the same as clipboard paste.
+
 ---
 
 ## Clipboard Formats Used by Chemical Programs
@@ -80,6 +87,6 @@ The **new** part is writing MOL/SDF to the clipboard. The existing Export menu o
 ## Recommendations
 
 1. **Contact FindMolecule support** – Ask which clipboard formats their ChemDraw software reads (CDX, MOL, SMILES, EMF, etc.).
-2. **Test with current implementation** – Copy MOL to clipboard, install FindMolecule’s software, and try pasting into their ELN.
+2. **Test with extension + native host** – Copy MOL to clipboard, install FindMolecule’s software, and try pasting into their ELN.
 3. **If MOL is not supported** – Ask about CDX or other formats. Ketcher CDX export exists but has known issues.
 4. **EMF** – Treat as an image format. Do not add EMF unless FindMolecule explicitly confirms they use it for structure import.

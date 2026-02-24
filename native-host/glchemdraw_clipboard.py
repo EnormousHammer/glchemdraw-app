@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 Chrome Native Messaging Host for GL-ChemDraw.
-Receives CDX (base64) from the extension and puts it on the Windows clipboard
-in "ChemDraw Interchange Format" for pasting into FindMolecule ELN.
+Receives CDX (base64) and optional CDXML from the extension.
+Puts on Windows clipboard (ChemDraw-style):
+  - CDX in "ChemDraw Interchange Format" (for ClipboardWin, native apps)
+  - CDXML as text/plain (for browser paste into FindMolecule)
 
 Chrome protocol: 4-byte length (native) + UTF-8 JSON on stdin;
 4-byte length + UTF-8 JSON on stdout.
@@ -37,6 +39,7 @@ def main():
             return
         data = json.loads(raw)
         cdx_b64 = data.get('cdx') or data.get('cdxBase64') or ''
+        cdxml = data.get('cdxml') or ''
         if not cdx_b64:
             write_message({'success': False, 'error': 'Missing cdx field'})
             return
@@ -55,11 +58,14 @@ def main():
         return
 
     try:
-        fmt = win32clipboard.RegisterClipboardFormat('ChemDraw Interchange Format')
+        fmt_cdx = win32clipboard.RegisterClipboardFormat('ChemDraw Interchange Format')
         win32clipboard.OpenClipboard()
         try:
             win32clipboard.EmptyClipboard()
-            win32clipboard.SetClipboardData(fmt, cdx_bytes)
+            win32clipboard.SetClipboardData(fmt_cdx, cdx_bytes)
+            if cdxml and isinstance(cdxml, str):
+                # text/plain for browser paste (FindMolecule can receive via paste event)
+                win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, cdxml)
             write_message({'success': True})
         finally:
             win32clipboard.CloseClipboard()

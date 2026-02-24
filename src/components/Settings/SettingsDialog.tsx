@@ -22,8 +22,6 @@ import {
 } from '@mui/material';
 import {
   Close as CloseIcon,
-  DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon,
   Psychology as AIIcon,
   Download as ExportIcon,
   Accessibility as AccessibilityIcon,
@@ -39,21 +37,15 @@ const DEFAULT_SETTINGS = {
   defaultExportFormat: 'PNG' as 'PNG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'SMILES',
 };
 
-export type ThemeMode = 'light' | 'dark' | 'highContrast';
-
 interface SettingsDialogProps {
   open: boolean;
   onClose: () => void;
-  themeMode: ThemeMode;
-  onThemeChange: (mode: ThemeMode) => void;
   onOpenAccessibility?: () => void;
 }
 
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   open,
   onClose,
-  themeMode,
-  onThemeChange,
   onOpenAccessibility,
 }) => {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -101,11 +93,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     }
   };
 
-  const cycleTheme = () => {
-    const next: ThemeMode = themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'highContrast' : 'light';
-    onThemeChange(next);
-  };
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>
@@ -119,27 +106,6 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
 
       <DialogContent dividers>
         <Stack spacing={3}>
-          {/* Theme */}
-          <Box>
-            <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {themeMode === 'light' ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
-              Theme
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={cycleTheme}
-              startIcon={themeMode === 'light' ? <LightModeIcon /> : <DarkModeIcon />}
-            >
-              {themeMode === 'light' ? 'Light' : themeMode === 'dark' ? 'Dark' : 'High Contrast'}
-            </Button>
-            <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-              Click to cycle: Light → Dark → High Contrast
-            </Typography>
-          </Box>
-
-          <Divider />
-
           {/* AI Preferences */}
           <Box>
             <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

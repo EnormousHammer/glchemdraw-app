@@ -15,7 +15,6 @@ export interface KeyboardHandlers {
   onCopy?: () => void;
   onPaste?: () => void;
   onSelectAll?: () => void;
-  onToggleDarkMode?: () => void;
   onFocusSearch?: () => void;
   onFocusCanvas?: () => void;
 }
@@ -88,13 +87,6 @@ export const useKeyboardNavigation = (handlers: KeyboardHandlers) => {
       return;
     }
 
-    // UI toggles
-    if (modifier && key === 'd' && handlers.onToggleDarkMode) {
-      event.preventDefault();
-      handlers.onToggleDarkMode();
-      return;
-    }
-
     // Focus navigation
     if (modifier && key === 'f' && handlers.onFocusSearch) {
       event.preventDefault();
@@ -136,7 +128,6 @@ export const useKeyboardNavigation = (handlers: KeyboardHandlers) => {
         { keys: ['Ctrl', 'A'], action: 'Select all' },
       ],
       view: [
-        { keys: ['Ctrl', 'D'], action: 'Toggle dark mode' },
         { keys: ['Ctrl', 'F'], action: 'Focus search' },
         { keys: ['Esc'], action: 'Focus canvas' },
       ],

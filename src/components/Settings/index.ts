@@ -1,2 +1,2 @@
-export { SettingsDialog, type ThemeMode } from './SettingsDialog';
+export { SettingsDialog } from './SettingsDialog';
 export { default } from './SettingsDialog';

@@ -43,7 +43,24 @@
 
 ---
 
-## Solution: CDXML (Works in Browser)
+## Solution: Seamless URL (No Clipboard)
+
+### Option 0: Send to FindMolecule (Recommended)
+
+FindMolecule supports SMILES via URL. GL-ChemDraw opens:
+
+```
+https://app.findmolecule.com/labBook/index?smiles=CCO
+```
+
+(replace `CCO` with the actual SMILES of the drawn molecule)
+
+**Pros:** One-click, no clipboard, no browser security issues  
+**Cons:** None
+
+---
+
+## Alternative: CDXML (Works in Browser)
 
 ### Option A: Copy CDXML to Clipboard
 

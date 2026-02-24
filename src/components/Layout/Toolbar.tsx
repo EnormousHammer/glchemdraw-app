@@ -19,8 +19,6 @@ import {
   Edit as DrawIcon,
   Search as SearchIcon,
   Analytics as AdvancedIcon,
-  Brightness4 as DarkModeIcon,
-  Brightness7 as LightModeIcon,
   LibraryBooks as TemplateIcon,
   TextFields as NameToStructureIcon,
   Image as ImageIcon,
@@ -48,8 +46,6 @@ interface AppToolbarProps {
   onNameToStructure?: () => void;
   onAdvancedExport?: () => void;
   onSearchByName?: (name: string) => void;
-  darkMode?: boolean;
-  onToggleDarkMode?: () => void;
   onShortcutsClick?: () => void;
   onReactionsClick?: () => void;
   onFaqClick?: () => void;
@@ -70,8 +66,6 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onNameToStructure,
   onAdvancedExport,
   onSearchByName,
-  darkMode,
-  onToggleDarkMode,
   onShortcutsClick,
   onReactionsClick,
   onFaqClick,
@@ -340,26 +334,6 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         )}
 
         <Box sx={{ width: 8 }} />
-
-        {/* Theme Toggle */}
-        {onToggleDarkMode && (
-          <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"} arrow>
-            <IconButton
-              onClick={onToggleDarkMode}
-              size="small"
-              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-              sx={{ 
-                color: 'rgba(255,255,255,0.8)',
-                '&:hover': { 
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  color: 'white'
-                },
-              }}
-            >
-              {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-            </IconButton>
-          </Tooltip>
-        )}
 
         {rightContent}
       </MuiToolbar>

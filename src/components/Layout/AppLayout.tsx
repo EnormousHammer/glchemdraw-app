@@ -92,16 +92,11 @@ interface StructureData {
   smiles: string;
 }
 
-type ThemeMode = 'light' | 'dark' | 'highContrast';
-
 interface AppLayoutProps {
   onSearchByName?: (name: string) => void;
-  themeMode?: ThemeMode;
-  onThemeChange?: (mode: ThemeMode) => void;
-  onToggleDarkMode?: () => void;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'light', onThemeChange, onToggleDarkMode }) => {
+const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   // State management
   const [currentStructure, setCurrentStructure] = useState<StructureData | null>(null);
   const [recognizedCompound, setRecognizedCompound] = useState<{
@@ -430,6 +425,26 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
       showCopyResult(false, 'SDF', (e as Error).message);
     }
   }, [currentStructure, showCopyResult]);
+
+  // Send to FindMolecule: open URL with SMILES – no clipboard, seamless
+  const handleSendToFindMolecule = useCallback(async () => {
+    const smiles = currentStructure?.smiles?.trim();
+    const ketcher = ketcherRef.current;
+    const smi = smiles || (ketcher ? await ketcher.getSmiles?.() : null);
+    if (!smi?.trim()) {
+      setSnackbarMessage('No structure to send');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+      setExportMenuAnchor(null);
+      return;
+    }
+    const url = `https://app.findmolecule.com/labBook/index?smiles=${encodeURIComponent(smi.trim())}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setExportMenuAnchor(null);
+    setSnackbarMessage('Opened FindMolecule with structure');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  }, [currentStructure?.smiles, ketcherRef]);
 
   // CDXML: ChemDraw-compatible text format – works in browser, paste into FindMolecule
   const handleCopyCDXML = useCallback(async () => {
@@ -1313,8 +1328,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
           onSettingsClick={() => setShowSettingsDialog(true)}
-          darkMode={themeMode !== 'light'}
-          onToggleDarkMode={onToggleDarkMode}
         />
 
         {/* Main Content - Conditional View */}
@@ -1477,6 +1490,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                         <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
                         <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
                         <Divider />
+                        <MenuItem onClick={handleSendToFindMolecule}>Send to FindMolecule (opens in new tab)</MenuItem>
                         <MenuItem onClick={handleCopyCDXML}>Copy CDXML (FindMolecule) – works in browser</MenuItem>
                         <MenuItem onClick={handleSaveCDXML}>Save CDXML – upload to FindMolecule</MenuItem>
                         <MenuItem onClick={handleCopyMOL}>Copy MOL (FindMolecule)</MenuItem>
@@ -2801,8 +2815,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
         <SettingsDialog
           open={showSettingsDialog}
           onClose={() => setShowSettingsDialog(false)}
-          themeMode={themeMode}
-          onThemeChange={onThemeChange ?? (() => {})}
           onOpenAccessibility={() => {
             setShowSettingsDialog(false);
             setShowAccessibilityMenu(true);

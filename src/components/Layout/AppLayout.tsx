@@ -43,7 +43,7 @@ import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
 import { generateSDFFile } from '@lib/chemistry/sdf';
-import { getStructureMolfile, getClipboardPngBlob } from '../../hooks/useCopyImageToClipboard';
+import { getStructureMolfile } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
@@ -51,7 +51,6 @@ import { BiopolymerSequenceDialog } from '../BiopolymerSequence';
 import { FunctionalGroupDialog } from '../FunctionalGroup/FunctionalGroupDialog';
 import { TemplateLibraryDialog } from '../TemplateLibrary';
 import { FAQDialog } from '../FAQ';
-import { SettingsDialog } from '../Settings';
 import { AccessibilityMenu } from '../AccessibilityMenu';
 import { AdvancedExport, type ExportDownloadResult } from '../AdvancedExport/AdvancedExport';
 import { AIIntegration } from '../AIIntegration';
@@ -119,7 +118,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showFunctionalGroupDialog, setShowFunctionalGroupDialog] = useState(false);
   const [showTemplateLibraryDialog, setShowTemplateLibraryDialog] = useState(false);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showAccessibilityMenu, setShowAccessibilityMenu] = useState(false);
   const [showAdvancedExportDialog, setShowAdvancedExportDialog] = useState(false);
   const [showBondTypeBar, setShowBondTypeBar] = useState(false);
@@ -384,48 +382,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     setSnackbarOpen(true);
   }, []);
 
-  const handleCopyMOL = useCallback(async () => {
-    const ketcher = ketcherRef.current;
-    const mol = currentStructure?.molfile?.trim() || (ketcher ? await getStructureMolfile(ketcher) : null);
-    if (!mol) {
-      showCopyResult(false, 'MOL', 'No structure');
-      return;
-    }
-    try {
-      const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-      if (isTauri) {
-        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-        await writeText(mol);
-      } else {
-        await navigator.clipboard.writeText(mol);
-      }
-      showCopyResult(true, 'MOL');
-    } catch (e) {
-      showCopyResult(false, 'MOL', (e as Error).message);
-    }
-  }, [currentStructure, ketcherRef, showCopyResult]);
-
-  const handleCopySDF = useCallback(async () => {
-    const mol = currentStructure?.molfile?.trim();
-    if (!mol) {
-      showCopyResult(false, 'SDF', 'No structure');
-      return;
-    }
-    const sdf = generateSDFFile([{ molfile: mol, properties: {}, name: 'Structure' }]);
-    try {
-      const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-      if (isTauri) {
-        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-        await writeText(sdf);
-      } else {
-        await navigator.clipboard.writeText(sdf);
-      }
-      showCopyResult(true, 'SDF');
-    } catch (e) {
-      showCopyResult(false, 'SDF', (e as Error).message);
-    }
-  }, [currentStructure, showCopyResult]);
-
   // Send to FindMolecule: open URL with SMILES – no clipboard, seamless
   const handleSendToFindMolecule = useCallback(async () => {
     const smiles = currentStructure?.smiles?.trim();
@@ -466,7 +422,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       } else {
         await navigator.clipboard.writeText(cdxml);
       }
-      showCopyResult(true, 'CDXML – paste into FindMolecule (Ctrl+V)');
+      showCopyResult(true, 'CDXML');
     } catch (e) {
       showCopyResult(false, 'CDXML', (e as Error).message);
     }
@@ -505,37 +461,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       setSnackbarOpen(true);
     }
   }, [ketcherRef]);
-
-  const handleCopyEMF = useCallback(async () => {
-    const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-    if (!isTauri) {
-      showCopyResult(false, 'EMF', 'EMF requires desktop app (npm run tauri dev)');
-      return;
-    }
-    const ketcher = ketcherRef.current;
-    if (!ketcher) {
-      showCopyResult(false, 'EMF', 'No canvas');
-      return;
-    }
-    const blob = await getClipboardPngBlob(ketcher);
-    if (!blob) {
-      showCopyResult(false, 'EMF', 'Could not generate image');
-      return;
-    }
-    try {
-      const tauri = await import('@tauri-apps/api/core');
-      const invoke = tauri?.invoke;
-      if (typeof invoke !== 'function') {
-        showCopyResult(false, 'EMF', 'EMF copy requires the desktop app (run: npm run tauri dev)');
-        return;
-      }
-      const pngBytes = new Uint8Array(await blob.arrayBuffer());
-      await invoke('copy_png_as_emf', { pngBytes: Array.from(pngBytes) });
-      showCopyResult(true, 'EMF');
-    } catch (e) {
-      showCopyResult(false, 'EMF', (e as Error).message);
-    }
-  }, [ketcherRef, showCopyResult]);
 
   const handleAdvancedExport = useCallback(async (options: AdvancedExportOptions): Promise<ExportDownloadResult | void> => {
     const ketcher = ketcherRef.current;
@@ -1327,7 +1252,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onShortcutsClick={() => setShowShortcutsDialog(true)}
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
-          onSettingsClick={() => setShowSettingsDialog(true)}
         />
 
         {/* Main Content - Conditional View */}
@@ -1491,11 +1415,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
                         <Divider />
                         <MenuItem onClick={handleSendToFindMolecule}>Send to FindMolecule (opens in new tab)</MenuItem>
-                        <MenuItem onClick={handleCopyCDXML}>Copy CDXML (FindMolecule) – works in browser</MenuItem>
-                        <MenuItem onClick={handleSaveCDXML}>Save CDXML – upload to FindMolecule</MenuItem>
-                        <MenuItem onClick={handleCopyMOL}>Copy MOL (FindMolecule)</MenuItem>
-                        <MenuItem onClick={handleCopySDF}>Copy SDF (FindMolecule)</MenuItem>
-                        <MenuItem onClick={handleCopyEMF}>Copy EMF (desktop app only)</MenuItem>
+                        <MenuItem onClick={handleCopyCDXML}>Copy CDXML (FindMolecule)</MenuItem>
+                        <MenuItem onClick={handleSaveCDXML}>Save CDXML (FindMolecule)</MenuItem>
                       </Menu>
                       <Tooltip title="Biopolymer">
                         <Button
@@ -2810,15 +2731,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         <FAQDialog
           open={showFaqDialog}
           onClose={() => setShowFaqDialog(false)}
-        />
-
-        <SettingsDialog
-          open={showSettingsDialog}
-          onClose={() => setShowSettingsDialog(false)}
-          onOpenAccessibility={() => {
-            setShowSettingsDialog(false);
-            setShowAccessibilityMenu(true);
-          }}
         />
 
         <AccessibilityMenu

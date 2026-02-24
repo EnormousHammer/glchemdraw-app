@@ -43,6 +43,25 @@
 
 ---
 
+## FindMolecule Clipboard Format (Windows Desktop)
+
+FindMolecule expects **binary CDX** on the Windows clipboard under the registered format name:
+
+```
+ChemDraw Interchange Format
+```
+
+GL-ChemDraw (Tauri desktop on Windows) implements this:
+
+1. **Ketcher** → `getStructureCdxBytes()` (ketcher-core `SupportedFormat.binaryCdx`)
+2. **Tauri** → `RegisterClipboardFormat("ChemDraw Interchange Format")` + `SetClipboardData(fmt, hMem)`
+3. User **Ctrl+V** into FindMolecule → ✅ works
+
+- **Export → Copy CDX (FindMolecule)** – puts CDX on clipboard (desktop Windows only)
+- **Ctrl+C** from canvas – puts EMF + MOL + CDX (ChemDraw-style); CDX uses same format
+
+---
+
 ## Solution: Seamless URL (No Clipboard)
 
 ### Option 0: Send to FindMolecule (Recommended)

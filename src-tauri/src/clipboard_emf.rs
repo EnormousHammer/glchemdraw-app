@@ -55,10 +55,10 @@ pub fn write_chemdraw_style_to_clipboard(
             }
         }
 
-        // 3. CDX (registered format "CDX")
+        // 3. CDX (registered format "ChemDraw Interchange Format" – what FindMolecule expects)
         if let Some(cdx) = cdx_bytes {
             if !cdx.is_empty() {
-                let name: Vec<u16> = "CDX\0".encode_utf16().collect();
+                let name: Vec<u16> = "ChemDraw Interchange Format\0".encode_utf16().collect();
                 let cdx_format = RegisterClipboardFormatW(PCWSTR::from_raw(name.as_ptr()));
                 if cdx_format != 0 {
                     let size = cdx.len();
@@ -167,12 +167,13 @@ fn create_emf_from_png(png_bytes: &[u8]) -> Result<windows::Win32::Graphics::Gdi
 }
 
 /// Write CDX only to clipboard (Windows).
+/// Uses "ChemDraw Interchange Format" – the exact format FindMolecule expects for Ctrl+V paste.
 #[cfg(windows)]
 pub fn write_cdx_only_to_clipboard(cdx_bytes: &[u8]) -> Result<(), String> {
     if cdx_bytes.is_empty() {
         return Err("Empty CDX data".to_string());
     }
-    let name: Vec<u16> = "CDX\0".encode_utf16().collect();
+    let name: Vec<u16> = "ChemDraw Interchange Format\0".encode_utf16().collect();
     let cdx_format = RegisterClipboardFormatW(PCWSTR::from_raw(name.as_ptr()));
     if cdx_format == 0 {
         return Err("RegisterClipboardFormat CDX failed".to_string());

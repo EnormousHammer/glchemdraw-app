@@ -437,11 +437,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
   const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
-  // Copy for FindMolecule: desktop uses Tauri; browser uses Chrome extension + native host.
+  // Copy for FindMolecule: desktop uses Tauri; browser uses Ketcher CDX + Chrome extension + native host.
   const handleCopyForFindMolecule = useCallback(async () => {
     const ketcher = ketcherRef.current;
-    const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
-    if (!cdxml?.trim()) {
+    if (!ketcher) {
       showCopyResult(false, 'CDX', 'No structure to copy');
       return;
     }
@@ -452,21 +451,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       return;
     }
 
-    // Browser: get CDX from API, send to extension
+    // Browser: get CDX from Ketcher (no API), send to extension
     try {
-      const res = await fetch('/api/cdxml-to-cdx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cdxml: cdxml.trim() }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || `API error ${res.status}`);
+      const cdxBytes = await getStructureCdxBytes(ketcher);
+      if (!cdxBytes?.length) {
+        setSnackbarMessage('No structure to copy or CDX export failed');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
       }
-      const buf = await res.arrayBuffer();
-      const bytes = new Uint8Array(buf);
       let b64 = '';
-      for (let i = 0; i < bytes.length; i++) b64 += String.fromCharCode(bytes[i]);
+      for (let i = 0; i < cdxBytes.length; i++) b64 += String.fromCharCode(cdxBytes[i]);
       const cdxBase64 = btoa(b64);
 
       const done = new Promise<{ success: boolean; error?: string }>((resolve) => {

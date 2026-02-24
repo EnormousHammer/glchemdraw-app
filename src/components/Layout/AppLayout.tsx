@@ -41,8 +41,6 @@ import ChemCanvas from '../ChemCanvas/ChemCanvas';
 import { BondTypeBar } from '../BondTypeBar';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
-import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
-import { generateSDFFile } from '@lib/chemistry/sdf';
 import { getStructureMolfile } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
@@ -341,35 +339,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     });
   }, [recognizedCompound, chemicalData, currentStructure]);
 
-  // Export structure (Issue #5: MOL, SDF, SMILES formats)
-  const handleExport = useCallback(async (format: 'mol' | 'sdf' | 'smiles') => {
-    setExportMenuAnchor(null);
-    const struct = currentStructure;
-    if (!struct) {
-      setSnackbarMessage('No structure to export');
-      setSnackbarSeverity('warning');
-      setSnackbarOpen(true);
-      return;
-    }
-    let result: { success: boolean; error?: string };
-    if (format === 'mol') {
-      result = await exportAsMol(struct.molfile, 'structure.mol');
-    } else if (format === 'sdf') {
-      result = await exportAsSdf(struct.molfile, 'structure.sdf');
-    } else {
-      result = await exportAsSmiles(struct.smiles, 'structure.smi');
-    }
-    if (result.success) {
-      setSnackbarMessage(`Exported as ${format.toUpperCase()}`);
-      setSnackbarSeverity('success');
-    } else {
-      setSnackbarMessage(result.error || 'Export failed');
-      setSnackbarSeverity('error');
-    }
-    setSnackbarOpen(true);
-  }, [currentStructure]);
-
-  // Copy to clipboard for FindMolecule testing (each format separately)
+  // Copy to clipboard for FindMolecule
   const showCopyResult = useCallback((ok: boolean, format: string, err?: string) => {
     setExportMenuAnchor(null);
     if (ok) {
@@ -1410,9 +1380,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       </Tooltip>
                       <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
                         <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Advanced Export (PNG/SVG/PDF/DPI)</MenuItem>
-                        <MenuItem onClick={() => handleExport('mol')}>MOL</MenuItem>
-                        <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
-                        <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
                         <Divider />
                         <MenuItem onClick={handleSendToFindMolecule}>Send to FindMolecule (opens in new tab)</MenuItem>
                         <MenuItem onClick={handleCopyCDXML}>Copy CDXML (FindMolecule)</MenuItem>

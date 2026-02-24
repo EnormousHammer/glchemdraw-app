@@ -451,45 +451,53 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       return;
     }
 
-    // Browser: get CDX from Ketcher (no API), send to extension
+    // Browser: get CDX from Ketcher (no API), send to extension. Fallback: CDXML text.
     try {
       const cdxBytes = await getStructureCdxBytes(ketcher);
-      if (!cdxBytes?.length) {
-        setSnackbarMessage('No structure to copy or CDX export failed');
-        setSnackbarSeverity('warning');
+      if (cdxBytes?.length) {
+        let b64 = '';
+        for (let i = 0; i < cdxBytes.length; i++) b64 += String.fromCharCode(cdxBytes[i]);
+        const cdxBase64 = btoa(b64);
+
+        const done = new Promise<{ success: boolean; error?: string }>((resolve) => {
+          let resolved = false;
+          const handler = (e: Event) => {
+            if (resolved) return;
+            resolved = true;
+            document.removeEventListener('glchemdraw-copy-cdx-done', handler);
+            resolve((e as CustomEvent).detail || { success: false });
+          };
+          document.addEventListener('glchemdraw-copy-cdx-done', handler);
+          document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', { detail: { cdxBase64 } }));
+          setTimeout(() => {
+            if (resolved) return;
+            resolved = true;
+            document.removeEventListener('glchemdraw-copy-cdx-done', handler);
+            resolve({ success: false, error: 'Extension or native host not installed' });
+          }, 3000);
+        });
+
+        const result = await done;
+        if (result.success) {
+          setSnackbarMessage('Copied – paste (Ctrl+V) into FindMolecule');
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
+          return;
+        }
+      }
+
+      // Fallback: CDXML text (no extension needed). FindMolecule supports CDXML paste.
+      const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
+      if (cdxml?.trim()) {
+        await navigator.clipboard.writeText(cdxml.trim());
+        setSnackbarMessage('Copied CDXML – paste (Ctrl+V) into FindMolecule');
+        setSnackbarSeverity('success');
         setSnackbarOpen(true);
         return;
       }
-      let b64 = '';
-      for (let i = 0; i < cdxBytes.length; i++) b64 += String.fromCharCode(cdxBytes[i]);
-      const cdxBase64 = btoa(b64);
 
-      const done = new Promise<{ success: boolean; error?: string }>((resolve) => {
-        let resolved = false;
-        const handler = (e: Event) => {
-          if (resolved) return;
-          resolved = true;
-          document.removeEventListener('glchemdraw-copy-cdx-done', handler);
-          resolve((e as CustomEvent).detail || { success: false });
-        };
-        document.addEventListener('glchemdraw-copy-cdx-done', handler);
-        document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', { detail: { cdxBase64 } }));
-        setTimeout(() => {
-          if (resolved) return;
-          resolved = true;
-          document.removeEventListener('glchemdraw-copy-cdx-done', handler);
-          resolve({ success: false, error: 'Extension or native host not installed' });
-        }, 3000);
-      });
-
-      const result = await done;
-      if (result.success) {
-        setSnackbarMessage('Copied – paste (Ctrl+V) into FindMolecule');
-        setSnackbarSeverity('success');
-      } else {
-        setSnackbarMessage(result.error || 'Install the GL-ChemDraw extension for clipboard paste');
-        setSnackbarSeverity('warning');
-      }
+      setSnackbarMessage('No structure to copy');
+      setSnackbarSeverity('warning');
       setSnackbarOpen(true);
     } catch (e) {
       setSnackbarMessage((e as Error).message);

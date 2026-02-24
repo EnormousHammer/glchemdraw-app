@@ -5,7 +5,9 @@ mod clipboard_emf;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use std::process::Stdio;
 use thiserror::Error;
+use tokio::process::Command;
 
 #[derive(Error, Debug)]
 enum CommandError {
@@ -249,6 +251,69 @@ async fn copy_cdx_to_clipboard(cdx_bytes: Vec<u8>) -> Result<(), String> {
     clipboard_emf::write_cdx_only_to_clipboard(&cdx_bytes)
 }
 
+/// Convert CDXML to ChemDraw CDX binary and put on clipboard.
+/// Uses pycdxml/cdx-mol (pip install cdx-mol) for ChemDraw-compatible output.
+/// Windows only. Returns error if Python/cdx-mol not found or conversion fails.
+#[tauri::command]
+async fn copy_cdx_from_cdxml(cdxml: String) -> Result<(), String> {
+    #[cfg(not(windows))]
+    return Err("CDX clipboard is only supported on Windows".to_string());
+
+    #[cfg(windows)]
+    {
+        let script = include_str!("../../scripts/cdxml_to_cdx.py");
+        let script_dir = std::env::temp_dir()
+            .join("glchemdraw_cdxml_to_cdx")
+            .join(std::process::id().to_string());
+        let _ = fs::create_dir_all(&script_dir);
+        let script_path = script_dir.join("cdxml_to_cdx.py");
+        fs::write(&script_path, script).map_err(|e| format!("Failed to write script: {}", e))?;
+
+        let mut child = Command::new("python")
+            .arg(script_path.to_str().unwrap())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .or_else(|_| {
+                Command::new("python3")
+                    .arg(script_path.to_str().unwrap())
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+            })
+            .map_err(|e| format!("Python not found. Install: pip install cdx-mol. Error: {}", e))?;
+
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = tokio::io::AsyncWriteExt::write_all(&mut stdin, cdxml.as_bytes()).await;
+            let _ = tokio::io::AsyncWriteExt::shutdown(&mut stdin).await;
+        }
+
+        let output = child
+            .wait_with_output()
+            .await
+            .map_err(|e| format!("Conversion failed: {}", e))?;
+
+        let _ = fs::remove_file(&script_path);
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!(
+                "CDXML conversion failed: {}. Install: pip install cdx-mol",
+                stderr.trim()
+            ));
+        }
+
+        if output.stdout.is_empty() {
+            return Err("Conversion produced empty CDX".to_string());
+        }
+
+        clipboard_emf::write_cdx_only_to_clipboard(&output.stdout)
+            .map_err(|e| format!("Clipboard write failed: {}", e))
+    }
+}
+
 /// Copy ChemDraw-style: EMF + MOL + CDX (Windows only)
 #[tauri::command]
 async fn copy_chemdraw_style(
@@ -362,6 +427,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             copy_png_as_emf,
             copy_cdx_to_clipboard,
+            copy_cdx_from_cdxml,
             copy_chemdraw_style,
             read_mol_file,
             write_mol_file,

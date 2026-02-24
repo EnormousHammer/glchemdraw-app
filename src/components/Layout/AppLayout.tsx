@@ -41,7 +41,7 @@ import ChemCanvas from '../ChemCanvas/ChemCanvas';
 import { BondTypeBar } from '../BondTypeBar';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
-import { getStructureMolfile } from '../../hooks/useCopyImageToClipboard';
+import { getStructureCdxBytes } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
@@ -372,32 +372,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     setSnackbarOpen(true);
   }, [currentStructure?.smiles, ketcherRef]);
 
-  // CDXML: ChemDraw-compatible text format – works in browser, paste into FindMolecule
-  const handleCopyCDXML = useCallback(async () => {
-    const ketcher = ketcherRef.current;
-    if (!ketcher?.getCDXml) {
-      showCopyResult(false, 'CDXML', 'CDXML not available');
-      return;
-    }
-    try {
-      const cdxml = await ketcher.getCDXml();
-      if (!cdxml?.trim()) {
-        showCopyResult(false, 'CDXML', 'No structure to copy');
-        return;
-      }
-      const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
-      if (isTauri) {
-        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
-        await writeText(cdxml);
-      } else {
-        await navigator.clipboard.writeText(cdxml);
-      }
-      showCopyResult(true, 'CDXML');
-    } catch (e) {
-      showCopyResult(false, 'CDXML', (e as Error).message);
-    }
-  }, [ketcherRef, showCopyResult]);
-
   const handleSaveCDXML = useCallback(async () => {
     const ketcher = ketcherRef.current;
     if (!ketcher?.getCDXml) {
@@ -431,6 +405,103 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       setSnackbarOpen(true);
     }
   }, [ketcherRef]);
+
+  // Copy CDX to clipboard (desktop Windows only). For browser: use extension.
+  const handleCopyCDX = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
+    if (!cdxml?.trim()) {
+      showCopyResult(false, 'CDX', 'No structure to copy');
+      return;
+    }
+    const { invoke } = await import('@tauri-apps/api/core');
+    try {
+      try {
+        await invoke('copy_cdx_from_cdxml', { cdxml: cdxml.trim() });
+        showCopyResult(true, 'CDX');
+        return;
+      } catch (pyErr) {
+        console.warn('[Copy CDX] pycdxml failed, using Ketcher CDX:', pyErr);
+      }
+      const cdxBytes = await getStructureCdxBytes(ketcher);
+      if (cdxBytes?.length) {
+        await invoke('copy_cdx_to_clipboard', { cdx_bytes: Array.from(cdxBytes) });
+        showCopyResult(true, 'CDX');
+      } else {
+        showCopyResult(false, 'CDX', 'pip install cdx-mol');
+      }
+    } catch (e) {
+      showCopyResult(false, 'CDX', (e as Error).message);
+    }
+  }, [ketcherRef, showCopyResult]);
+
+  const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
+  // Copy for FindMolecule: desktop uses Tauri; browser uses Chrome extension + native host.
+  const handleCopyForFindMolecule = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
+    if (!cdxml?.trim()) {
+      showCopyResult(false, 'CDX', 'No structure to copy');
+      return;
+    }
+    setExportMenuAnchor(null);
+
+    if (isTauri) {
+      handleCopyCDX();
+      return;
+    }
+
+    // Browser: get CDX from API, send to extension
+    try {
+      const res = await fetch('/api/cdxml-to-cdx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cdxml: cdxml.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || `API error ${res.status}`);
+      }
+      const buf = await res.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let b64 = '';
+      for (let i = 0; i < bytes.length; i++) b64 += String.fromCharCode(bytes[i]);
+      const cdxBase64 = btoa(b64);
+
+      const done = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        let resolved = false;
+        const handler = (e: Event) => {
+          if (resolved) return;
+          resolved = true;
+          document.removeEventListener('glchemdraw-copy-cdx-done', handler);
+          resolve((e as CustomEvent).detail || { success: false });
+        };
+        document.addEventListener('glchemdraw-copy-cdx-done', handler);
+        document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', { detail: { cdxBase64 } }));
+        setTimeout(() => {
+          if (resolved) return;
+          resolved = true;
+          document.removeEventListener('glchemdraw-copy-cdx-done', handler);
+          resolve({ success: false, error: 'Extension or native host not installed' });
+        }, 3000);
+      });
+
+      const result = await done;
+      if (result.success) {
+        setSnackbarMessage('Copied – paste (Ctrl+V) into FindMolecule');
+        setSnackbarSeverity('success');
+      } else {
+        setSnackbarMessage(result.error || 'Install the GL-ChemDraw extension for clipboard paste');
+        setSnackbarSeverity('warning');
+      }
+      setSnackbarOpen(true);
+    } catch (e) {
+      setSnackbarMessage((e as Error).message);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, [ketcherRef, isTauri, handleCopyCDX, showCopyResult]);
 
   const handleAdvancedExport = useCallback(async (options: AdvancedExportOptions): Promise<ExportDownloadResult | void> => {
     const ketcher = ketcherRef.current;
@@ -1381,8 +1452,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
                         <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Advanced Export (PNG/SVG/PDF/DPI)</MenuItem>
                         <Divider />
-                        <MenuItem onClick={handleSendToFindMolecule}>Send to FindMolecule (opens in new tab)</MenuItem>
-                        <MenuItem onClick={handleCopyCDXML}>Copy CDXML (FindMolecule)</MenuItem>
+                        <MenuItem onClick={handleCopyForFindMolecule}>Copy for FindMolecule (paste into ELN)</MenuItem>
+                        <MenuItem onClick={handleSendToFindMolecule}>Send to FindMolecule (opens with structure)</MenuItem>
                         <MenuItem onClick={handleSaveCDXML}>Save CDXML (FindMolecule)</MenuItem>
                       </Menu>
                       <Tooltip title="Biopolymer">
@@ -2815,6 +2886,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       <Typography variant="body2" color="text.secondary">Paste structure or image</Typography>
                     </Box>
                   </Stack>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>FindMolecule ELN</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Export → Copy for FindMolecule (paste into ELN). Install the Chrome extension + native host for browser clipboard. Desktop: uses native clipboard directly.
+                  </Typography>
                 </Box>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>Structure</Typography>

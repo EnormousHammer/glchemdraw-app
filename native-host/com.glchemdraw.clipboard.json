@@ -1,0 +1,9 @@
+{
+  "name": "com.glchemdraw.clipboard",
+  "description": "GL-ChemDraw clipboard host for FindMolecule paste",
+  "path": "REPLACE_WITH_FULL_PATH",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://kaekecncockgnaninbjmcflghibiieke/"
+  ]
+}

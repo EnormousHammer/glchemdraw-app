@@ -53,12 +53,15 @@ ChemDraw Interchange Format
 
 GL-ChemDraw (Tauri desktop on Windows) implements this:
 
-1. **Ketcher** → `getStructureCdxBytes()` (ketcher-core `SupportedFormat.binaryCdx`)
-2. **Tauri** → `RegisterClipboardFormat("ChemDraw Interchange Format")` + `SetClipboardData(fmt, hMem)`
-3. User **Ctrl+V** into FindMolecule → ✅ works
+1. **Primary (ChemDraw-compatible):** Ketcher CDXML → **pycdxml/cdx-mol** (`pip install cdx-mol`) → CDX binary → clipboard
+2. **Fallback:** Ketcher `getStructureCdxBytes()` (ketcher-core) → clipboard
+3. **Tauri** → `RegisterClipboardFormat("ChemDraw Interchange Format")` + `SetClipboardData(fmt, hMem)`
+4. User **Ctrl+V** into FindMolecule → ✅ works
 
-- **Export → Copy CDX (FindMolecule)** – puts CDX on clipboard (desktop Windows only)
-- **Ctrl+C** from canvas – puts EMF + MOL + CDX (ChemDraw-style); CDX uses same format
+**For best FindMolecule compatibility:** Install `pip install cdx-mol`. This uses the official ChemDraw CDX spec (via pycdxml) for guaranteed compatibility. Without it, Ketcher CDX is used (may have compatibility issues).
+
+- **Export → Copy CDX (FindMolecule)** – puts ChemDraw-compatible CDX on clipboard (desktop Windows only)
+- **Ctrl+C** from canvas – puts EMF + MOL + CDX (ChemDraw-style)
 
 ---
 

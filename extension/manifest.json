@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "GL-ChemDraw Clipboard for FindMolecule",
+  "version": "1.0.0",
+  "description": "Copy chemical structures from GL-ChemDraw to clipboard for pasting into FindMolecule ELN",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2wGo/exR999ubTQc+d+z97TuKQFGHeDbg3wz/DkhYvlvCOT6oAMnROtCib6rWzKfDw5Ees5MS/psdh7GAOhjV4moP6M+YGbZfDRfjJiz3MpxLYVXc3iej4O2qne+2hZwKsCCBsitA+s1pc7xejuAXXNeAr5CXbSK+r4v84zXiXIAp2NOZVBUqCDy/PH01CVwwkoEaoDMF+oNKsNhQ9+H1FtYek2QG4qpGkw7aVMgD22/ZFmhWYyH3wZJBFSYJi94z62b/7oddO4vL4pltYCxywC/WM9FlQo6r/PdUytSqZ7QkCDhDL5rwVcvnkoUZRA9R2F6ioYB+vO3InGm1AayVwIDAQAB",
+  "permissions": ["nativeMessaging"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.vercel.app/*",
+        "https://localhost/*",
+        "https://127.0.0.1/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

@@ -74,8 +74,12 @@ export default defineConfig({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
-    // Proxy for NMR API in web mode
+    // Proxy for API in web mode
     proxy: {
+      '/api/cdxml-to-cdx': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
       '/api/nmr-proxy': {
         target: 'https://www.nmrdb.org',
         changeOrigin: true,

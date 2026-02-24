@@ -11,6 +11,8 @@ import puppeteer from 'puppeteer';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { spawn } from 'child_process';
+import { existsSync } from 'fs';
 import OpenAI from 'openai';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -100,6 +102,37 @@ app.get('/nmr-proxy', async (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'nmr-proxy' });
+});
+
+/** CDXML → CDX (local dev). On Vercel, api/cdxml-to-cdx.py handles this. */
+app.post('/api/cdxml-to-cdx', async (req, res) => {
+  const { cdxml } = req.body || {};
+  if (!cdxml || typeof cdxml !== 'string') {
+    return res.status(400).json({ error: 'Missing or empty cdxml' });
+  }
+  const scriptPath = join(__dirname, '..', 'scripts', 'cdxml_to_cdx.py');
+  if (!existsSync(scriptPath)) {
+    return res.status(500).json({ error: 'cdxml_to_cdx.py not found' });
+  }
+  try {
+    const cdx = await new Promise((resolve, reject) => {
+      const py = spawn('python', [scriptPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+      py.stdin.write(cdxml.trim(), 'utf8');
+      py.stdin.end();
+      const chunks = [];
+      py.stdout.on('data', (c) => chunks.push(c));
+      py.stderr.on('data', (e) => console.warn('[cdxml-to-cdx]', e.toString()));
+      py.on('close', (code) => {
+        if (code === 0) resolve(Buffer.concat(chunks));
+        else reject(new Error('Conversion failed. Install: pip install cdx-mol'));
+      });
+    });
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'attachment; filename="structure.cdx"');
+    res.send(cdx);
+  } catch (e) {
+    res.status(500).json({ error: e?.message || 'CDXML conversion failed. Install: pip install cdx-mol' });
+  }
 });
 
 /** Debug: test OpenAI and return exact error on failure */

@@ -43,7 +43,7 @@ import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { exportAsMol, exportAsSdf, exportAsSmiles } from '@lib/export/structureExport';
 import { generateSDFFile } from '@lib/chemistry/sdf';
-import { getStructureMolfile, getStructureCdxBytes, getClipboardPngBlob } from '../../hooks/useCopyImageToClipboard';
+import { getStructureMolfile, getClipboardPngBlob } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
@@ -431,7 +431,72 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
     }
   }, [currentStructure, showCopyResult]);
 
+  // CDXML: ChemDraw-compatible text format – works in browser, paste into FindMolecule
+  const handleCopyCDXML = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher?.getCDXml) {
+      showCopyResult(false, 'CDXML', 'CDXML not available');
+      return;
+    }
+    try {
+      const cdxml = await ketcher.getCDXml();
+      if (!cdxml?.trim()) {
+        showCopyResult(false, 'CDXML', 'No structure to copy');
+        return;
+      }
+      const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+      if (isTauri) {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(cdxml);
+      } else {
+        await navigator.clipboard.writeText(cdxml);
+      }
+      showCopyResult(true, 'CDXML – paste into FindMolecule (Ctrl+V)');
+    } catch (e) {
+      showCopyResult(false, 'CDXML', (e as Error).message);
+    }
+  }, [ketcherRef, showCopyResult]);
+
+  const handleSaveCDXML = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher?.getCDXml) {
+      setSnackbarMessage('CDXML not available');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+      return;
+    }
+    try {
+      const cdxml = await ketcher.getCDXml();
+      if (!cdxml?.trim()) {
+        setSnackbarMessage('No structure to save');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
+      const blob = new Blob([cdxml], { type: 'chemical/x-cdxml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'structure.cdxml';
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportMenuAnchor(null);
+      setSnackbarMessage('CDXML saved – upload to FindMolecule');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (e) {
+      setSnackbarMessage((e as Error).message);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, [ketcherRef]);
+
   const handleCopyEMF = useCallback(async () => {
+    const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+    if (!isTauri) {
+      showCopyResult(false, 'EMF', 'EMF requires desktop app (npm run tauri dev)');
+      return;
+    }
     const ketcher = ketcherRef.current;
     if (!ketcher) {
       showCopyResult(false, 'EMF', 'No canvas');
@@ -443,61 +508,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
       return;
     }
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
+      const tauri = await import('@tauri-apps/api/core');
+      const invoke = tauri?.invoke;
+      if (typeof invoke !== 'function') {
+        showCopyResult(false, 'EMF', 'EMF copy requires the desktop app (run: npm run tauri dev)');
+        return;
+      }
       const pngBytes = new Uint8Array(await blob.arrayBuffer());
       await invoke('copy_png_as_emf', { pngBytes: Array.from(pngBytes) });
       showCopyResult(true, 'EMF');
     } catch (e) {
       showCopyResult(false, 'EMF', (e as Error).message);
-    }
-  }, [ketcherRef, showCopyResult]);
-
-  const handleCopyCDX = useCallback(async () => {
-    const ketcher = ketcherRef.current;
-    if (!ketcher) {
-      showCopyResult(false, 'CDX', 'No canvas');
-      return;
-    }
-    const cdxBytes = await getStructureCdxBytes(ketcher);
-    if (!cdxBytes || cdxBytes.length === 0) {
-      showCopyResult(false, 'CDX', 'No CDX data (Ketcher may not support CDX export)');
-      return;
-    }
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('copy_cdx_to_clipboard', { cdxBytes: Array.from(cdxBytes) });
-      showCopyResult(true, 'CDX');
-    } catch (e) {
-      showCopyResult(false, 'CDX', (e as Error).message);
-    }
-  }, [ketcherRef, showCopyResult]);
-
-  const handleCopyChemDrawStyle = useCallback(async () => {
-    const ketcher = ketcherRef.current;
-    if (!ketcher) {
-      showCopyResult(false, 'ChemDraw-style', 'No canvas');
-      return;
-    }
-    const [blob, mol, cdxBytes] = await Promise.all([
-      getClipboardPngBlob(ketcher),
-      getStructureMolfile(ketcher),
-      getStructureCdxBytes(ketcher),
-    ]);
-    if (!blob) {
-      showCopyResult(false, 'ChemDraw-style', 'Could not generate image');
-      return;
-    }
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const pngBytes = new Uint8Array(await blob.arrayBuffer());
-      await invoke('copy_chemdraw_style', {
-        pngBytes: Array.from(pngBytes),
-        molText: mol?.trim() ?? '',
-        cdxBytes: cdxBytes ? Array.from(cdxBytes) : null,
-      });
-      showCopyResult(true, 'EMF+MOL+CDX (ChemDraw-style)');
-    } catch (e) {
-      showCopyResult(false, 'ChemDraw-style', (e as Error).message);
     }
   }, [ketcherRef, showCopyResult]);
 
@@ -1456,11 +1477,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName, themeMode = 'ligh
                         <MenuItem onClick={() => handleExport('sdf')}>SDF</MenuItem>
                         <MenuItem onClick={() => handleExport('smiles')}>SMILES</MenuItem>
                         <Divider />
+                        <MenuItem onClick={handleCopyCDXML}>Copy CDXML (FindMolecule) – works in browser</MenuItem>
+                        <MenuItem onClick={handleSaveCDXML}>Save CDXML – upload to FindMolecule</MenuItem>
                         <MenuItem onClick={handleCopyMOL}>Copy MOL (FindMolecule)</MenuItem>
                         <MenuItem onClick={handleCopySDF}>Copy SDF (FindMolecule)</MenuItem>
-                        <MenuItem onClick={handleCopyEMF}>Copy EMF (FindMolecule)</MenuItem>
-                        <MenuItem onClick={handleCopyCDX}>Copy CDX (FindMolecule)</MenuItem>
-                        <MenuItem onClick={handleCopyChemDrawStyle}>Copy ChemDraw-style (EMF+MOL+CDX)</MenuItem>
+                        <MenuItem onClick={handleCopyEMF}>Copy EMF (desktop app only)</MenuItem>
                       </Menu>
                       <Tooltip title="Biopolymer">
                         <Button

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="/GLC_icon.png" />
+  <title>FindMolecule Setup – GL-ChemDraw</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Outfit', -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 1rem;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 1rem 0;
+      color: #1976d2;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.2rem;
+      background: #1976d2;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #1565c0; }
+    .btn-secondary {
+      background: #64748b;
+      margin-left: 0.5rem;
+    }
+    .btn-secondary:hover { background: #475569; }
+    ol { margin: 0; padding-left: 1.25rem; }
+    li { margin-bottom: 0.5rem; }
+    .note {
+      background: #f1f5f9;
+      border-left: 4px solid #1976d2;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    .back { margin-bottom: 1.5rem; }
+    .back a {
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back a:hover { color: #1976d2; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="back"><a href="/">← Back to GL-ChemDraw</a></div>
+    <h1>Copy to FindMolecule ELN</h1>
+    <p class="subtitle">Set up the Chrome extension and native host to paste structures from GL-ChemDraw into FindMolecule.</p>
+
+    <div class="card">
+      <h2>1. Download the Chrome extension</h2>
+      <p>This is the <strong>GL-ChemDraw Clipboard for FindMolecule</strong> extension. It runs in Chrome and forwards structures to the Windows clipboard.</p>
+      <a href="/downloads/glchemdraw-clipboard-extension.zip" class="btn" download>Download extension (.zip)</a>
+    </div>
+
+    <div class="card">
+      <h2>2. Download the native host</h2>
+      <p>This small program runs on your PC and puts the structure on the Windows clipboard in ChemDraw format so FindMolecule can paste it.</p>
+      <a href="/downloads/glchemdraw-native-host.zip" class="btn" download>Download native host (.zip)</a>
+    </div>
+
+    <div class="card">
+      <h2>3. Install both</h2>
+      <ol>
+        <li><strong>Native host:</strong> Extract the zip, open PowerShell in that folder, run <code>.\install.ps1 -User</code>. (Requires Python 3 with <code>pywin32</code> and <code>cdx-mol</code> – the script installs them if needed.)</li>
+        <li><strong>Extension:</strong> Extract the zip. In Chrome, go to <code>chrome://extensions</code>, turn on Developer mode, click <strong>Load unpacked</strong>, and select the extracted folder.</li>
+      </ol>
+      <div class="note">
+        <strong>Requirements:</strong> Windows, Chrome (or Chromium), Python 3. The native host uses the Windows clipboard.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. Use it</h2>
+      <p>In GL-ChemDraw: <strong>Export → Copy for FindMolecule</strong>. Then paste (Ctrl+V) in FindMolecule.</p>
+    </div>
+  </div>
+</body>
+</html>

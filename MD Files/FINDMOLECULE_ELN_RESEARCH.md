@@ -10,8 +10,9 @@
 - FindMolecule FAQ: "Can I copy/paste from/to Chemdraw? Yes, you will simply need to make a small software installation." – no format details.
 - ChemDraw uses "ChemDraw Interchange Format" (binary CDX) on Windows clipboard – standard registered format.
 - Browser Clipboard API cannot set custom formats like "ChemDraw Interchange Format" – only text/plain, image/png, etc.
-- CDXML as text/plain on clipboard: **not confirmed** to work for FindMolecule paste. User testing reported it does not work.
-- FindMolecule supports CDXML **file import** (upload) – not the same as clipboard paste.
+- CDXML as text/plain on clipboard: **does not work** for FindMolecule paste. User tested.
+- **Send to FindMolecule (URL with ?smiles=): DOES NOT WORK.** Redirects to login; structure never loads. Never suggest this.
+- FindMolecule has **no file upload** for structures (user verified). Copy/paste only.
 
 ---
 

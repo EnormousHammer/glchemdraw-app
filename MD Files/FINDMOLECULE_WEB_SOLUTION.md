@@ -24,7 +24,7 @@
 ### FindMolecule
 
 1. **ChemDraw paste:** FAQ says "small software installation" – format not documented
-2. **File import:** FindMolecule supports **CDXML**, SDF, CSV, TSV
+2. **File import:** FindMolecule ELN has **no file upload** for structures (user verified). Copy/paste only.
 3. **ChemDraw workflow:** ChemDraw users copy as **CDXML Text** (Ctrl+D or Edit → Copy As → CDXML Text) and paste into compatible apps
 
 ### CDXML
@@ -65,20 +65,9 @@ GL-ChemDraw (Tauri desktop on Windows) implements this:
 
 ---
 
-## Solution: Seamless URL (No Clipboard)
+## ⚠️ DO NOT RECOMMEND: Send to FindMolecule (URL) – DOES NOT WORK
 
-### Option 0: Send to FindMolecule (Recommended)
-
-FindMolecule supports SMILES via URL. GL-ChemDraw opens:
-
-```
-https://app.findmolecule.com/labBook/index?smiles=CCO
-```
-
-(replace `CCO` with the actual SMILES of the drawn molecule)
-
-**Pros:** One-click, no clipboard, no browser security issues  
-**Cons:** None
+**VERIFIED BROKEN (user tested multiple times):** The URL `https://app.findmolecule.com/labBook/index?smiles=CCO` does **NOT** open FindMolecule with the structure. It redirects to login and the structure never loads. **Never suggest this as a working option.**
 
 ---
 
@@ -93,14 +82,9 @@ https://app.findmolecule.com/labBook/index?smiles=CCO
 **Pros:** One-click, no file save  
 **Cons:** Depends on FindMolecule accepting CDXML paste (likely, since they support ChemDraw)
 
-### Option B: Download CDXML File
+### Option B: Download CDXML File – NOT AVAILABLE
 
-1. Use `ketcher.getCDXml()` to get CDXML string
-2. Trigger download of `.cdxml` file
-3. User uploads file to FindMolecule
-
-**Pros:** FindMolecule explicitly supports CDXML file import – **guaranteed to work**  
-**Cons:** Two steps (download + upload)
+FindMolecule ELN has **no file upload** for structures. User verified. Do not suggest.
 
 ---
 
@@ -109,6 +93,6 @@ https://app.findmolecule.com/labBook/index?smiles=CCO
 Add to Export menu:
 
 1. **Copy CDXML (FindMolecule)** – clipboard, browser-only
-2. **Save CDXML** – download file for upload to FindMolecule
+2. **Save CDXML** – NOT for FindMolecule (no upload). For other tools only.
 
 Both use Ketcher’s `getCDXml()` – no native APIs, no Tauri required.

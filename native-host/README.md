@@ -2,6 +2,9 @@
 
 Puts CDX (ChemDraw binary) on the Windows clipboard in "ChemDraw Interchange Format" for pasting into FindMolecule ELN.
 
+**Uses cdx-mol** to convert Ketcher CDXML → ChemDraw-spec CDX (ClipboardWin compatible).  
+Install: `pip install cdx-mol` (install.ps1 does this automatically).
+
 ## Install
 
 ```powershell

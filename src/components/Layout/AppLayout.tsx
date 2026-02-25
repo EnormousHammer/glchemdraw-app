@@ -451,15 +451,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       return;
     }
 
-    // Browser: get CDX + CDXML from Ketcher, send to extension. Native host puts both on clipboard (ChemDraw-style).
+    // Browser: get CDXML (required) + Ketcher CDX (optional fallback), send to extension.
+    // Native host uses cdx-mol to convert CDXML → ChemDraw CDX (ClipboardWin compatible).
     try {
-      const cdxBytes = await getStructureCdxBytes(ketcher);
       const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
+      const cdxBytes = await getStructureCdxBytes(ketcher);
+      let cdxBase64: string | null = null;
       if (cdxBytes?.length) {
         let b64 = '';
         for (let i = 0; i < cdxBytes.length; i++) b64 += String.fromCharCode(cdxBytes[i]);
-        const cdxBase64 = btoa(b64);
+        cdxBase64 = btoa(b64);
+      }
 
+      if (cdxml?.trim()) {
         const done = new Promise<{ success: boolean; error?: string }>((resolve) => {
           let resolved = false;
           const handler = (e: Event) => {
@@ -469,7 +473,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
             resolve((e as CustomEvent).detail || { success: false });
           };
           document.addEventListener('glchemdraw-copy-cdx-done', handler);
-          document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', { detail: { cdxBase64, cdxml: cdxml?.trim() || null } }));
+          document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', {
+            detail: { cdxBase64, cdxml: cdxml.trim() },
+          }));
           setTimeout(() => {
             if (resolved) return;
             resolved = true;
@@ -487,9 +493,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         }
       }
 
-      // Fallback: CDXML text. FindMolecule paste needs binary CDX (extension + native host).
+      // Fallback: CDXML text (no extension). Install extension + cdx-mol for best results.
       // CDXML paste may not work; use Save CDXML + upload, or Send to FindMolecule (URL).
-      const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
       if (cdxml?.trim()) {
         await navigator.clipboard.writeText(cdxml.trim());
         setSnackbarMessage('Copied CDXML. For FindMolecule: install extension, or use Save CDXML + upload, or Send to FindMolecule');
@@ -1458,6 +1463,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Advanced Export (PNG/SVG/PDF/DPI)</MenuItem>
                         <Divider />
                         <MenuItem onClick={handleCopyForFindMolecule}>Copy for FindMolecule (paste into ELN)</MenuItem>
+                        <MenuItem component="a" href="/findmolecule-setup" target="_blank" rel="noopener noreferrer" onClick={() => setExportMenuAnchor(null)} sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>Setup: Install extension & native host</MenuItem>
                         <MenuItem onClick={handleSendToFindMolecule}>Send to FindMolecule (opens with structure)</MenuItem>
                         <MenuItem onClick={handleSaveCDXML}>Save CDXML (FindMolecule)</MenuItem>
                       </Menu>

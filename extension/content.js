@@ -7,10 +7,10 @@
 
   document.addEventListener('glchemdraw-copy-cdx', async function (ev) {
     const detail = ev.detail || {};
-    const cdxBase64 = detail.cdxBase64;
+    const cdxBase64 = detail.cdxBase64 || null;
     const cdxml = detail.cdxml || null;
-    if (!cdxBase64 || typeof cdxBase64 !== 'string') {
-      dispatchDone(false, 'Missing CDX data');
+    if (!cdxml && !cdxBase64) {
+      dispatchDone(false, 'Missing CDXML or CDX data');
       return;
     }
 

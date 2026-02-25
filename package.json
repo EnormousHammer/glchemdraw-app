@@ -9,6 +9,8 @@
     "dev:vite": "vite",
     "dev:proxy": "node server/nmr-proxy.js",
     "dev:all": "concurrently \"npm run dev:vite\" \"npm run dev:proxy\"",
+    "create-downloads": "node scripts/create-downloads.cjs",
+    "prebuild": "npm run create-downloads",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",

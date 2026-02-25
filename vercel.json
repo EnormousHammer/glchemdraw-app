@@ -19,6 +19,7 @@
     {"source": "/api/nmr-proxy", "destination": "/api/nmr-proxy.js"},
     {"source": "/api/ocsr", "destination": "/api/ocsr.js"},
     {"source": "/api/cdxml-to-cdx", "destination": "/api/cdxml-to-cdx.py"},
+    {"source": "/findmolecule-setup", "destination": "/findmolecule-setup.html"},
     {"source": "/((?!api).*)", "destination": "/index.html"}
   ]
 }

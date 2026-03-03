@@ -725,6 +725,49 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
+  // Ctrl+S → open our Export dialog instead of Ketcher's built-in save overlay
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey && !e.shiftKey && !e.altKey && e.key?.toLowerCase() === 's')) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      e.preventDefault();
+      e.stopPropagation();
+      setShowAdvancedExportDialog(true);
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, []);
+
+  // Intercept Ketcher's built-in Save/Open dialog (triggered via hamburger menu).
+  // When detected, close it immediately and open our own Export dialog instead.
+  React.useEffect(() => {
+    const closeKetcherFileDialog = () => {
+      document.querySelectorAll('.bp6-dialog, [role="dialog"]').forEach((el) => {
+        const html = el.innerHTML || '';
+        const title = (el.querySelector('.bp6-dialog-header-title, [class*="dialog-title"], h2, h3')?.textContent || '').toLowerCase();
+        const isSaveOrOpen =
+          title.includes('save structure') ||
+          title.includes('open structure') ||
+          title.includes('save file') ||
+          html.includes('saveButton') ||
+          (html.includes('mol') && html.includes('smiles') && html.includes('ket') && html.includes('textarea'));
+        if (!isSaveOrOpen) return;
+        // Don't close our own dialogs
+        if ((el as HTMLElement).closest?.('[data-glchemdraw-dialog]')) return;
+        const overlay = el.closest('.bp6-overlay') as HTMLElement | null;
+        // Click the backdrop/close button to dismiss Ketcher's dialog
+        const closeBtn = el.querySelector('[aria-label="Close"], .bp6-dialog-close-button') as HTMLElement | null;
+        try { closeBtn?.click(); } catch (_) { /* ignore */ }
+        try { (overlay?.querySelector('.bp6-overlay-backdrop') as HTMLElement)?.click?.(); } catch (_) { /* ignore */ }
+        setShowAdvancedExportDialog(true);
+      });
+    };
+    const observer = new MutationObserver(closeKetcherFileDialog);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   // Load stereochemistry info when structure changes (RDKit)
   React.useEffect(() => {
     if (!currentStructure?.smiles || currentStructure.smiles.length < 2) {
@@ -1456,6 +1499,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onShortcutsClick={() => setShowShortcutsDialog(true)}
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
+          onAdvancedExport={() => setShowAdvancedExportDialog(true)}
+          onDocumentSettings={() => setShowDocumentSettings(true)}
         />
 
         {/* Main Content - Conditional View */}

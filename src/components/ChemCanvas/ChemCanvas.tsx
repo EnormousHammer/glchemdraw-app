@@ -81,11 +81,20 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
-  // Block Shift+F (Functional Groups) - feature creates disconnected structures until Ketcher fix
+  // Block Shift+F (Functional Groups) - feature creates disconnected structures until Ketcher fix.
+  // Exception: do NOT block when the user is actively typing in a text element (Ketcher text tool,
+  // atom label input, any contenteditable) so that capital letters like "F" (fluorine, THF…) work.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.shiftKey && (e.key === 'F' || e.key === 'f')) {
         const target = e.target as HTMLElement;
+        // Allow typing capital F inside any text-editing context
+        if (
+          target?.tagName === 'INPUT' ||
+          target?.tagName === 'TEXTAREA' ||
+          target?.isContentEditable ||
+          target?.closest?.('[contenteditable]')
+        ) return;
         if (target?.closest?.('.Ketcher-root') || target?.closest?.('.Ketcher-polymer-editor-root')) {
           e.preventDefault();
           e.stopPropagation();

@@ -144,29 +144,54 @@ const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </Typography>
 );
 
+// SmallInput uses local string state so the user can type freely without
+// the field being overwritten on every keystroke (the old controlled-input
+// pattern caused jitter: every character → parseFloat → toFixed → overwrite).
+// The parent's formatted value is only synced in when the field is NOT focused.
+// Parsing + state update only happen on blur or Enter.
 const SmallInput: React.FC<{
   value: string;
   onChange?: (v: string) => void;
   disabled?: boolean;
-}> = ({ value, onChange, disabled }) => (
-  <TextField
-    size="small"
-    value={value}
-    disabled={disabled}
-    onChange={(e) => onChange?.(e.target.value)}
-    inputProps={{ style: { textAlign: 'right', fontSize: '0.82rem', padding: '4px 8px' } }}
-    sx={{
-      width: 90,
-      '& .MuiOutlinedInput-root': {
-        bgcolor: disabled ? '#e4e4e4' : 'white',
-        '& fieldset': { borderColor: '#bbb' },
-        '&:hover fieldset': { borderColor: '#888' },
-        '&.Mui-focused fieldset': { borderColor: '#1976d2' },
-      },
-      '& .Mui-disabled': { bgcolor: '#e4e4e4', color: '#777' },
-    }}
-  />
-);
+}> = ({ value, onChange, disabled }) => {
+  const [local, setLocal] = React.useState(value);
+  const [focused, setFocused] = React.useState(false);
+
+  // Sync from parent only while the field is idle (not being edited)
+  React.useEffect(() => {
+    if (!focused) setLocal(value);
+  }, [value, focused]);
+
+  const commit = () => {
+    onChange?.(local);
+  };
+
+  return (
+    <TextField
+      size="small"
+      value={local}
+      disabled={disabled}
+      onChange={(e) => setLocal(e.target.value)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => { setFocused(false); commit(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') { commit(); (e.target as HTMLInputElement).blur(); }
+        if (e.key === 'Escape') { setLocal(value); (e.target as HTMLInputElement).blur(); }
+      }}
+      inputProps={{ style: { textAlign: 'right', fontSize: '0.85rem', padding: '5px 8px' } }}
+      sx={{
+        width: 108,
+        '& .MuiOutlinedInput-root': {
+          bgcolor: disabled ? '#e4e4e4' : 'white',
+          '& fieldset': { borderColor: '#bbb' },
+          '&:hover fieldset': { borderColor: '#888' },
+          '&.Mui-focused fieldset': { borderColor: '#1976d2' },
+        },
+        '& .Mui-disabled': { bgcolor: '#e4e4e4', color: '#777' },
+      }}
+    />
+  );
+};
 
 const UnitText: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Typography variant="body2" sx={{ color: '#555', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
@@ -206,7 +231,12 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
 
   const handleNum = (field: keyof DrawingSettings, raw: string) => {
     const num = parseFloat(raw);
-    setSettings((prev) => ({ ...prev, [field]: isNaN(num) ? prev[field] : num }));
+    if (isNaN(num)) return; // keep previous value if input is blank/unparseable
+    // Clamp: bond spacing is a percentage (1–100), all dimensions must be > 0
+    const clamped = field === 'bondSpacing'
+      ? Math.max(1, Math.min(100, num))
+      : Math.max(0.0001, num);
+    setSettings((prev) => ({ ...prev, [field]: clamped }));
   };
 
   const handleCheck = (field: keyof DrawingSettings) => {

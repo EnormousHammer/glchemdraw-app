@@ -144,54 +144,39 @@ const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </Typography>
 );
 
-// SmallInput uses local string state so the user can type freely without
-// the field being overwritten on every keystroke (the old controlled-input
-// pattern caused jitter: every character → parseFloat → toFixed → overwrite).
-// The parent's formatted value is only synced in when the field is NOT focused.
-// Parsing + state update only happen on blur or Enter.
+// Pure presentational input — no internal hooks, no effects.
+// All string state lives in the parent (DocumentSettings.drafts) so there are
+// no React timing issues between focus, blur, and state sync.
 const SmallInput: React.FC<{
   value: string;
-  onChange?: (v: string) => void;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+  onRevert: () => void;
   disabled?: boolean;
-}> = ({ value, onChange, disabled }) => {
-  const [local, setLocal] = React.useState(value);
-  const [focused, setFocused] = React.useState(false);
-
-  // Sync from parent only while the field is idle (not being edited)
-  React.useEffect(() => {
-    if (!focused) setLocal(value);
-  }, [value, focused]);
-
-  const commit = () => {
-    onChange?.(local);
-  };
-
-  return (
-    <TextField
-      size="small"
-      value={local}
-      disabled={disabled}
-      onChange={(e) => setLocal(e.target.value)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => { setFocused(false); commit(); }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') { commit(); (e.target as HTMLInputElement).blur(); }
-        if (e.key === 'Escape') { setLocal(value); (e.target as HTMLInputElement).blur(); }
-      }}
-      inputProps={{ style: { textAlign: 'right', fontSize: '0.85rem', padding: '5px 8px' } }}
-      sx={{
-        width: 108,
-        '& .MuiOutlinedInput-root': {
-          bgcolor: disabled ? '#e4e4e4' : 'white',
-          '& fieldset': { borderColor: '#bbb' },
-          '&:hover fieldset': { borderColor: '#888' },
-          '&.Mui-focused fieldset': { borderColor: '#1976d2' },
-        },
-        '& .Mui-disabled': { bgcolor: '#e4e4e4', color: '#777' },
-      }}
-    />
-  );
-};
+}> = ({ value, onChange, onCommit, onRevert, disabled }) => (
+  <TextField
+    size="small"
+    value={value}
+    disabled={disabled}
+    onChange={(e) => onChange(e.target.value)}
+    onBlur={onCommit}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter') { onCommit(); (e.target as HTMLInputElement).blur(); }
+      if (e.key === 'Escape') { onRevert(); (e.target as HTMLInputElement).blur(); }
+    }}
+    inputProps={{ style: { textAlign: 'right', fontSize: '0.85rem', padding: '5px 10px' } }}
+    sx={{
+      width: 112,
+      '& .MuiOutlinedInput-root': {
+        bgcolor: disabled ? '#e4e4e4' : 'white',
+        '& fieldset': { borderColor: '#bbb' },
+        '&:hover fieldset': { borderColor: '#888' },
+        '&.Mui-focused fieldset': { borderColor: '#1976d2' },
+      },
+      '& .Mui-disabled': { bgcolor: '#e4e4e4', color: '#777' },
+    }}
+  />
+);
 
 const UnitText: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Typography variant="body2" sx={{ color: '#555', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
@@ -207,37 +192,79 @@ interface DocumentSettingsProps {
   ketcherInstance: any | null;
 }
 
+// Numeric fields that have draft strings
+type DraftKey = 'bondLength' | 'bondSpacing' | 'boldWidth' | 'lineWidth' | 'marginWidth' | 'hashSpacing';
+type Drafts = Record<DraftKey, string>;
+
+function makeDrafts(s: DrawingSettings): Drafts {
+  return {
+    bondLength:  fmt(s.bondLength,  s.units),
+    bondSpacing: s.bondSpacing.toFixed(0),
+    boldWidth:   fmt(s.boldWidth,   s.units),
+    lineWidth:   fmt(s.lineWidth,   s.units),
+    marginWidth: fmt(s.marginWidth, s.units),
+    hashSpacing: fmt(s.hashSpacing, s.units),
+  };
+}
+
 export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
   open,
   onClose,
   ketcherInstance,
 }) => {
   const [settings, setSettings] = useState<DrawingSettings>(DEFAULTS);
+  // drafts hold exactly what the user typed — only parsed on commit (blur / Enter)
+  const [drafts, setDrafts] = useState<Drafts>(makeDrafts(DEFAULTS));
 
   // Load persisted settings when dialog opens
   useEffect(() => {
     if (!open) return;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      setSettings(stored ? (JSON.parse(stored) as DrawingSettings) : DEFAULTS);
+      const s = stored ? (JSON.parse(stored) as DrawingSettings) : DEFAULTS;
+      setSettings(s);
+      setDrafts(makeDrafts(s));
     } catch {
       setSettings(DEFAULTS);
+      setDrafts(makeDrafts(DEFAULTS));
     }
   }, [open]);
 
   const handleUnitChange = (newUnits: Units) => {
-    setSettings((prev) => convertDimensions(prev, newUnits));
+    const next = convertDimensions(settings, newUnits);
+    setSettings(next);
+    setDrafts(makeDrafts(next));
   };
 
-  const handleNum = (field: keyof DrawingSettings, raw: string) => {
+  /** Called when a numeric draft field should be committed to settings. */
+  const commitField = (field: DraftKey) => {
+    const raw = drafts[field];
     const num = parseFloat(raw);
-    if (isNaN(num)) return; // keep previous value if input is blank/unparseable
-    // Clamp: bond spacing is a percentage (1–100), all dimensions must be > 0
+    if (isNaN(num)) {
+      // revert display to current value without touching settings
+      setDrafts((prev) => ({ ...prev, [field]: makeDrafts(settings)[field] }));
+      return;
+    }
     const clamped = field === 'bondSpacing'
       ? Math.max(1, Math.min(100, num))
       : Math.max(0.0001, num);
+    const formatted = field === 'bondSpacing' ? clamped.toFixed(0) : fmt(clamped, settings.units);
     setSettings((prev) => ({ ...prev, [field]: clamped }));
+    setDrafts((prev) => ({ ...prev, [field]: formatted }));
   };
+
+  /** Revert a draft to the current committed value (Escape key). */
+  const revertField = (field: DraftKey) => {
+    setDrafts((prev) => ({ ...prev, [field]: makeDrafts(settings)[field] }));
+  };
+
+  /** Shorthand: wire up a SmallInput for a numeric field. */
+  const numProps = (field: DraftKey) => ({
+    value: drafts[field],
+    onChange: (v: string) => setDrafts((prev) => ({ ...prev, [field]: v })),
+    onCommit: () => commitField(field),
+    onRevert: () => revertField(field),
+  });
 
   const handleCheck = (field: keyof DrawingSettings) => {
     setSettings((prev) => ({ ...prev, [field]: !prev[field] }));
@@ -266,7 +293,9 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
   };
 
   const handleReset = () => {
-    setSettings(convertDimensions({ ...CHEMDRAW_DEFAULTS_IN, units: 'inches' }, settings.units));
+    const next = convertDimensions({ ...CHEMDRAW_DEFAULTS_IN, units: 'inches' }, settings.units);
+    setSettings(next);
+    setDrafts(makeDrafts(next));
   };
 
   // Calculated absolute bond spacing (read-only display)
@@ -357,7 +386,7 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           <Box>
             <FieldLabel>Chain Angle:</FieldLabel>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SmallInput value="120" disabled />
+              <SmallInput value="120" disabled onChange={() => {}} onCommit={() => {}} onRevert={() => {}} />
               <UnitText>degrees</UnitText>
             </Box>
           </Box>
@@ -366,10 +395,7 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           <Box>
             <FieldLabel>Bond Spacing:</FieldLabel>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SmallInput
-                value={settings.bondSpacing.toFixed(0)}
-                onChange={(v) => handleNum('bondSpacing', v)}
-              />
+              <SmallInput {...numProps('bondSpacing')} />
               <Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <Box
@@ -411,7 +437,7 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           <Grid size={6}>
             <FieldLabel>Fixed Length:</FieldLabel>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SmallInput value={fmt(settings.bondLength, settings.units)} onChange={(v) => handleNum('bondLength', v)} />
+              <SmallInput {...numProps('bondLength')} />
               <UnitText>{unitLabel}</UnitText>
             </Box>
           </Grid>
@@ -419,7 +445,7 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           <Grid size={6}>
             <FieldLabel>Line Width:</FieldLabel>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SmallInput value={fmt(settings.lineWidth, settings.units)} onChange={(v) => handleNum('lineWidth', v)} />
+              <SmallInput {...numProps('lineWidth')} />
               <UnitText>{unitLabel}</UnitText>
             </Box>
           </Grid>
@@ -427,7 +453,7 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           <Grid size={6}>
             <FieldLabel>Bold Width:</FieldLabel>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SmallInput value={fmt(settings.boldWidth, settings.units)} onChange={(v) => handleNum('boldWidth', v)} />
+              <SmallInput {...numProps('boldWidth')} />
               <UnitText>{unitLabel}</UnitText>
             </Box>
           </Grid>
@@ -435,7 +461,7 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           <Grid size={6}>
             <FieldLabel>Hash Spacing:</FieldLabel>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SmallInput value={fmt(settings.hashSpacing, settings.units)} onChange={(v) => handleNum('hashSpacing', v)} />
+              <SmallInput {...numProps('hashSpacing')} />
               <UnitText>{unitLabel}</UnitText>
             </Box>
           </Grid>
@@ -443,7 +469,7 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           <Grid size={6}>
             <FieldLabel>Margin Width:</FieldLabel>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SmallInput value={fmt(settings.marginWidth, settings.units)} onChange={(v) => handleNum('marginWidth', v)} />
+              <SmallInput {...numProps('marginWidth')} />
               <UnitText>{unitLabel}</UnitText>
             </Box>
           </Grid>

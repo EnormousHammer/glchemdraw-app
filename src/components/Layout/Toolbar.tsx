@@ -30,6 +30,7 @@ import {
   Timeline as SpectraIcon,
   SelectAll as SelectAllIcon,
   ArrowForward as ArrowForwardIcon,
+  Tune as TuneIcon,
 } from '@mui/icons-material';
 
 interface AppToolbarProps {
@@ -48,6 +49,7 @@ interface AppToolbarProps {
   onShortcutsClick?: () => void;
   onReactionsClick?: () => void;
   onFaqClick?: () => void;
+  onDocumentSettings?: () => void;
   rightContent?: React.ReactNode;
 }
 
@@ -67,6 +69,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onShortcutsClick,
   onReactionsClick,
   onFaqClick,
+  onDocumentSettings,
   rightContent,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -306,6 +309,69 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
               }}
             />
           </Tooltip>
+        )}
+
+        <Box sx={{ width: 8 }} />
+
+        {/* Document Settings */}
+        {onDocumentSettings && (
+          <Tooltip title="Document drawing settings" arrow placement="bottom">
+            <Chip
+              icon={<TuneIcon sx={{ fontSize: 14, color: '#0f172a' }} />}
+              label="Drawing"
+              size="small"
+              variant="outlined"
+              onClick={onDocumentSettings}
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                height: 26,
+                bgcolor: 'white !important',
+                borderColor: 'rgba(255,255,255,0.4)',
+                color: '#0f172a !important',
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: 'white !important',
+                  borderColor: 'rgba(255,255,255,0.7)',
+                  color: '#0f172a !important',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.5)',
+                  '& .MuiChip-icon': { color: '#0f172a !important' }
+                }
+              }}
+            />
+          </Tooltip>
+        )}
+
+        {/* Export */}
+        {onAdvancedExport && (
+          <>
+            <Box sx={{ width: 8 }} />
+            <Tooltip title="Export as PNG, SVG, PDF, MOL, SDF, SMILES…" arrow placement="bottom">
+              <Chip
+                icon={<ExportIcon sx={{ fontSize: 14, color: 'white' }} />}
+                label="Export"
+                size="small"
+                variant="outlined"
+                onClick={onAdvancedExport}
+                sx={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  height: 26,
+                  bgcolor: '#1d6fa4 !important',
+                  borderColor: '#2196f3',
+                  color: 'white !important',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    bgcolor: '#1565c0 !important',
+                    borderColor: '#90caf9',
+                    color: 'white !important',
+                    boxShadow: '0 0 0 1px rgba(33,150,243,0.5)',
+                    '& .MuiChip-icon': { color: 'white !important' }
+                  }
+                }}
+              />
+            </Tooltip>
+          </>
         )}
 
         <Box sx={{ width: 8 }} />

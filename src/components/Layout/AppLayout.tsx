@@ -41,7 +41,7 @@ import ChemCanvas from '../ChemCanvas/ChemCanvas';
 import { BondTypeBar } from '../BondTypeBar';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
-import { getStructureCdxBytes } from '../../hooks/useCopyImageToClipboard';
+import { getStructureCdxBytes, getStructureMolfile, getClipboardPngBlob } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
@@ -50,6 +50,7 @@ import { FunctionalGroupDialog } from '../FunctionalGroup/FunctionalGroupDialog'
 import { TemplateLibraryDialog } from '../TemplateLibrary';
 import { FAQDialog } from '../FAQ';
 import { AccessibilityMenu } from '../AccessibilityMenu';
+import { DocumentSettings } from '../DocumentSettings';
 import { AdvancedExport, type ExportDownloadResult } from '../AdvancedExport/AdvancedExport';
 import { AIIntegration } from '../AIIntegration';
 import { performAdvancedExport, type AdvancedExportOptions } from '@lib/export/advancedExport';
@@ -100,6 +101,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     cid: number;
     name: string;
     properties: any;
+    inchiKey?: string;
   } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -117,6 +119,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showTemplateLibraryDialog, setShowTemplateLibraryDialog] = useState(false);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [showAccessibilityMenu, setShowAccessibilityMenu] = useState(false);
+  const [showDocumentSettings, setShowDocumentSettings] = useState(false);
   const [showAdvancedExportDialog, setShowAdvancedExportDialog] = useState(false);
   const [showBondTypeBar, setShowBondTypeBar] = useState(false);
   const [canvasKey, setCanvasKey] = useState(0);
@@ -140,6 +143,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [aiPropertiesLoading, setAiPropertiesLoading] = useState(false);
   const [aiSafetySummary, setAiSafetySummary] = useState<string | null>(null);
   const [aiSafetyLoading, setAiSafetyLoading] = useState(false);
+  const [isEmbeddedInELN, setIsEmbeddedInELN] = useState(false);
   const [chemicalInfoWidth, setChemicalInfoWidth] = useState(() => {
     const saved = localStorage.getItem('glchemdraw_chemical_info_width');
     const n = saved ? parseInt(saved, 10) : 360;
@@ -170,6 +174,102 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const hasSelectionRef = useRef(false);
   const chemicalInfoScrollRef = useRef<HTMLDivElement>(null);
   const aiSectionRef = useRef<HTMLDivElement>(null);
+
+  // ELN iframe embedding: postMessage bridge for GL Chemtec ELN
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const inIframe = window !== window.parent;
+    setIsEmbeddedInELN(inIframe);
+    if (!inIframe) return;
+    const handler = async (e: MessageEvent) => {
+      const d = e.data;
+      if (d?.type === 'glchemdraw:setStructure' && (d.molfile || d.smiles)) {
+        try {
+          const ketcher = ketcherRef.current;
+          if (ketcher?.setMolecule) {
+            await ketcher.setMolecule(d.molfile || d.smiles);
+          }
+        } catch (err) {
+          console.error('[Glchemdraw] setStructure failed:', err);
+        }
+      }
+      if (d?.type === 'glchemdraw:requestStructure') {
+        try {
+          const ketcher = ketcherRef.current;
+          if (ketcher) {
+            let molfile = '';
+            let smiles = '';
+            try {
+              if (ketcher.getMolfile && ketcher.getSmiles) {
+                molfile = (await ketcher.getMolfile?.().catch(() => '')) || '';
+                smiles = (await ketcher.getSmiles?.().catch(() => '')) || '';
+              }
+              if (!molfile && !smiles && typeof ketcher.getRxn === 'function') {
+                molfile = (await ketcher.getRxn?.().catch(() => '')) || '';
+              }
+            } catch (_) {}
+            if (molfile || smiles) {
+              window.parent.postMessage({ type: 'glchemdraw:structure', molfile: molfile || '', smiles: smiles || '' }, '*');
+            } else {
+              window.parent.postMessage({ type: 'glchemdraw:structureError', error: 'No structure on canvas. Draw a molecule first.' }, '*');
+            }
+          } else {
+            window.parent.postMessage({ type: 'glchemdraw:structureError', error: 'Editor not ready.' }, '*');
+          }
+        } catch (err) {
+          window.parent.postMessage({ type: 'glchemdraw:structureError', error: String(err) }, '*');
+        }
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const handleInsertIntoELN = useCallback(async () => {
+    if (window.parent === window) return;
+    try {
+      const ketcher = ketcherRef.current;
+      if (ketcher) {
+        let mol = '';
+        let smi = '';
+        try {
+          if (ketcher.getMolfile && ketcher.getSmiles) {
+            const [molfile, smiles] = await Promise.all([
+              ketcher.getMolfile?.().catch(() => ''),
+              ketcher.getSmiles?.().catch(() => ''),
+            ]);
+            mol = (molfile || '').trim();
+            smi = (smiles || '').trim();
+          }
+          if (!mol && !smi && typeof ketcher.getRxn === 'function') {
+            const rxn = await ketcher.getRxn?.().catch(() => '');
+            mol = (rxn || '').trim();
+          }
+        } catch (_) {}
+        if (mol || smi) {
+          window.parent.postMessage({ type: 'glchemdraw:structure', molfile: mol, smiles: smi }, '*');
+          return;
+        }
+      }
+      const struct = currentStructure || fullCanvasRef.current;
+      if (struct?.molfile || struct?.smiles) {
+        const mol = (struct.molfile || '').trim();
+        const smi = (struct.smiles || '').trim();
+        if (mol || smi) {
+          window.parent.postMessage({
+            type: 'glchemdraw:structure',
+            molfile: mol,
+            smiles: smi,
+          }, '*');
+          return;
+        }
+      }
+      window.parent.postMessage({ type: 'glchemdraw:structureError', error: 'No structure on canvas. Draw a molecule first.' }, '*');
+    } catch (err) {
+      console.error('[Glchemdraw] Insert into ELN failed:', err);
+      window.parent.postMessage({ type: 'glchemdraw:structureError', error: String(err) }, '*');
+    }
+  }, [currentStructure]);
 
   // Catch Ketcher RNA/DNA mode AssertionError - suggest Biopolymer dialog instead
   useEffect(() => {
@@ -352,51 +452,30 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     setSnackbarOpen(true);
   }, []);
 
-  // Send to FindMolecule: open URL with SMILES – no clipboard, seamless
-  const handleSendToFindMolecule = useCallback(async () => {
-    const smiles = currentStructure?.smiles?.trim();
+  const handleCopyAsKET = useCallback(async () => {
     const ketcher = ketcherRef.current;
-    const smi = smiles || (ketcher ? await ketcher.getSmiles?.() : null);
-    if (!smi?.trim()) {
-      setSnackbarMessage('No structure to send');
-      setSnackbarSeverity('warning');
-      setSnackbarOpen(true);
-      setExportMenuAnchor(null);
-      return;
-    }
-    const url = `https://app.findmolecule.com/labBook/index?smiles=${encodeURIComponent(smi.trim())}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-    setExportMenuAnchor(null);
-    setSnackbarMessage('Opened FindMolecule with structure');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
-  }, [currentStructure?.smiles, ketcherRef]);
-
-  const handleSaveCDXML = useCallback(async () => {
-    const ketcher = ketcherRef.current;
-    if (!ketcher?.getCDXml) {
-      setSnackbarMessage('CDXML not available');
+    if (!ketcher?.getKet) {
+      setSnackbarMessage('KET not available');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
       return;
     }
     try {
-      const cdxml = await ketcher.getCDXml();
-      if (!cdxml?.trim()) {
-        setSnackbarMessage('No structure to save');
+      const ket = await ketcher.getKet();
+      if (!ket?.trim()) {
+        setSnackbarMessage('No structure to copy');
         setSnackbarSeverity('warning');
         setSnackbarOpen(true);
         return;
       }
-      const blob = new Blob([cdxml], { type: 'chemical/x-cdxml' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'structure.cdxml';
-      a.click();
-      URL.revokeObjectURL(url);
+      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+        await writeText(ket);
+      } else {
+        await navigator.clipboard.writeText(ket);
+      }
       setExportMenuAnchor(null);
-      setSnackbarMessage('CDXML saved – upload to FindMolecule');
+      setSnackbarMessage('Copied as KET (Ketcher format)');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (e) {
@@ -406,32 +485,103 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, [ketcherRef]);
 
-  // Copy CDX to clipboard (desktop Windows only). For browser: use extension.
+  const handleSaveCDX = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) {
+      setSnackbarMessage('No structure to save');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+      return;
+    }
+    try {
+      const cdxBytes = await getStructureCdxBytes(ketcher);
+      if (!cdxBytes?.length) {
+        setSnackbarMessage('Could not generate CDX. Try pip install cdx-mol for desktop.');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
+      const blob = new Blob([new Uint8Array(cdxBytes)], { type: 'application/octet-stream' });
+      const baseName = 'structure';
+      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        const { saveFile } = await import('@/lib/tauri/fileOperations');
+        const { writeFile } = await import('@tauri-apps/plugin-fs');
+        const path = await saveFile('Save CDX', `${baseName}.cdx`, [
+          { name: 'ChemDraw File', extensions: ['cdx'] },
+        ]);
+        if (path) {
+          await writeFile(path, cdxBytes);
+          setExportMenuAnchor(null);
+          setSnackbarMessage('CDX saved');
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
+        }
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${baseName}.cdx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportMenuAnchor(null);
+        setSnackbarMessage('CDX saved');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      }
+    } catch (e) {
+      setSnackbarMessage((e as Error).message);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, [ketcherRef]);
+
+  // Copy for FindMolecule (desktop): ChemDraw-style EMF+MOL+CDX or CDX only.
   const handleCopyCDX = useCallback(async () => {
     const ketcher = ketcherRef.current;
-    const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
-    if (!cdxml?.trim()) {
+    if (!ketcher) {
       showCopyResult(false, 'CDX', 'No structure to copy');
       return;
     }
+    const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
     const { invoke } = await import('@tauri-apps/api/core');
     try {
-      try {
-        await invoke('copy_cdx_from_cdxml', { cdxml: cdxml.trim() });
+      // 1. Best: cdx-mol converts CDXML → ChemDraw CDX (pip install cdx-mol)
+      if (cdxml?.trim()) {
+        try {
+          await invoke('copy_cdx_from_cdxml', { cdxml: cdxml.trim() });
+          showCopyResult(true, 'CDX');
+          return;
+        } catch (pyErr) {
+          console.warn('[Copy for FindMolecule] cdx-mol failed, trying Ketcher fallback:', pyErr);
+        }
+      }
+      // 2. Fallback: full ChemDraw-style (EMF + MOL + CDX) for FindMolecule paste
+      const pngBlob = await getClipboardPngBlob(ketcher);
+      const molfile = await getStructureMolfile(ketcher);
+      const cdxBytes = await getStructureCdxBytes(ketcher);
+      if (typeof window !== 'undefined' && '__TAURI__' in window) {
+        console.debug('[Copy CDX] pngBlob:', !!pngBlob, 'molfile:', !!molfile?.trim(), 'cdxBytes:', cdxBytes?.length ?? 0);
+      }
+      if (pngBlob && (molfile || cdxBytes?.length)) {
+        const pngBytes = new Uint8Array(await pngBlob.arrayBuffer());
+        await invoke('copy_chemdraw_style', {
+          pngBytes: Array.from(pngBytes),
+          molText: molfile?.trim() ?? '',
+          cdxBytes: cdxBytes ? Array.from(cdxBytes) : null,
+        });
         showCopyResult(true, 'CDX');
         return;
-      } catch (pyErr) {
-        console.warn('[Copy CDX] pycdxml failed, using Ketcher CDX:', pyErr);
       }
-      const cdxBytes = await getStructureCdxBytes(ketcher);
+      // 3. Last resort: CDX only (Ketcher binary)
       if (cdxBytes?.length) {
-        await invoke('copy_cdx_to_clipboard', { cdx_bytes: Array.from(cdxBytes) });
+        await invoke('copy_cdx_to_clipboard', { cdxBytes: Array.from(cdxBytes) });
         showCopyResult(true, 'CDX');
       } else {
-        showCopyResult(false, 'CDX', 'pip install cdx-mol');
+        showCopyResult(false, 'CDX', 'No structure. Draw a molecule first.');
       }
     } catch (e) {
-      showCopyResult(false, 'CDX', (e as Error).message);
+      const msg = (e as Error)?.message ?? String(e);
+      showCopyResult(false, 'CDX', msg || 'Unknown error');
     }
   }, [ketcherRef, showCopyResult]);
 
@@ -521,6 +671,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       molfile: struct.molfile,
       smiles: struct.smiles,
       name: recognizedCompound?.name || recognizedCompound?.properties?.IUPACName,
+      inchiKey: recognizedCompound?.inchiKey,
     });
     if (!result.success) throw new Error(result.error || 'Export failed');
     if (!result.downloadBlob || !result.downloadFilename) {
@@ -882,7 +1033,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setRecognizedCompound({
           cid: foundCompound.cid,
           name: foundCompound.name,
-          properties: foundCompound.properties
+          properties: foundCompound.properties,
+          inchiKey: foundCompound.properties?.InChIKey,
         });
         setAiProperties(null);
         setAiSafetySummary(null);
@@ -1016,7 +1168,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           setRecognizedCompound({
             cid: cid,
             name: properties.IUPACName || name,
-            properties: properties
+            properties: properties,
+            inchiKey: properties?.InChIKey,
           });
           setAiProperties(null);
           setAiSafetySummary(null);
@@ -1347,6 +1500,39 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       ketcherRef.current = instance;
                       const ev = (instance?.editor as any)?.events;
                       ev?.switchToMoleculesMode?.add?.(reapplyKetcherLayout);
+                      // Re-apply persisted drawing settings on each Ketcher init
+                      try {
+                        const stored = localStorage.getItem('glchemdraw_drawing_settings');
+                        if (stored && instance?.setSettings) {
+                          const s = JSON.parse(stored);
+                          const IN_TO_CM = 2.54, IN_TO_PT = 72;
+                          const toIn = (v: number, u: string) =>
+                            u === 'cm' ? v / IN_TO_CM : u === 'pt' ? v / IN_TO_PT : v;
+                          instance.setSettings({
+                            bondLength:               toIn(s.bondLength,   s.units) * IN_TO_CM,
+                            bondLengthUnit:           'cm',
+                            bondSpacing:              s.bondSpacing,
+                            bondThickness:            toIn(s.lineWidth,    s.units) * IN_TO_PT,
+                            bondThicknessUnit:        'pt',
+                            stereoBondWidth:          toIn(s.boldWidth,    s.units) * IN_TO_PT,
+                            stereoBondWidthUnit:      'pt',
+                            hashSpacing:              toIn(s.hashSpacing,  s.units) * IN_TO_PT,
+                            hashSpacingUnit:          'pt',
+                            reactionComponentMarginSize:     toIn(s.marginWidth, s.units) * IN_TO_PT,
+                            reactionComponentMarginSizeUnit: 'pt',
+                            showAtomIds:          s.showAtomNumbers,
+                            showStereoFlags:      s.showStereoFlags,
+                            atomColoring:         s.atomColoring,
+                            showValenceWarnings:  s.showValenceWarnings,
+                            aromaticCircle:       s.aromaticCircle,
+                            showCharge:           s.showCharge,
+                            showHydrogenLabels:   s.showHydrogenLabels ? 'on' : 'off',
+                            showBondIds:          s.showBondNumbers,
+                          });
+                        }
+                      } catch (e) {
+                        console.warn('[AppLayout] Could not restore drawing settings:', e);
+                      }
                     }}
                     onCopyImageSuccess={() => {
                       setSnackbarMessage('Structure copied to clipboard!');
@@ -1413,7 +1599,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     }}
                   >
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.85rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'text.secondary', minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Chemical Info</Typography>
-                    {recognizedCompound && !isSearching && (
+                    {isEmbeddedInELN && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={handleInsertIntoELN}
+                        sx={{ flexShrink: 0, fontSize: '0.7rem', py: 0.5, px: 1.5 }}
+                      >
+                        Insert into ELN
+                      </Button>
+                    )}
+                    {recognizedCompound && !isSearching && !isEmbeddedInELN && (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                         <Chip label="Identified" size="small" color="success" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 500 }} />
                         <IconButton size="small" onClick={handleCopyAll} sx={{ width: 28, height: 28, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
@@ -1460,13 +1656,34 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         </span>
                       </Tooltip>
                       <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                        <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Advanced Export (PNG/SVG/PDF/DPI)</MenuItem>
+                        <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Export as PNG / SVG / PDF / MOL / SDF…</MenuItem>
+                        <Divider />
+                        <MenuItem onClick={handleCopyAsKET}>Copy as KET</MenuItem>
+                        <MenuItem onClick={handleSaveCDX}>Save as CDX</MenuItem>
                         <Divider />
                         <MenuItem onClick={handleCopyForFindMolecule}>Copy for FindMolecule (paste into ELN)</MenuItem>
                         <MenuItem component="a" href="/findmolecule-setup" target="_blank" rel="noopener noreferrer" onClick={() => setExportMenuAnchor(null)} sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>Setup: Install extension & native host</MenuItem>
-                        <MenuItem onClick={handleSendToFindMolecule}>Send to FindMolecule (opens with structure)</MenuItem>
-                        <MenuItem onClick={handleSaveCDXML}>Save CDXML (FindMolecule)</MenuItem>
                       </Menu>
+                      <Tooltip title="Document drawing settings">
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => setShowDocumentSettings(true)}
+                          startIcon={<AutoFixHighIcon sx={{ fontSize: 15, opacity: 0.85 }} />}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            fontSize: '0.7rem',
+                            letterSpacing: '0.03em',
+                            color: 'text.secondary',
+                            minWidth: 0,
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            '&:hover': { bgcolor: 'action.hover', color: 'text.primary' },
+                          }}
+                        >Drawing</Button>
+                      </Tooltip>
                       <Tooltip title="Biopolymer">
                         <Button
                           size="small"
@@ -2780,6 +2997,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         <FAQDialog
           open={showFaqDialog}
           onClose={() => setShowFaqDialog(false)}
+        />
+
+        <DocumentSettings
+          open={showDocumentSettings}
+          onClose={() => setShowDocumentSettings(false)}
+          ketcherInstance={ketcherRef.current}
         />
 
         <AccessibilityMenu

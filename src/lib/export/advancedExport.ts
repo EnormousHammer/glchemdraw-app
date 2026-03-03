@@ -7,12 +7,14 @@ import { exportAsMol, exportAsSdf, exportAsSmiles } from './structureExport';
 import { isTauriDesktop } from '../tauri/detectPlatform';
 
 export interface AdvancedExportOptions {
-  format: 'PNG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'SMILES' | 'InChI';
+  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
   quality: 'Low' | 'Medium' | 'High' | 'Publication';
   width: number;
   height: number;
   dpi: number;
   backgroundColor: 'white' | 'transparent' | 'black';
+  /** Render all atoms and bonds in black (for reports/slides) */
+  blackAtoms?: boolean;
   includeProperties?: boolean;
   includeAnnotations?: boolean;
   includeTitle?: boolean;
@@ -26,12 +28,15 @@ export interface AdvancedExportOptions {
 /** Extension and MIME for each format */
 export const FORMAT_EXT: Record<string, { ext: string; mime: string }> = {
   PNG: { ext: '.png', mime: 'image/png' },
+  JPEG: { ext: '.jpg', mime: 'image/jpeg' },
   SVG: { ext: '.svg', mime: 'image/svg+xml' },
   PDF: { ext: '.pdf', mime: 'application/pdf' },
   MOL: { ext: '.mol', mime: 'chemical/x-mdl-molfile' },
   SDF: { ext: '.sdf', mime: 'chemical/x-mdl-sdfile' },
   SMILES: { ext: '.smi', mime: 'text/plain' },
   InChI: { ext: '.txt', mime: 'text/plain' },
+  InChIKey: { ext: '.txt', mime: 'text/plain' },
+  SMARTS: { ext: '.sma', mime: 'text/plain' },
 };
 
 /** Write blob to File System Access API handle */
@@ -72,23 +77,21 @@ export function ensureExtension(filename: string, format: string): string {
   return `${base}${ext}`;
 }
 
-/** Trigger download - use File with explicit name for better browser support. */
+/** Trigger a named file download. Uses blob URL + a.download — Chrome respects this reliably. */
 export function downloadBlob(blob: Blob, filename: string): void {
-  const file = blob instanceof File ? blob : new File([blob], filename, { type: blob.type });
-  const url = URL.createObjectURL(file);
+  // Do NOT wrap in new File() — Chrome ignores a.download when URL is from a File object.
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.rel = 'noopener';
   a.style.display = 'none';
   document.body.appendChild(a);
-  try {
-    a.click();
-  } catch (_) {}
+  a.click();
   setTimeout(() => {
     try { document.body.removeChild(a); } catch (_) {}
     URL.revokeObjectURL(url);
-  }, 1000);
+  }, 2000);
 }
 
 /** Crop PNG to content bounds (removes excess padding). Adds padding pixels around content. */
@@ -256,6 +259,62 @@ async function scalePngToDpi(
   });
 }
 
+/** Convert all non-background content to black (for reports/slides). */
+async function applyBlackAtoms(blob: Blob, format: 'png' | 'svg', bgColor: 'white' | 'transparent' | 'black'): Promise<Blob> {
+  if (format === 'svg') {
+    const text = await blob.text();
+    // Replace fill and stroke colors with black. Preserve none/transparent.
+    const out = text
+      .replace(/fill="(?!none|transparent)([^"]*)"/gi, 'fill="#000000"')
+      .replace(/stroke="(?!none|transparent)([^"]*)"/gi, 'stroke="#000000"')
+      .replace(/fill:([^;}"\s]+)/g, (_, val) =>
+        /none|transparent/i.test(val || '') ? `fill:${val}` : 'fill:#000000'
+      )
+      .replace(/stroke:([^;}"\s]+)/g, (_, val) =>
+        /none|transparent/i.test(val || '') ? `stroke:${val}` : 'stroke:#000000'
+      );
+    return new Blob([out], { type: 'image/svg+xml' });
+  }
+  // PNG: replace non-background pixels with black
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(blob);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = data.data;
+      const isBg = (i: number) => {
+        const a = d[i + 3];
+        if (a < 20) return true;
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        if (bgColor === 'white') return r > 250 && g > 250 && b > 250;
+        if (bgColor === 'black') return r < 5 && g < 5 && b < 5;
+        return false;
+      };
+      for (let i = 0; i < d.length; i += 4) {
+        if (!isBg(i)) {
+          d[i] = 0;
+          d[i + 1] = 0;
+          d[i + 2] = 0;
+        }
+      }
+      ctx.putImageData(data, 0, 0);
+      canvas.toBlob((b) => (b ? resolve(b) : resolve(blob)), 'image/png', 1.0);
+    };
+    img.onerror = () => resolve(blob);
+    img.src = URL.createObjectURL(blob);
+  });
+}
+
 /** Ketcher generateImage only accepts 'transparent' for backgroundColor. White/black must be omitted. */
 /** For black background: composite Ketcher output (white bg) onto black via canvas. */
 async function applyBlackBackground(blob: Blob): Promise<Blob> {
@@ -294,7 +353,7 @@ export interface AdvancedExportResult {
 export async function performAdvancedExport(
   ketcher: any,
   options: AdvancedExportOptions,
-  structureData: { molfile?: string; smiles?: string; name?: string }
+  structureData: { molfile?: string; smiles?: string; name?: string; inchiKey?: string }
 ): Promise<AdvancedExportResult> {
   const { format, dpi, backgroundColor, title, fileHandle } = options;
   const baseName = sanitizeFilename(structureData.name || 'structure');
@@ -348,8 +407,57 @@ export async function performAdvancedExport(
         await writeTextFile(path, inchi);
         return { success: true };
       }
-      downloadBlob(new Blob([inchi], { type: 'text/plain' }), `${baseName}.txt`);
-      return { success: true };
+      return { success: true, downloadBlob: new Blob([inchi], { type: 'text/plain' }), downloadFilename: `${baseName}.txt` };
+    }
+
+    if (format === 'InChIKey') {
+      // Prefer pre-fetched value from PubChem; fall back to RDKit computation
+      let inchiKey: string | null = structureData.inchiKey || null;
+      if (!inchiKey && structureData.smiles) {
+        const { generateInChIKey } = await import('../chemistry/rdkit');
+        inchiKey = await generateInChIKey(structureData.smiles);
+      }
+      if (!inchiKey) return { success: false, error: 'InChIKey not available — search the structure via PubChem first to fetch it' };
+      if (fileHandle) {
+        await writeBlobToHandle(fileHandle, new Blob([inchiKey], { type: 'text/plain' }));
+        return { success: true };
+      }
+      if (isTauriDesktop()) {
+        const { saveFile, writeTextFile } = await import('../tauri/fileOperations');
+        const path = await saveFile('Save InChIKey', `${baseName}.txt`, [
+          { name: 'Text File', extensions: ['txt'] },
+        ]);
+        if (!path) return { success: false, error: 'Save cancelled' };
+        await writeTextFile(path, inchiKey);
+        return { success: true };
+      }
+      return { success: true, downloadBlob: new Blob([inchiKey], { type: 'text/plain' }), downloadFilename: `${baseName}.txt` };
+    }
+
+    if (format === 'SMARTS') {
+      if (!structureData.smiles) return { success: false, error: 'No structure' };
+      const { initRDKit } = await import('../chemistry/rdkit');
+      const rdkit = await initRDKit();
+      if (!rdkit || typeof rdkit.get_mol !== 'function') return { success: false, error: 'RDKit not available' };
+      const mol = rdkit.get_mol(structureData.smiles);
+      if (!mol || mol.is_valid() === 0) { mol?.delete(); return { success: false, error: 'Invalid structure' }; }
+      const smarts = mol.get_smarts();
+      mol.delete();
+      if (!smarts) return { success: false, error: 'Could not generate SMARTS' };
+      if (fileHandle) {
+        await writeBlobToHandle(fileHandle, new Blob([smarts], { type: 'text/plain' }));
+        return { success: true };
+      }
+      if (isTauriDesktop()) {
+        const { saveFile, writeTextFile } = await import('../tauri/fileOperations');
+        const path = await saveFile('Save SMARTS', `${baseName}.sma`, [
+          { name: 'SMARTS File', extensions: ['sma', 'txt'] },
+        ]);
+        if (!path) return { success: false, error: 'Save cancelled' };
+        await writeTextFile(path, smarts);
+        return { success: true };
+      }
+      return { success: true, downloadBlob: new Blob([smarts], { type: 'text/plain' }), downloadFilename: `${baseName}.sma` };
     }
 
     // Image formats - need Ketcher
@@ -392,6 +500,10 @@ export async function performAdvancedExport(
       blob = await applyBlackBackground(blob);
     }
 
+    if (options.blackAtoms && (format === 'PNG' || format === 'SVG' || format === 'PDF')) {
+      blob = await applyBlackAtoms(blob, format === 'SVG' ? 'svg' : 'png', options.backgroundColor);
+    }
+
     if (format === 'PNG') {
       const padded = await addPaddingToPng(blob, 0.5, options.backgroundColor);
       const scaled = await scalePngToDpi(padded, dpi, options.width, options.height);
@@ -411,8 +523,56 @@ export async function performAdvancedExport(
         await writeFile(path, new Uint8Array(buffer));
         return { success: true };
       }
-      const safePngFilename = filename.endsWith('.png') ? filename : `${baseName}.png`;
-      return { success: true, downloadBlob: scaled, downloadFilename: safePngFilename };
+      return { success: true, downloadBlob: scaled, downloadFilename: `${baseName}.png` };
+    }
+
+    if (format === 'JPEG') {
+      const padded = await addPaddingToPng(blob, 0.5, options.backgroundColor === 'transparent' ? 'white' : options.backgroundColor);
+      const jpegBlob = await new Promise<Blob>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = dpi / 72;
+          const maxW = options.width && options.height ? Math.round(options.width * scale) : Math.round(img.width * scale);
+          const maxH = options.width && options.height ? Math.round(options.height * scale) : Math.round(img.height * scale);
+          const aspect = img.width / img.height;
+          const boxAspect = maxW / maxH;
+          const outW = aspect > boxAspect ? maxW : Math.round(maxH * aspect);
+          const outH = aspect > boxAspect ? Math.round(maxW / aspect) : maxH;
+          const canvas = document.createElement('canvas');
+          canvas.width = outW;
+          canvas.height = outH;
+          const ctx = canvas.getContext('2d')!;
+          // JPEG has no transparency — always fill with white
+          ctx.fillStyle = options.backgroundColor === 'black' ? '#000000' : '#ffffff';
+          ctx.fillRect(0, 0, outW, outH);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, outW, outH);
+          // quality: Low=0.6, Medium=0.8, High=0.92, Publication=0.97
+          const qualityMap: Record<string, number> = { Low: 0.6, Medium: 0.8, High: 0.92, Publication: 0.97 };
+          const q = qualityMap[options.quality] ?? 0.92;
+          canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('JPEG encoding failed'))), 'image/jpeg', q);
+        };
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = URL.createObjectURL(padded);
+      });
+      const filename = `${baseName}.jpg`;
+      if (fileHandle) {
+        await writeBlobToHandle(fileHandle, jpegBlob);
+        return { success: true };
+      }
+      if (isTauriDesktop()) {
+        const { saveFile } = await import('../tauri/fileOperations');
+        const buffer = await jpegBlob.arrayBuffer();
+        const path = await saveFile('Save JPEG', filename, [
+          { name: 'JPEG Image', extensions: ['jpg', 'jpeg'] },
+        ]);
+        if (!path) return { success: false, error: 'Save cancelled' };
+        const { writeFile } = await import('@tauri-apps/plugin-fs');
+        await writeFile(path, new Uint8Array(buffer));
+        return { success: true };
+      }
+      return { success: true, downloadBlob: jpegBlob, downloadFilename: filename };
     }
 
     if (format === 'SVG') {

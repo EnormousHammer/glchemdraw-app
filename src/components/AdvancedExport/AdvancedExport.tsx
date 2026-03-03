@@ -42,12 +42,13 @@ import {
 } from '@mui/icons-material';
 
 interface ExportOptions {
-  format: 'PNG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'SMILES' | 'InChI';
+  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
   quality: 'Low' | 'Medium' | 'High' | 'Publication';
   width: number;
   height: number;
   dpi: number;
   backgroundColor: 'white' | 'transparent' | 'black';
+  blackAtoms: boolean;
   includeProperties: boolean;
   includeAnnotations: boolean;
   includeTitle: boolean;
@@ -65,7 +66,7 @@ export interface ExportDownloadResult {
 interface AdvancedExportProps {
   open: boolean;
   onClose: () => void;
-  onExport: (options: ExportOptions) => Promise<ExportDownloadResult | void>;
+  onExport: (options: ExportOptions) => Promise<ExportDownloadResult | void | null>;
   structureData?: {
     molfile?: string;
     smiles?: string;
@@ -74,13 +75,16 @@ interface AdvancedExportProps {
 }
 
 const FORMAT_OPTIONS = [
-  { value: 'PNG', label: 'PNG Image', icon: <ImageIcon />, description: 'Raster image, good for presentations' },
-  { value: 'SVG', label: 'SVG Vector', icon: <CodeIcon />, description: 'Vector graphics, scalable' },
-  { value: 'PDF', label: 'PDF Document', icon: <PdfIcon />, description: 'Portable document format' },
-  { value: 'MOL', label: 'MOL File', icon: <CodeIcon />, description: 'Chemical structure format' },
-  { value: 'SDF', label: 'SDF File', icon: <CodeIcon />, description: 'Structure data format' },
-  { value: 'SMILES', label: 'SMILES', icon: <CodeIcon />, description: 'Simplified molecular input' },
-  { value: 'InChI', label: 'InChI', icon: <CodeIcon />, description: 'International Chemical Identifier' },
+  { value: 'PNG',      label: 'PNG Image',  icon: <ImageIcon />, description: 'Raster image — best for presentations & web' },
+  { value: 'JPEG',     label: 'JPEG Image', icon: <ImageIcon />, description: 'Compressed image — smaller file, no transparency' },
+  { value: 'SVG',      label: 'SVG Vector', icon: <CodeIcon />,  description: 'Vector graphics — scales without pixelation' },
+  { value: 'PDF',      label: 'PDF Document', icon: <PdfIcon />, description: 'Portable document — embed in reports' },
+  { value: 'MOL',      label: 'MOL File',   icon: <CodeIcon />,  description: 'Chemical structure — ChemDraw compatible' },
+  { value: 'SDF',      label: 'SDF File',   icon: <CodeIcon />,  description: 'Structure data file — multiple properties' },
+  { value: 'SMILES',   label: 'SMILES',     icon: <CodeIcon />,  description: 'Linear notation — copy into databases' },
+  { value: 'InChI',    label: 'InChI',      icon: <CodeIcon />,  description: 'Standard chemical identifier' },
+  { value: 'InChIKey', label: 'InChIKey',   icon: <CodeIcon />,  description: 'Hashed InChI — 27-char database key' },
+  { value: 'SMARTS',   label: 'SMARTS',     icon: <CodeIcon />,  description: 'Substructure query pattern' },
 ];
 
 const QUALITY_OPTIONS = [
@@ -109,6 +113,7 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
     height: 600,
     dpi: 300,
     backgroundColor: 'white',
+    blackAtoms: false,
     includeProperties: true,
     includeAnnotations: true,
     includeTitle: true,
@@ -122,13 +127,9 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
   const [downloadResult, setDownloadResult] = useState<ExportDownloadResult | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
-  // Create object URL from File with correct name (helps some browsers use right filename)
   useEffect(() => {
     if (downloadResult) {
-      const file = downloadResult.downloadBlob instanceof File
-        ? downloadResult.downloadBlob
-        : new File([downloadResult.downloadBlob], downloadResult.downloadFilename, { type: downloadResult.downloadBlob.type });
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(downloadResult.downloadBlob);
       setDownloadUrl(url);
       return () => {
         URL.revokeObjectURL(url);
@@ -215,8 +216,8 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
     return FORMAT_OPTIONS.find(f => f.value === format)?.description || '';
   };
 
-  const isImageFormat = ['PNG', 'SVG', 'PDF'].includes(options.format);
-  const isDataFormat = ['MOL', 'SDF', 'SMILES', 'InChI'].includes(options.format);
+  const isImageFormat = ['PNG', 'JPEG', 'SVG', 'PDF'].includes(options.format);
+  const isDataFormat = ['MOL', 'SDF', 'SMILES', 'InChI', 'InChIKey', 'SMARTS'].includes(options.format);
 
   return (
     <Dialog
@@ -444,6 +445,15 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
                 }
                 label="Include annotations and labels"
               />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={options.blackAtoms}
+                    onChange={(e) => handleOptionChange('blackAtoms', e.target.checked)}
+                  />
+                }
+                label="Black atoms (for reports/slides)"
+              />
             </Stack>
           </Grid>
 
@@ -466,6 +476,7 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
                 <Chip label={options.backgroundColor} size="small" />
                 {options.includeProperties && <Chip label="Properties" size="small" />}
                 {options.includeAnnotations && <Chip label="Annotations" size="small" />}
+                {options.blackAtoms && <Chip label="Black atoms" size="small" />}
               </Stack>
             </Paper>
           </Grid>

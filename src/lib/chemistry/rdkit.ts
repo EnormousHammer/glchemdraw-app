@@ -415,10 +415,15 @@ export async function generateInChIKey(smiles: string): Promise<string | null> {
     if (!mol || mol.is_valid() === 0) {
       return null;
     }
-
-    const inchiKey = mol.get_inchi_key();
+    // mol.get_inchi_key() does not exist in RDKit WASM.
+    // Correct path: get InChI from mol, then convert to InChIKey via module-level function.
+    const inchi = mol.get_inchi();
     mol.delete();
-    return inchiKey;
+    if (!inchi) return null;
+    const inchiKey = rdkit.get_inchi_key_for_inchi
+      ? rdkit.get_inchi_key_for_inchi(inchi)
+      : null;
+    return inchiKey || null;
   } catch (error) {
     console.error('[RDKit] Error generating InChI Key:', error);
     return null;

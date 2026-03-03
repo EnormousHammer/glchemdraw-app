@@ -1499,8 +1499,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onShortcutsClick={() => setShowShortcutsDialog(true)}
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
-          onAdvancedExport={() => setShowAdvancedExportDialog(true)}
-          onDocumentSettings={() => setShowDocumentSettings(true)}
         />
 
         {/* Main Content - Conditional View */}

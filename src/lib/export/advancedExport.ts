@@ -259,6 +259,125 @@ async function scalePngToDpi(
   });
 }
 
+/**
+ * Render an SVG string onto a canvas at exact pixel dimensions and return a PNG blob.
+ *
+ * Because SVG is vector, the browser's SVG rasterizer draws at whatever canvas size we
+ * specify — giving perfectly sharp lines, atom labels, and bond angles at any resolution.
+ * This replaces the old approach of: Ketcher PNG (screen res) → bitmap upscale → blurry.
+ *
+ * paddingFraction: fraction of each dimension kept as whitespace margin around the structure.
+ * 0.15 = 15 % on each side → structure fills the central 70 % of the frame.
+ */
+async function svgToHighResPng(
+  svgText: string,
+  targetW: number,
+  targetH: number,
+  bgColor: 'white' | 'transparent' | 'black',
+  paddingFraction = 0.15,
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { reject(new Error('Canvas context unavailable')); return; }
+
+    if (bgColor === 'white') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
+    } else if (bgColor === 'black') {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, targetW, targetH);
+    }
+    // transparent: no fill
+
+    // Extract SVG aspect ratio from viewBox or width/height attributes
+    let svgAspect = targetW / targetH; // safe fallback
+    const vbMatch = svgText.match(/viewBox=["']([^"']+)["']/i);
+    if (vbMatch) {
+      const parts = vbMatch[1].trim().split(/[\s,]+/).map(Number);
+      if (parts.length >= 4 && parts[2] > 0 && parts[3] > 0) svgAspect = parts[2] / parts[3];
+    } else {
+      const wm = svgText.match(/\bwidth=["']([0-9.]+)/i);
+      const hm = svgText.match(/\bheight=["']([0-9.]+)/i);
+      if (wm && hm) {
+        const sw = parseFloat(wm[1]); const sh = parseFloat(hm[1]);
+        if (sw > 0 && sh > 0) svgAspect = sw / sh;
+      }
+    }
+
+    // Compute draw rectangle — fill available area minus padding, keep SVG aspect ratio
+    const padX = targetW * paddingFraction;
+    const padY = targetH * paddingFraction;
+    const areaW = targetW - 2 * padX;
+    const areaH = targetH - 2 * padY;
+    const boxAspect = areaW / areaH;
+    let drawW: number, drawH: number;
+    if (svgAspect > boxAspect) { drawW = areaW; drawH = areaW / svgAspect; }
+    else { drawH = areaH; drawW = areaH * svgAspect; }
+    const dx = (targetW - drawW) / 2;
+    const dy = (targetH - drawH) / 2;
+
+    const img = new Image();
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('PNG encoding failed'))),
+        'image/png', 1.0,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG render failed')); };
+    img.src = url;
+  });
+}
+
+/** Convert a PNG blob to JPEG. bgFill is used because JPEG has no transparency channel. */
+async function pngBlobToJpeg(blob: Blob, quality: number, bgFill: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = bgFill;
+      ctx.fillRect(0, 0, img.width, img.height);
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('JPEG encoding failed'))),
+        'image/jpeg', quality,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+    img.src = url;
+  });
+}
+
+/** Blob → base-64 data URL (needed for jsPDF.addImage). */
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+/** Return pixel dimensions of a PNG/JPEG given its data URL. */
+function getImageDimensions(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.width, h: img.height });
+    img.onerror = () => resolve({ w: 800, h: 600 });
+    img.src = dataUrl;
+  });
+}
+
 /** Convert all non-background content to black (for reports/slides). */
 async function applyBlackAtoms(blob: Blob, format: 'png' | 'svg', bgColor: 'white' | 'transparent' | 'black'): Promise<Blob> {
   if (format === 'svg') {
@@ -474,18 +593,17 @@ export async function performAdvancedExport(
     }
     if (!structStr?.trim()) return { success: false, error: 'No structure to export. Draw a molecule on the canvas first.' };
 
-    const genOpts: Record<string, unknown> = {
-      outputFormat: format === 'SVG' ? 'svg' : 'png',
-    };
-    if (backgroundColor === 'transparent') {
-      genOpts.backgroundColor = 'transparent';
-    }
-    // Ketcher's option manager rejects rgb(), hex, etc. Only 'transparent' works. White is default.
+    // Always fetch SVG from Ketcher for image formats.
+    // SVG is vector — we render it onto a canvas at the exact target pixel dimensions, so the
+    // browser's own SVG rasterizer draws every line and label at full sharpness.
+    // This replaces the old pipeline (Ketcher PNG at screen res → bitmap upscale → blurry).
+    const svgGenOpts: Record<string, unknown> = { outputFormat: 'svg' };
+    if (backgroundColor === 'transparent') svgGenOpts.backgroundColor = 'transparent';
 
-    let blob: Blob;
+    let svgRawBlob: Blob;
     try {
-      blob = await Promise.race([
-        ketcher.generateImage(structStr, genOpts),
+      svgRawBlob = await Promise.race([
+        ketcher.generateImage(structStr, svgGenOpts),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Image generation took too long')), 30000)
         ),
@@ -494,79 +612,68 @@ export async function performAdvancedExport(
       const msg = e instanceof Error ? e.message : String(e);
       return { success: false, error: msg.includes('took too long') ? 'Image generation took too long. Try reducing size or DPI.' : msg };
     }
-    if (!blob) return { success: false, error: 'Image generation failed' };
+    if (!svgRawBlob) return { success: false, error: 'Image generation failed' };
 
-    if (backgroundColor === 'black' && format !== 'SVG') {
-      blob = await applyBlackBackground(blob);
+    let svgText = await svgRawBlob.text();
+
+    // Apply background and atom-color transforms in SVG space (no quality loss vs. pixel ops)
+    if (backgroundColor === 'black') {
+      svgText = svgText.replace(/<svg([^>]*)>/, '<svg$1><rect width="100%" height="100%" fill="#000000"/>');
+    }
+    if (options.blackAtoms) {
+      const bb = await applyBlackAtoms(
+        new Blob([svgText], { type: 'image/svg+xml' }), 'svg', options.backgroundColor,
+      );
+      svgText = await bb.text();
     }
 
-    if (options.blackAtoms && (format === 'PNG' || format === 'SVG' || format === 'PDF')) {
-      blob = await applyBlackAtoms(blob, format === 'SVG' ? 'svg' : 'png', options.backgroundColor);
-    }
-
-    if (format === 'PNG') {
-      const padded = await addPaddingToPng(blob, 0.5, options.backgroundColor);
-      const scaled = await scalePngToDpi(padded, dpi, options.width, options.height);
-      const filename = `${baseName}.png`;
-      if (fileHandle) {
-        await writeBlobToHandle(fileHandle, scaled);
+    if (format === 'SVG') {
+      const svgFinalBlob = new Blob([svgText], { type: 'image/svg+xml' });
+      const filename = `${baseName}.svg`;
+      if (fileHandle) { await writeBlobToHandle(fileHandle, svgFinalBlob); return { success: true }; }
+      if (isTauriDesktop()) {
+        const { saveFile, writeTextFile } = await import('../tauri/fileOperations');
+        const path = await saveFile('Save SVG', filename, [{ name: 'SVG File', extensions: ['svg'] }]);
+        if (!path) return { success: false, error: 'Save cancelled' };
+        await writeTextFile(path, svgText);
         return { success: true };
       }
+      return { success: true, downloadBlob: svgFinalBlob, downloadFilename: filename };
+    }
+
+    // PNG / JPEG / PDF — render SVG onto a canvas at exact target pixel dimensions
+    const scale = dpi / 72;
+    const outW = Math.min(Math.round(options.width * scale), 7200);
+    const outH = Math.min(Math.round(options.height * scale), 7200);
+
+    const hiResPng = await svgToHighResPng(svgText, outW, outH, options.backgroundColor);
+
+    if (format === 'PNG') {
+      const filename = `${baseName}.png`;
+      if (fileHandle) { await writeBlobToHandle(fileHandle, hiResPng); return { success: true }; }
       if (isTauriDesktop()) {
         const { saveFile } = await import('../tauri/fileOperations');
-        const buffer = await scaled.arrayBuffer();
-        const path = await saveFile('Save PNG', filename, [
-          { name: 'PNG Image', extensions: ['png'] },
-        ]);
+        const buffer = await hiResPng.arrayBuffer();
+        const path = await saveFile('Save PNG', filename, [{ name: 'PNG Image', extensions: ['png'] }]);
         if (!path) return { success: false, error: 'Save cancelled' };
         const { writeFile } = await import('@tauri-apps/plugin-fs');
         await writeFile(path, new Uint8Array(buffer));
         return { success: true };
       }
-      return { success: true, downloadBlob: scaled, downloadFilename: `${baseName}.png` };
+      return { success: true, downloadBlob: hiResPng, downloadFilename: filename };
     }
 
     if (format === 'JPEG') {
-      const padded = await addPaddingToPng(blob, 0.5, options.backgroundColor === 'transparent' ? 'white' : options.backgroundColor);
-      const jpegBlob = await new Promise<Blob>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          const scale = dpi / 72;
-          const maxW = options.width && options.height ? Math.round(options.width * scale) : Math.round(img.width * scale);
-          const maxH = options.width && options.height ? Math.round(options.height * scale) : Math.round(img.height * scale);
-          const aspect = img.width / img.height;
-          const boxAspect = maxW / maxH;
-          const outW = aspect > boxAspect ? maxW : Math.round(maxH * aspect);
-          const outH = aspect > boxAspect ? Math.round(maxW / aspect) : maxH;
-          const canvas = document.createElement('canvas');
-          canvas.width = outW;
-          canvas.height = outH;
-          const ctx = canvas.getContext('2d')!;
-          // JPEG has no transparency — always fill with white
-          ctx.fillStyle = options.backgroundColor === 'black' ? '#000000' : '#ffffff';
-          ctx.fillRect(0, 0, outW, outH);
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, outW, outH);
-          // quality: Low=0.6, Medium=0.8, High=0.92, Publication=0.97
-          const qualityMap: Record<string, number> = { Low: 0.6, Medium: 0.8, High: 0.92, Publication: 0.97 };
-          const q = qualityMap[options.quality] ?? 0.92;
-          canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('JPEG encoding failed'))), 'image/jpeg', q);
-        };
-        img.onerror = () => reject(new Error('Image load failed'));
-        img.src = URL.createObjectURL(padded);
-      });
+      const qualityMap: Record<string, number> = { Low: 0.6, Medium: 0.8, High: 0.92, Publication: 0.97 };
+      const q = qualityMap[options.quality] ?? 0.92;
+      const bgFill = options.backgroundColor === 'black' ? '#000000' : '#ffffff';
+      const jpegBlob = await pngBlobToJpeg(hiResPng, q, bgFill);
       const filename = `${baseName}.jpg`;
-      if (fileHandle) {
-        await writeBlobToHandle(fileHandle, jpegBlob);
-        return { success: true };
-      }
+      if (fileHandle) { await writeBlobToHandle(fileHandle, jpegBlob); return { success: true }; }
       if (isTauriDesktop()) {
         const { saveFile } = await import('../tauri/fileOperations');
         const buffer = await jpegBlob.arrayBuffer();
-        const path = await saveFile('Save JPEG', filename, [
-          { name: 'JPEG Image', extensions: ['jpg', 'jpeg'] },
-        ]);
+        const path = await saveFile('Save JPEG', filename, [{ name: 'JPEG Image', extensions: ['jpg', 'jpeg'] }]);
         if (!path) return { success: false, error: 'Save cancelled' };
         const { writeFile } = await import('@tauri-apps/plugin-fs');
         await writeFile(path, new Uint8Array(buffer));
@@ -575,44 +682,9 @@ export async function performAdvancedExport(
       return { success: true, downloadBlob: jpegBlob, downloadFilename: filename };
     }
 
-    if (format === 'SVG') {
-      let text = await blob.text();
-      if (backgroundColor === 'black') {
-        text = text.replace(/<svg([^>]*)>/, '<svg$1><rect width="100%" height="100%" fill="#000000"/>');
-      }
-      const filename = `${baseName}.svg`;
-      const svgBlob = new Blob([text], { type: 'image/svg+xml' });
-      if (fileHandle) {
-        await writeBlobToHandle(fileHandle, svgBlob);
-        return { success: true };
-      }
-      if (isTauriDesktop()) {
-        const { saveFile, writeTextFile } = await import('../tauri/fileOperations');
-        const path = await saveFile('Save SVG', filename, [
-          { name: 'SVG File', extensions: ['svg'] },
-        ]);
-        if (!path) return { success: false, error: 'Save cancelled' };
-        await writeTextFile(path, text);
-        return { success: true };
-      }
-      const safeSvgFilename = filename.endsWith('.svg') ? filename : `${baseName}.svg`;
-      return { success: true, downloadBlob: svgBlob, downloadFilename: safeSvgFilename };
-    }
-
     if (format === 'PDF') {
-      const pngBlob = await scalePngToDpi(blob, dpi, options.width, options.height);
-      const dataUrl = await new Promise<string>((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => res(r.result as string);
-        r.onerror = rej;
-        r.readAsDataURL(pngBlob);
-      });
-      const imgSize = await new Promise<{ w: number; h: number }>((res) => {
-        const img = new Image();
-        img.onload = () => res({ w: img.width, h: img.height });
-        img.onerror = () => res({ w: 400, h: 300 });
-        img.src = dataUrl;
-      });
+      const dataUrl = await blobToDataUrl(hiResPng);
+      const imgSize = await getImageDimensions(dataUrl);
       try {
         const { jsPDF } = await import('jspdf');
         const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -621,12 +693,12 @@ export async function performAdvancedExport(
         const margin = 20;
         const maxW = pageW - 2 * margin;
         const maxH = pageH - 2 * margin - (options.includeTitle && title ? 15 : 0);
-        let imgW = (imgSize.w / 96) * 25.4;
-        let imgH = (imgSize.h / 96) * 25.4;
+        // Use the actual DPI to convert pixels → mm (consistent with how we built the image)
+        let imgW = (imgSize.w / dpi) * 25.4;
+        let imgH = (imgSize.h / dpi) * 25.4;
         if (imgW > maxW || imgH > maxH) {
-          const scale = Math.min(maxW / imgW, maxH / imgH);
-          imgW *= scale;
-          imgH *= scale;
+          const s = Math.min(maxW / imgW, maxH / imgH);
+          imgW *= s; imgH *= s;
         }
         let y = margin;
         if (options.includeTitle && title) {
@@ -635,25 +707,19 @@ export async function performAdvancedExport(
           y += 15;
         }
         doc.addImage(dataUrl, 'PNG', margin, y, imgW, imgH);
-        const filename = `${baseName}.pdf`;
         const pdfBlob = doc.output('blob');
-        if (fileHandle) {
-          await writeBlobToHandle(fileHandle, pdfBlob);
-          return { success: true };
-        }
+        const filename = `${baseName}.pdf`;
+        if (fileHandle) { await writeBlobToHandle(fileHandle, pdfBlob); return { success: true }; }
         if (isTauriDesktop()) {
           const pdfBytes = doc.output('arraybuffer');
           const { saveFile } = await import('../tauri/fileOperations');
-          const path = await saveFile('Save PDF', filename, [
-            { name: 'PDF Document', extensions: ['pdf'] },
-          ]);
+          const path = await saveFile('Save PDF', filename, [{ name: 'PDF Document', extensions: ['pdf'] }]);
           if (!path) return { success: false, error: 'Save cancelled' };
           const { writeFile } = await import('@tauri-apps/plugin-fs');
           await writeFile(path, new Uint8Array(pdfBytes));
           return { success: true };
         }
-        const safePdfFilename = filename.endsWith('.pdf') ? filename : `${baseName}.pdf`;
-        return { success: true, downloadBlob: pdfBlob, downloadFilename: safePdfFilename };
+        return { success: true, downloadBlob: pdfBlob, downloadFilename: filename };
       } catch {
         return { success: false, error: 'PDF export requires jspdf. Install: npm install jspdf' };
       }

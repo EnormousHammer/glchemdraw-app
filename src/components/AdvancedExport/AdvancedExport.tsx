@@ -127,6 +127,11 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
   const [downloadResult, setDownloadResult] = useState<ExportDownloadResult | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
+  // Draft strings for Width and Height so the user can type freely without the field
+  // snapping back to the default mid-entry (parseInt("") || 800 fires on every keystroke).
+  const [widthDraft, setWidthDraft] = useState(String(options.width));
+  const [heightDraft, setHeightDraft] = useState(String(options.height));
+
   useEffect(() => {
     if (downloadResult) {
       const url = URL.createObjectURL(downloadResult.downloadBlob);
@@ -147,10 +152,33 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
         ...prev,
         title: structureData?.name || 'Chemical Structure',
       }));
+      setWidthDraft(String(options.width));
+      setHeightDraft(String(options.height));
       setExportError(null);
       setDownloadResult(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, structureData?.name]);
+
+  const commitWidth = useCallback(() => {
+    const n = parseInt(widthDraft, 10);
+    if (!isNaN(n) && n >= 100) {
+      setOptions(prev => ({ ...prev, width: Math.min(n, 4000) }));
+      setWidthDraft(String(Math.min(n, 4000)));
+    } else {
+      setWidthDraft(String(options.width)); // revert
+    }
+  }, [widthDraft, options.width]);
+
+  const commitHeight = useCallback(() => {
+    const n = parseInt(heightDraft, 10);
+    if (!isNaN(n) && n >= 100) {
+      setOptions(prev => ({ ...prev, height: Math.min(n, 4000) }));
+      setHeightDraft(String(Math.min(n, 4000)));
+    } else {
+      setHeightDraft(String(options.height)); // revert
+    }
+  }, [heightDraft, options.height]);
 
   const handleOptionChange = useCallback((key: keyof ExportOptions, value: any) => {
     setOptions(prev => ({ ...prev, [key]: value }));
@@ -335,20 +363,28 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
                   <TextField
                     fullWidth
                     label="Width (px)"
-                    type="number"
-                    value={options.width}
-                    onChange={(e) => handleOptionChange('width', parseInt(e.target.value) || 800)}
-                    inputProps={{ min: 100, max: 4000 }}
+                    value={widthDraft}
+                    onChange={(e) => setWidthDraft(e.target.value)}
+                    onBlur={commitWidth}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { commitWidth(); (e.target as HTMLInputElement).blur(); }
+                      if (e.key === 'Escape') { setWidthDraft(String(options.width)); (e.target as HTMLInputElement).blur(); }
+                    }}
+                    inputProps={{ min: 100, max: 4000, style: { textAlign: 'right' } }}
                   />
                 </Grid>
                 <Grid size={6}>
                   <TextField
                     fullWidth
                     label="Height (px)"
-                    type="number"
-                    value={options.height}
-                    onChange={(e) => handleOptionChange('height', parseInt(e.target.value) || 600)}
-                    inputProps={{ min: 100, max: 4000 }}
+                    value={heightDraft}
+                    onChange={(e) => setHeightDraft(e.target.value)}
+                    onBlur={commitHeight}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { commitHeight(); (e.target as HTMLInputElement).blur(); }
+                      if (e.key === 'Escape') { setHeightDraft(String(options.height)); (e.target as HTMLInputElement).blur(); }
+                    }}
+                    inputProps={{ min: 100, max: 4000, style: { textAlign: 'right' } }}
                   />
                 </Grid>
                 <Grid size={12}>

@@ -271,17 +271,29 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
   };
 
   const handleOK = async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    // Build final settings from current drafts so we capture any value that was typed
+    // but not yet blurred before the user clicked OK (React batches state updates, so
+    // reading `settings` here might still reflect the pre-blur snapshot).
+    const finalSettings: DrawingSettings = { ...settings };
+    for (const field of Object.keys(drafts) as DraftKey[]) {
+      const num = parseFloat(drafts[field]);
+      if (!isNaN(num)) {
+        const clamped = field === 'bondSpacing'
+          ? Math.max(1, Math.min(100, num))
+          : Math.max(0.0001, num);
+        (finalSettings as unknown as Record<string, unknown>)[field] = clamped;
+      }
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(finalSettings));
     if (ketcherInstance) {
       try {
-        ketcherInstance.setSettings(toKetcherSettings(settings));
+        ketcherInstance.setSettings(toKetcherSettings(finalSettings));
         // Force a full re-render so all settings (aromaticCircle, showAtomIds, etc.)
         // take effect immediately on the existing structure, not just new drawings.
         try {
-          const mol = await ketcherInstance.getMolecule();
-          if (mol && mol.trim()) {
-            await ketcherInstance.setMolecule(mol);
-          }
+          const mol = await ketcherInstance.getMolfile?.();
+          if (mol && mol.trim()) await ketcherInstance.setMolecule(mol);
         } catch (rerenderErr) {
           console.warn('[DocumentSettings] re-render failed:', rerenderErr);
         }

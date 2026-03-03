@@ -61,6 +61,44 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
+  // Fix: atom drag released outside the canvas (e.g. mouse drifted to app toolbar) is not committed
+  // to Ketcher's undo history because Ketcher's own mouseup handler never fires.
+  // Each mousemove during a drag calls editor.update(action, ignoreHistory=true) — visual only.
+  // Only the final mouseup triggers dropAndMerge() which calls editor.update(action, false) and
+  // records the move. If mouseup fires outside .Ketcher-root, that commit never happens.
+  // Fix: intercept the global mouseup and, when there's an active Ketcher drag context that hasn't
+  // been committed yet, dispatch a synthetic mouseup to the Ketcher SVG so it commits properly.
+  useEffect(() => {
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // If the mouseup is inside the canvas Ketcher will handle it itself
+      if (target?.closest?.('.Ketcher-root') || target?.closest?.('.Ketcher-polymer-editor-root')) return;
+
+      // Check whether the Ketcher editor has an active drag in flight
+      const ketcher = editorRef.current;
+      if (!ketcher?.editor) return;
+      const tool = (ketcher.editor as any)._tool;
+      if (!tool?.dragCtx) return; // No active drag — nothing to do
+
+      // The drag started inside the canvas but the mouse was released outside.
+      // Dispatch a synthetic mouseup to the Ketcher SVG so dropAndMerge() runs and
+      // the move gets pushed onto the undo stack.
+      const ketcherSvg = document.querySelector('.Ketcher-root svg') as SVGElement | null;
+      if (!ketcherSvg) return;
+      ketcherSvg.dispatchEvent(
+        new MouseEvent('mouseup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          button: e.button,
+        })
+      );
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp, true);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp, true);
+  }, []);
+
   // Bond type shortcuts 1/2/3: ensure they reach Ketcher when focus is elsewhere (ChemDraw parity)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

@@ -119,6 +119,44 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
+  // Ctrl+Z (undo) and Ctrl+Y / Ctrl+Shift+Z (redo): forward to Ketcher when focus is outside the
+  // canvas (e.g. user clicked a button in the Chemical Info toolbar, then presses Ctrl+Z).
+  // The existing Delete/Backspace handler already does this pattern; Ctrl+Z was simply missing.
+  // IMPORTANT: the dispatched event must include ctrlKey/metaKey/shiftKey — the earlier 1/2/3
+  // handler omits modifiers (fine for those keys) but Ketcher needs them to distinguish Ctrl+Z
+  // (undo) from plain Z (zoom).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = e.key?.toLowerCase();
+      if (k !== 'z' && k !== 'y') return;
+      const target = e.target as HTMLElement;
+      // Never steal Ctrl+Z from real text inputs
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+      if (target?.isContentEditable || target?.closest?.('[contenteditable]')) return;
+      const inKetcher = target?.closest?.('.Ketcher-root') || target?.closest?.('.Ketcher-polymer-editor-root');
+      if (inKetcher) return; // Already inside canvas — Ketcher handles it itself
+      const ketcherRoot = document.querySelector('.Ketcher-root') as HTMLElement | null;
+      if (!ketcherRoot) return;
+      e.preventDefault();
+      e.stopPropagation();
+      ketcherRoot.setAttribute('tabindex', '-1');
+      ketcherRoot.focus({ preventScroll: true });
+      ketcherRoot.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: e.key,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, []);
+
   // Block Shift+F (Functional Groups) - feature creates disconnected structures until Ketcher fix.
   // Exception: do NOT block when the user is actively typing in a text element (Ketcher text tool,
   // atom label input, any contenteditable) so that capital letters like "F" (fluorine, THF…) work.

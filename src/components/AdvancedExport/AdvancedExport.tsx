@@ -42,7 +42,7 @@ import {
 } from '@mui/icons-material';
 
 interface ExportOptions {
-  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
+  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'CDX' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
   quality: 'Low' | 'Medium' | 'High' | 'Publication';
   width: number;
   height: number;
@@ -81,6 +81,7 @@ const FORMAT_OPTIONS = [
   { value: 'PDF',      label: 'PDF Document', icon: <PdfIcon />, description: 'Portable document — embed in reports' },
   { value: 'MOL',      label: 'MOL File',   icon: <CodeIcon />,  description: 'Chemical structure — ChemDraw compatible' },
   { value: 'SDF',      label: 'SDF File',   icon: <CodeIcon />,  description: 'Structure data file — multiple properties' },
+  { value: 'CDX',      label: 'CDX File',   icon: <CodeIcon />,  description: 'ChemDraw binary — open in ChemDraw' },
   { value: 'SMILES',   label: 'SMILES',     icon: <CodeIcon />,  description: 'Linear notation — copy into databases' },
   { value: 'InChI',    label: 'InChI',      icon: <CodeIcon />,  description: 'Standard chemical identifier' },
   { value: 'InChIKey', label: 'InChIKey',   icon: <CodeIcon />,  description: 'Hashed InChI — 27-char database key' },
@@ -245,7 +246,7 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
   };
 
   const isImageFormat = ['PNG', 'JPEG', 'SVG', 'PDF'].includes(options.format);
-  const isDataFormat = ['MOL', 'SDF', 'SMILES', 'InChI', 'InChIKey', 'SMARTS'].includes(options.format);
+  const isDataFormat = ['MOL', 'SDF', 'CDX', 'SMILES', 'InChI', 'InChIKey', 'SMARTS'].includes(options.format);
 
   return (
     <Dialog

@@ -7,7 +7,7 @@ import { exportAsMol, exportAsSdf, exportAsSmiles } from './structureExport';
 import { isTauriDesktop } from '../tauri/detectPlatform';
 
 export interface AdvancedExportOptions {
-  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
+  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'CDX' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
   quality: 'Low' | 'Medium' | 'High' | 'Publication';
   width: number;
   height: number;
@@ -33,6 +33,7 @@ export const FORMAT_EXT: Record<string, { ext: string; mime: string }> = {
   PDF: { ext: '.pdf', mime: 'application/pdf' },
   MOL: { ext: '.mol', mime: 'chemical/x-mdl-molfile' },
   SDF: { ext: '.sdf', mime: 'chemical/x-mdl-sdfile' },
+  CDX: { ext: '.cdx', mime: 'application/octet-stream' },
   SMILES: { ext: '.smi', mime: 'text/plain' },
   InChI: { ext: '.txt', mime: 'text/plain' },
   InChIKey: { ext: '.txt', mime: 'text/plain' },
@@ -577,6 +578,48 @@ export async function performAdvancedExport(
         return { success: true };
       }
       return { success: true, downloadBlob: new Blob([smarts], { type: 'text/plain' }), downloadFilename: `${baseName}.sma` };
+    }
+
+    if (format === 'CDX') {
+      if (!ketcher) return { success: false, error: 'Editor not ready' };
+      const cdxml = ketcher.getCDXml ? await ketcher.getCDXml() : null;
+      if (!cdxml?.trim()) return { success: false, error: 'No structure to export. Draw a molecule on the canvas first.' };
+
+      if (isTauriDesktop()) {
+        const { getStructureCdxBytes } = await import('../../hooks/useCopyImageToClipboard');
+        const cdxBytes = await getStructureCdxBytes(ketcher);
+        if (!cdxBytes?.length) return { success: false, error: 'CDX conversion failed. Install: pip install cdx-mol' };
+        const blob = new Blob([cdxBytes], { type: 'application/octet-stream' });
+        if (fileHandle) {
+          await writeBlobToHandle(fileHandle, blob);
+          return { success: true };
+        }
+        const { saveFile } = await import('../tauri/fileOperations');
+        const path = await saveFile('Save CDX', `${baseName}.cdx`, [
+          { name: 'ChemDraw File', extensions: ['cdx'] },
+        ]);
+        if (!path) return { success: false, error: 'Save cancelled' };
+        const { writeFile } = await import('@tauri-apps/plugin-fs');
+        await writeFile(path, cdxBytes);
+        return { success: true };
+      }
+
+      // Web: call /api/cdxml-to-cdx (Vite proxies to dev server; Vercel serves api/cdxml-to-cdx.py)
+      const res = await fetch('/api/cdxml-to-cdx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cdxml: cdxml.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { success: false, error: err?.error || `CDX conversion failed (${res.status})` };
+      }
+      const cdxBlob = await res.blob();
+      if (fileHandle) {
+        await writeBlobToHandle(fileHandle, cdxBlob);
+        return { success: true };
+      }
+      return { success: true, downloadBlob: cdxBlob, downloadFilename: `${baseName}.cdx` };
     }
 
     // Image formats - need Ketcher

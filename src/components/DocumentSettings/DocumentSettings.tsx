@@ -72,6 +72,14 @@ const CHEMDRAW_DEFAULTS_IN = {
   showBondNumbers: false,
 } as const;
 
+/** Publication preset: slightly larger bonds, cleaner for papers. */
+const PUBLICATION_PRESET_IN = {
+  ...CHEMDRAW_DEFAULTS_IN,
+  bondLength: 0.22,
+  lineWidth: 0.0069,
+  boldWidth: 0.025,
+} as const;
+
 const DEFAULTS: DrawingSettings = { ...CHEMDRAW_DEFAULTS_IN, units: 'inches' };
 const STORAGE_KEY = 'glchemdraw_drawing_settings';
 
@@ -306,6 +314,12 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
 
   const handleReset = () => {
     const next = convertDimensions({ ...CHEMDRAW_DEFAULTS_IN, units: 'inches' }, settings.units);
+    setSettings(next);
+    setDrafts(makeDrafts(next));
+  };
+
+  const handlePublicationPreset = () => {
+    const next = convertDimensions({ ...PUBLICATION_PRESET_IN, units: 'inches' }, settings.units);
     setSettings(next);
     setDrafts(makeDrafts(next));
   };
@@ -556,9 +570,16 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
         <Button
           size="small"
           onClick={handleReset}
-          sx={{ color: '#555', fontSize: '0.78rem', textTransform: 'none', mr: 'auto' }}
+          sx={{ color: '#555', fontSize: '0.78rem', textTransform: 'none', mr: 1 }}
         >
           Reset to Defaults
+        </Button>
+        <Button
+          size="small"
+          onClick={handlePublicationPreset}
+          sx={{ color: '#1976d2', fontSize: '0.78rem', textTransform: 'none', mr: 'auto' }}
+        >
+          Publication
         </Button>
         <Button
           size="small"

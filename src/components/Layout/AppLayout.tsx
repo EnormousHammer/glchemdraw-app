@@ -1834,7 +1834,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         </span>
                       </Tooltip>
                       <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                        <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Export as PNG / SVG / PDF / MOL / SDF…</MenuItem>
+                        <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Export as PNG / SVG / PDF / MOL / SDF / CDX…</MenuItem>
                         <MenuItem onClick={() => { setExportMenuAnchor(null); setShowBatchExportDialog(true); }}>Batch export (CSV)…</MenuItem>
                         <MenuItem onClick={() => {
                           setExportMenuAnchor(null);

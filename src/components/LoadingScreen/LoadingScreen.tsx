@@ -18,7 +18,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
   useEffect(() => {
     const timer = setTimeout(() => onComplete(), 2500);
     return () => clearTimeout(timer);
-  }, [onComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete intentionally excluded to prevent timer reset on parent re-render
+  }, []);
 
   useEffect(() => {
     if (videoRef.current) {

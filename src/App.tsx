@@ -3,7 +3,7 @@
  * GlChemDraw - Chemistry Structure & NMR Analysis Application
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { lightTheme } from './theme';
 import AppLayout from '@components/Layout';
@@ -22,8 +22,6 @@ function App() {
   useEffect(() => {
     // Preload NMR predictor databases in background for faster first prediction
     import('@/lib/nmr/preloadNmrPredictor').then(({ preloadNmrPredictor }) => preloadNmrPredictor());
-    // Preload ChemCanvas (Ketcher) chunk during loading screen so canvas is ready sooner
-    import('@/components/ChemCanvas/ChemCanvas');
   }, []);
 
   const handleError = (error: Error, errorInfo: React.ErrorInfo) => {
@@ -31,9 +29,9 @@ function App() {
     console.error('[App] Global error caught:', { error, errorInfo });
   };
 
-  const handleLoadingComplete = () => {
+  const handleLoadingComplete = useCallback(() => {
     setIsLoading(false);
-  };
+  }, []);
 
   if (isLoading) {
     return <LoadingScreen onComplete={handleLoadingComplete} />;

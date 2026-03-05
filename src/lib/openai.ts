@@ -88,3 +88,47 @@ export async function chatWithOpenAI(messages: ChatMessage[]): Promise<string> {
   }
   return content;
 }
+
+/** Message content for vision: string or array with text + image_url */
+export type VisionMessageContent = string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>;
+
+export interface VisionChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: VisionMessageContent;
+}
+
+/**
+ * Send messages to OpenAI with vision support (image in content).
+ * Used for image → SMILES (OCSR fallback).
+ */
+export async function chatWithOpenAIVision(messages: VisionChatMessage[]): Promise<string> {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new Error('messages must be a non-empty array');
+  }
+  const url = getOpenAIProxyUrl();
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      let err: { error?: string } = { error: res.statusText };
+      try {
+        err = JSON.parse(text);
+      } catch {
+        /* ignore */
+      }
+      throw new Error((err as { error?: string }).error || `OpenAI failed (${res.status})`);
+    }
+    const data = (await res.json()) as { content?: string };
+    return (data.content ?? '').trim();
+  } catch (e) {
+    if (e instanceof Error && /failed to fetch|load failed|networkerror|connection refused/i.test(e.message)) {
+      throw new Error(PROXY_UNREACHABLE_MSG);
+    }
+    throw e;
+  }
+}

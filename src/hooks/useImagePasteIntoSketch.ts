@@ -163,7 +163,10 @@ function addImageToCanvas(ketcher: any, dataUrl: string): Promise<boolean> {
   });
 }
 
-export type ImagePasteResult = { success: true; type: 'image' } | { success: true; type: 'structure' } | { success: false };
+export type ImagePasteResult =
+  | { success: true; type: 'image' }
+  | { success: true; type: 'structure'; source?: 'ocsr' | 'ai' }
+  | { success: false };
 
 /**
  * Upload image file → OCSR recognition → structure or image on canvas.
@@ -183,11 +186,21 @@ export async function uploadImageFileToSketch(
     r.onerror = reject;
     r.readAsDataURL(file);
   });
-  const smiles = await recognizeImageToStructure(dataUrl);
+  let smiles = await recognizeImageToStructure(dataUrl);
+  let source: 'ocsr' | 'ai' = 'ocsr';
+  if (!smiles) {
+    try {
+      const { imageToSmilesWithAI } = await import('@/lib/openai/chemistry');
+      smiles = await imageToSmilesWithAI(dataUrl);
+      if (smiles) source = 'ai';
+    } catch (e) {
+      console.warn('[useImagePasteIntoSketch] AI vision fallback failed:', (e as Error)?.message);
+    }
+  }
   if (smiles && typeof ketcher.setMolecule === 'function') {
     try {
       await ketcher.setMolecule(smiles);
-      return { success: true, type: 'structure' };
+      return { success: true, type: 'structure', source };
     } catch {
       // Fall through
     }
@@ -288,11 +301,21 @@ export async function pasteImageIntoSketch(
   }
 
   if (dataUrl) {
-    const smiles = await recognizeImageToStructure(dataUrl);
+    let smiles = await recognizeImageToStructure(dataUrl);
+    let source: 'ocsr' | 'ai' = 'ocsr';
+    if (!smiles) {
+      try {
+        const { imageToSmilesWithAI } = await import('@/lib/openai/chemistry');
+        smiles = await imageToSmilesWithAI(dataUrl);
+        if (smiles) source = 'ai';
+      } catch (e) {
+        console.warn('[pasteImageIntoSketch] AI vision fallback failed:', (e as Error)?.message);
+      }
+    }
     if (smiles && typeof ketcher.setMolecule === 'function') {
       try {
         await ketcher.setMolecule(smiles);
-        return { success: true, type: 'structure' };
+        return { success: true, type: 'structure', source };
       } catch {
         // Fall through to add as image
       }

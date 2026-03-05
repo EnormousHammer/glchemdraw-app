@@ -3,7 +3,7 @@
  * Used as fallback when PubChem has no match
  */
 
-import { chatWithOpenAI } from '../openai';
+import { chatWithOpenAI, chatWithOpenAIVision } from '../openai';
 import { getFirstStructureSmiles } from '../chemistry/openchemlib';
 
 function sanitizeForAI(input: string, maxLen: number = 500): string {
@@ -18,6 +18,41 @@ export function prepareSmilesForAI(smiles: string | null | undefined, maxLen: nu
   if (single.length < 2 || single.length > maxLen) return null;
   if (!/[A-Za-z\[\]\(\)=#@\+\-\d]/.test(single)) return null;
   return single;
+}
+
+/**
+ * Convert chemical structure image to SMILES using AI vision.
+ * Fallback when OCSR (naturalproducts.net) fails.
+ * @param dataUrl - data:image/png;base64,... or base64 string
+ * @returns SMILES or null
+ */
+export async function imageToSmilesWithAI(dataUrl: string): Promise<string | null> {
+  const url = dataUrl.startsWith('data:') ? dataUrl : `data:image/png;base64,${dataUrl}`;
+  try {
+    const content = await chatWithOpenAIVision([
+      {
+        role: 'system',
+        content:
+          'You are a chemistry expert. Look at the chemical structure image. Return ONLY the SMILES string for the molecule, nothing else. No explanation, no markdown, no extra text. If you cannot identify a valid structure, return the word FAIL.',
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'text' as const, text: 'Convert this chemical structure to SMILES. Reply with only the SMILES string.' },
+          { type: 'image_url' as const, image_url: { url } },
+        ],
+      },
+    ]);
+    const trimmed = content.trim();
+    if (!trimmed || /^FAIL$/i.test(trimmed)) return null;
+    const smiles = trimmed.split(/\s/)[0]?.trim();
+    if (smiles && smiles.length >= 2 && /[A-Za-z\[\]\(\)=#@\+\-\d]/.test(smiles)) {
+      return smiles;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -206,6 +241,60 @@ export async function aiFunctionalGroupToSmiles(fgName: string): Promise<string 
 }
 
 /**
+ * Suggest retrosynthesis routes from target molecule (AI retrosynthesis).
+ * @param smiles - SMILES of target molecule
+ * @param userContext - Optional extra context (scale, constraints, etc.)
+ * @returns Retrosynthesis suggestions or null if AI fails
+ */
+export async function aiSuggestRetrosynthesis(smiles: string, userContext?: string): Promise<string | null> {
+  const cleanSmiles = prepareSmilesForAI(smiles, 500);
+  if (!cleanSmiles) return null;
+  try {
+    const userMsg = appendUserContextToPrompt(
+      `Suggest retrosynthesis routes for this target molecule (SMILES: ${cleanSmiles}). For each route: starting materials, key reactions, conditions, and yield considerations. List 2–4 plausible routes. Be concise and practical.`,
+      userContext
+    );
+    const content = await chatWithOpenAI([
+      {
+        role: 'system',
+        content: 'You are an expert synthetic organic chemist. Suggest retrosynthetic disconnections for the target. Use standard retrosynthetic logic (C–C bond formation, functional group interconversion, protecting groups). For each route: key starting materials, main reaction types, typical conditions. Be practical and literature-based. Reply in clear paragraphs or numbered lists.',
+      },
+      { role: 'user', content: userMsg },
+    ]);
+    return content.trim().length > 50 ? content.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Explain R/S (CIP) stereochemistry for chiral centers.
+ * When requested, provides R/S labels and CIP assignment for each chiral center.
+ * @param smiles - SMILES string (isomeric with @ or @@ preferred)
+ * @param userContext - Optional extra context
+ */
+export async function aiExplainStereochemistry(smiles: string, userContext?: string): Promise<string | null> {
+  const cleanSmiles = prepareSmilesForAI(smiles, 500);
+  if (!cleanSmiles) return null;
+  try {
+    const userMsg = appendUserContextToPrompt(
+      `For this structure (SMILES: ${cleanSmiles}), assign R/S (CIP) configuration to each chiral center. List each chiral center with its R or S designation and briefly explain the priority order. If the structure has no chiral centers or is achiral, say so.`,
+      userContext
+    );
+    const content = await chatWithOpenAI([
+      {
+        role: 'system',
+        content: 'You are an expert in organic stereochemistry. Assign Cahn–Ingold–Prelog (CIP) R/S labels to chiral centers. For each center: give the R or S designation and the atom priority order (1–4). Be precise. Use plain text, no markdown.',
+      },
+      { role: 'user', content: userMsg },
+    ]);
+    return content.trim().length > 20 ? content.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Estimate safety/hazard summary using AI when PubChem safety data is sparse.
  * @param smiles - SMILES string
  * @param name - Optional compound name
@@ -218,7 +307,7 @@ export async function aiEstimateSafety(smiles: string, name?: string): Promise<s
     const content = await chatWithOpenAI([
       {
         role: 'system',
-        content: 'You are a chemical safety expert. Provide a concise safety summary for the compound. Include: GHS hazard class if known, flammability, reactivity, handling precautions, and storage. Be conservative. Reply in 2-4 short paragraphs.',
+        content: 'You are a chemical safety expert. Provide a concise safety summary for the compound. Include: (1) GHS hazard class and pictogram codes if applicable, (2) flammability and reactivity hazards, (3) handling precautions, (4) storage conditions. Be conservative. Reply in 2-4 short paragraphs.',
       },
       { role: 'user', content: `Safety summary for: ${compound}` },
     ]);

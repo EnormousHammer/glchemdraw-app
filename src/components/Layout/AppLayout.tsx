@@ -976,7 +976,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     try {
       const result = await uploadImageFileToSketch(ketcherRef, file);
       if (result.success && result.type === 'structure') {
-        setSnackbarMessage('Structure extracted from image');
+        setSnackbarMessage(result.source === 'ai' ? 'Structure extracted with AI' : 'Structure extracted from image');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
       } else if (result.success && result.type === 'image') {
@@ -1007,7 +1007,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       }
       const result = await pasteImageIntoSketch(ketcherRef);
       if (result.success && result.type === 'structure') {
-        setSnackbarMessage('Structure pasted');
+        setSnackbarMessage(result.source === 'ai' ? 'Structure pasted (AI)' : 'Structure pasted');
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
         return;

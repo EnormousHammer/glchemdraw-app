@@ -14,6 +14,9 @@
     "api/literature-proxy.js": {
       "maxDuration": 30
     },
+    "api/structure-search-proxy.js": {
+      "maxDuration": 30
+    },
     "api/cdxml-to-cdx.py": {
       "maxDuration": 30
     }
@@ -22,6 +25,7 @@
     {"source": "/api/nmr-proxy", "destination": "/api/nmr-proxy.js"},
     {"source": "/api/ocsr", "destination": "/api/ocsr.js"},
     {"source": "/api/literature-proxy", "destination": "/api/literature-proxy.js"},
+    {"source": "/api/structure-search-proxy", "destination": "/api/structure-search-proxy.js"},
     {"source": "/api/cdxml-to-cdx", "destination": "/api/cdxml-to-cdx.py"},
     {"source": "/findmolecule-setup", "destination": "/findmolecule-setup.html"},
     {"source": "/((?!api).*)", "destination": "/index.html"}

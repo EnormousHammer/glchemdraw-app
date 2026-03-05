@@ -61,6 +61,7 @@ import { SafetyPanel } from '../SafetyPanel';
 import { BatchNMRDialog } from '../BatchNMR';
 import { BatchExportDialog } from '../BatchExport';
 import { LiteratureSearchDialog } from '../LiteratureSearch';
+import { SimilaritySearchDialog } from '../SimilaritySearch';
 import { performAdvancedExport, type AdvancedExportOptions } from '@lib/export/advancedExport';
 import { peptideToHelm, dnaToHelm, rnaToHelm } from '../../lib/chemistry/helmFormat';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -127,6 +128,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showBatchNMRDialog, setShowBatchNMRDialog] = useState(false);
   const [showBatchExportDialog, setShowBatchExportDialog] = useState(false);
   const [showLiteratureDialog, setShowLiteratureDialog] = useState(false);
+  const [showSimilarityDialog, setShowSimilarityDialog] = useState(false);
   const [showBiopolymerSequenceDialog, setShowBiopolymerSequenceDialog] = useState(false);
   const [showFunctionalGroupDialog, setShowFunctionalGroupDialog] = useState(false);
   const [showTemplateLibraryDialog, setShowTemplateLibraryDialog] = useState(false);
@@ -157,7 +159,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [aiPropertiesLoading, setAiPropertiesLoading] = useState(false);
   const [aiSafetySummary, setAiSafetySummary] = useState<string | null>(null);
   const [aiSafetyLoading, setAiSafetyLoading] = useState(false);
+  const [aiStereoExplanation, setAiStereoExplanation] = useState<string | null>(null);
+  const [aiStereoLoading, setAiStereoLoading] = useState(false);
+  const [readOnlyFromUrl, setReadOnlyFromUrl] = useState(false);
   const [isEmbeddedInELN, setIsEmbeddedInELN] = useState(false);
+  const [isEmbedMode, setIsEmbedMode] = useState(false);
   const [chemicalInfoWidth, setChemicalInfoWidth] = useState(() => {
     const saved = localStorage.getItem('glchemdraw_chemical_info_width');
     const n = saved ? parseInt(saved, 10) : 360;
@@ -185,20 +191,31 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   // Refs
   const ketcherRef = useRef<any>(null);
   const fullCanvasRef = useRef<StructureData | null>(null);
-  const shareableLinkParamsRef = useRef<{ smiles?: string; cid?: string } | null>(null);
+  const shareableLinkParamsRef = useRef<{ smiles?: string; cid?: string; edit?: string } | null>(null);
   const hasSelectionRef = useRef(false);
   const chemicalInfoScrollRef = useRef<HTMLDivElement>(null);
   const aiSectionRef = useRef<HTMLDivElement>(null);
+  const lastAutoAiNameSmilesRef = useRef<string | null>(null);
+  const lastAutoSafetySmilesRef = useRef<string | null>(null);
 
-  // Shareable links: ?smiles=... or ?cid=... — load structure when Ketcher is ready
+  // Shareable links: ?smiles=... or ?cid=... + optional ?edit=1 (editable) or ?edit=0 (view-only)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const smiles = params.get('smiles')?.trim();
     const cid = params.get('cid')?.trim();
+    const edit = params.get('edit')?.trim();
     if (smiles || cid) {
-      shareableLinkParamsRef.current = { smiles: smiles || undefined, cid: cid || undefined };
+      shareableLinkParamsRef.current = { smiles: smiles || undefined, cid: cid || undefined, edit: edit || undefined };
+      setReadOnlyFromUrl(edit === '0');
     }
+  }, []);
+
+  // Embed mode: ?embed=1 for iframe (Notion, Confluence, docs) – compact UI
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const embed = new URLSearchParams(window.location.search).get('embed');
+    setIsEmbedMode(embed === '1' || embed === 'true');
   }, []);
 
   // ? key opens shortcuts dialog
@@ -844,6 +861,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     setSnackbarOpen(true);
   }, []);
 
+  const handleSimilarityCompoundSelect = useCallback(async (_cid: number, smiles: string, name: string) => {
+    const ketcher = ketcherRef.current;
+    if (ketcher?.setMolecule) {
+      await ketcher.setMolecule(smiles);
+      setSnackbarMessage(`Loaded: ${name}`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
   /** Re-apply Ketcher layout after mode switch - fixes bottom toolbar disappearing and shift. */
   const reapplyKetcherLayout = useCallback(() => {
     requestAnimationFrame(() => {
@@ -1153,6 +1180,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         });
         setAiProperties(null);
         setAiSafetySummary(null);
+        setAiStereoExplanation(null);
         // Set ALL REAL data from PubChem (basic properties + safety data)
         setChemicalData({
           physicalProperties: {
@@ -1288,6 +1316,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           });
           setAiProperties(null);
           setAiSafetySummary(null);
+          setAiStereoExplanation(null);
           // Set ALL REAL data from PubChem
           setChemicalData({
             physicalProperties: {
@@ -1524,6 +1553,55 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, [currentStructure?.smiles, chemicalData.regulatory?.smiles, recognizedCompound?.name]);
 
+  const handleGetStereoExplanation = useCallback(async () => {
+    const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
+    if (!smiles) return;
+    setAiStereoLoading(true);
+    setAiStereoExplanation(null);
+    try {
+      const { aiExplainStereochemistry } = await import('../../lib/openai/chemistry');
+      const explanation = await aiExplainStereochemistry(smiles, aiContext);
+      if (explanation) {
+        setAiStereoExplanation(explanation);
+        setSnackbarMessage('R/S labels generated');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      } else {
+        setSnackbarMessage('Could not generate R/S explanation');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+      }
+    } catch {
+      setSnackbarMessage('R/S explanation failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setAiStereoLoading(false);
+    }
+  }, [currentStructure?.smiles, chemicalData.regulatory?.smiles, aiContext]);
+
+  // Phase 2: Auto-trigger Get AI Name when PubChem returns N/A (no IUPAC)
+  useEffect(() => {
+    const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
+    if (!smiles || isSearching || aiIupacLoading || aiIupacName) return;
+    const hasIupacFromPubChem = recognizedCompound?.properties?.IUPACName;
+    if (hasIupacFromPubChem) return;
+    if (lastAutoAiNameSmilesRef.current === smiles) return;
+    lastAutoAiNameSmilesRef.current = smiles;
+    handleGetAiIupacName();
+  }, [currentStructure?.smiles, chemicalData.regulatory?.smiles, isSearching, recognizedCompound?.properties?.IUPACName, aiIupacName, aiIupacLoading, handleGetAiIupacName]);
+
+  // Phase 2: Auto-trigger safety summary when no safety data from PubChem
+  useEffect(() => {
+    const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
+    if (!smiles || isSearching || aiSafetyLoading || aiSafetySummary) return;
+    const hasSafetyFromPubChem = chemicalData.safetyData?.ghsClassification || chemicalData.safetyData?.hazardClass;
+    if (hasSafetyFromPubChem) return;
+    if (lastAutoSafetySmilesRef.current === smiles) return;
+    lastAutoSafetySmilesRef.current = smiles;
+    handleGetSafetySummary();
+  }, [currentStructure?.smiles, chemicalData.regulatory?.smiles, isSearching, chemicalData.safetyData?.ghsClassification, chemicalData.safetyData?.hazardClass, aiSafetySummary, aiSafetyLoading, handleGetSafetySummary]);
+
   const handleClear = useCallback(() => {
     if (ketcherRef.current && ketcherRef.current.editor) {
       try {
@@ -1534,6 +1612,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setAiIupacName(null);
         setAiProperties(null);
         setAiSafetySummary(null);
+        setAiStereoExplanation(null);
+        lastAutoAiNameSmilesRef.current = null;
+        lastAutoSafetySmilesRef.current = null;
         setChemicalData({
           physicalProperties: null,
           safetyData: null,
@@ -1558,16 +1639,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, []);
 
+  const headerHeight = isEmbedMode ? 40 : 56;
+
   return (
     <Box sx={{ 
         height: '100vh', 
         width: '100vw',
         display: 'flex', 
         flexDirection: 'column',
-        overflow: 'hidden'
+        overflow: 'hidden',
       }}>
-        {/* Header - ALWAYS ON TOP */}
+        {/* Header - compact when ?embed=1 (iframe for Notion, Confluence, docs) */}
         <AppToolbar
+          compact={isEmbedMode}
           onNew={() => {}}
           onOpen={() => {}}
           onSave={() => {}}
@@ -1585,8 +1669,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         <Box sx={{ 
           flex: 1,
           display: 'flex', 
-          marginTop: '56px', // Push content below fixed header
-          height: 'calc(100vh - 56px)', // Exact height: viewport minus header
+          marginTop: `${headerHeight}px`, // Push content below fixed header (compact in embed mode)
+          height: `calc(100vh - ${headerHeight}px)`,
           overflow: 'hidden', // Prevent any scrolling
           width: '100%',
           position: 'relative'
@@ -1614,6 +1698,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   flexDirection: 'column',
                   overflow: 'hidden'
                 }}>
+                  {readOnlyFromUrl && (
+                    <Box sx={{ px: 1.5, py: 0.5, bgcolor: 'action.hover', color: 'text.secondary', fontSize: '0.75rem', fontWeight: 500, textAlign: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
+                      View only — link has edit=0. Use Export → Copy shareable link (editable) to share an editable link.
+                    </Box>
+                  )}
                   <Suspense fallback={
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 2 }}>
                       <CircularProgress size={40} />
@@ -1621,6 +1710,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   }>
                   <ChemCanvas
                     key={canvasKey}
+                    readonly={readOnlyFromUrl}
                     onStructureChange={handleStructureChange}
                     onSelectionChange={handleSelectionChange}
                     onError={(error) => console.error('[AppLayout] ChemCanvas error:', error)}
@@ -1842,10 +1932,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
                           const cid = recognizedCompound?.cid;
                           const base = window.location.origin + window.location.pathname;
-                          const url = cid ? `${base}?cid=${cid}` : smiles ? `${base}?smiles=${encodeURIComponent(smiles)}` : null;
+                          let url = cid ? `${base}?cid=${cid}` : smiles ? `${base}?smiles=${encodeURIComponent(smiles)}` : null;
                           if (url) {
+                            url += (url.includes('?') ? '&' : '?') + 'edit=1';
                             navigator.clipboard.writeText(url).then(() => {
-                              setSnackbarMessage('Shareable link copied!');
+                              setSnackbarMessage('Shareable link copied! (editable)');
                               setSnackbarSeverity('success');
                               setSnackbarOpen(true);
                             });
@@ -1854,19 +1945,38 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             setSnackbarSeverity('warning');
                             setSnackbarOpen(true);
                           }
-                        }}>Copy shareable link</MenuItem>
+                        }}>Copy shareable link (editable)</MenuItem>
+                        <MenuItem onClick={() => {
+                          setExportMenuAnchor(null);
+                          const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
+                          const cid = recognizedCompound?.cid;
+                          const base = window.location.origin + window.location.pathname;
+                          let url = cid ? `${base}?cid=${cid}` : smiles ? `${base}?smiles=${encodeURIComponent(smiles)}` : null;
+                          if (url) {
+                            url += (url.includes('?') ? '&' : '?') + 'edit=0';
+                            navigator.clipboard.writeText(url).then(() => {
+                              setSnackbarMessage('Shareable link copied! (view-only)');
+                              setSnackbarSeverity('success');
+                              setSnackbarOpen(true);
+                            });
+                          } else {
+                            setSnackbarMessage('Draw a structure first');
+                            setSnackbarSeverity('warning');
+                            setSnackbarOpen(true);
+                          }
+                        }}>Copy shareable link (view-only)</MenuItem>
                         <Divider />
                         <MenuItem onClick={async () => {
                           setExportMenuAnchor(null);
                           const ok = await copyStructureAsImageWithDpi(ketcherRef.current, 150);
                           if (ok) { setSnackbarMessage('Structure copied as image (150 DPI)'); setSnackbarSeverity('success'); setSnackbarOpen(true); }
-                          else { setSnackbarMessage('Copy failed'); setSnackbarSeverity('error'); setSnackbarOpen(true); }
+                          else { setSnackbarMessage('Copy failed. Use Export > PNG to download instead.'); setSnackbarSeverity('warning'); setSnackbarOpen(true); }
                         }}>Copy as image (150 DPI)</MenuItem>
                         <MenuItem onClick={async () => {
                           setExportMenuAnchor(null);
                           const ok = await copyStructureAsImageWithDpi(ketcherRef.current, 300);
                           if (ok) { setSnackbarMessage('Structure copied as image (300 DPI)'); setSnackbarSeverity('success'); setSnackbarOpen(true); }
-                          else { setSnackbarMessage('Copy failed'); setSnackbarSeverity('error'); setSnackbarOpen(true); }
+                          else { setSnackbarMessage('Copy failed. Use Export > PNG to download instead.'); setSnackbarSeverity('warning'); setSnackbarOpen(true); }
                         }}>Copy as image (300 DPI)</MenuItem>
                         <Divider />
                         <MenuItem onClick={handleCopyAsKET}>Copy as KET</MenuItem>
@@ -2160,6 +2270,20 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       smiles={currentStructure?.smiles}
                       molfile={currentStructure?.molfile}
                     />
+
+                    {/* Search by structure - when we have smiles */}
+                    {(currentStructure?.smiles || chemicalData?.regulatory?.smiles) && (
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => setShowSimilarityDialog(true)}
+                          sx={{ textTransform: 'none', fontSize: '0.7rem' }}
+                        >
+                          Find similar
+                        </Button>
+                      </Box>
+                    )}
 
               {/* Compound Identification - PubChem primary (shown first) */}
               {recognizedCompound && (
@@ -2972,8 +3096,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 />
               )}
 
-              {/* Stereochemistry (RDKit) */}
-              {stereoInfo && (stereoInfo.chiralCenters > 0 || stereoInfo.unspecifiedCenters > 0 || stereoInfo.inchiWithStereochemistry) && (
+              {/* Stereochemistry (RDKit) – show when chiral centers or when structure present (for Get R/S) */}
+              {((stereoInfo && (stereoInfo.chiralCenters > 0 || stereoInfo.unspecifiedCenters > 0 || stereoInfo.inchiWithStereochemistry)) || (currentStructure?.smiles || chemicalData.regulatory?.smiles)) && (
                 <Box sx={{ p: 1.25, minWidth: 0, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                   <Box sx={{ py: 0.5, px: 0.75, mb: 0.5, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'action.hover', borderRadius: 0.5, borderLeft: '3px solid', borderLeftColor: 'primary.main', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <CenterFocusStrongIcon sx={{ fontSize: 14 }} />
@@ -2982,6 +3106,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     </Typography>
                   </Box>
                   <Stack spacing={0.25}>
+                    {stereoInfo && (
+                      <>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, p: 0.5, borderRadius: 1, bgcolor: 'action.hover' }}>
                       <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>Chiral centers:</Typography>
                       <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.75rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -3013,6 +3139,32 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                         </Box>
                       </Tooltip>
+                    )}
+                      </>
+                    )}
+                    {(currentStructure?.smiles || chemicalData.regulatory?.smiles) && (
+                      <Box sx={{ mt: 0.5 }}>
+                        {aiStereoExplanation ? (
+                          <Box
+                            onClick={() => handleCopy(aiStereoExplanation, 'R/S labels')}
+                            sx={{ p: 0.75, borderRadius: 1, bgcolor: 'action.hover', cursor: 'pointer', '&:hover': { bgcolor: 'action.selected' } }}
+                          >
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>R/S (CIP):</Typography>
+                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem', lineHeight: 1.5 }}>{aiStereoExplanation}</Typography>
+                          </Box>
+                        ) : (
+                          <Button
+                            size="small"
+                            variant="text"
+                            onClick={handleGetStereoExplanation}
+                            disabled={aiStereoLoading}
+                            startIcon={aiStereoLoading ? <CircularProgress size={14} /> : <PsychologyIcon sx={{ fontSize: 15 }} />}
+                            sx={{ fontSize: '0.7rem', fontWeight: 500, color: 'primary.main', textTransform: 'none' }}
+                          >
+                            {aiStereoLoading ? 'Getting R/S...' : 'Get R/S (CIP) labels'}
+                          </Button>
+                        )}
+                      </Box>
                     )}
                   </Stack>
                 </Box>
@@ -3263,6 +3415,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           compoundName={recognizedCompound?.name}
         />
 
+        <SimilaritySearchDialog
+          open={showSimilarityDialog}
+          onClose={() => setShowSimilarityDialog(false)}
+          smiles={currentStructure?.smiles ?? chemicalData?.regulatory?.smiles ?? null}
+          onCompoundSelect={handleSimilarityCompoundSelect}
+        />
+
         {/* Functional Group Dialog (AI-powered) */}
         <FunctionalGroupDialog
           open={showFunctionalGroupDialog}
@@ -3336,6 +3495,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 <li>Use the <strong>reaction arrow tool</strong> in the left toolbar (arrow icon)</li>
                 <li>Click and drag between reactants and products to add an arrow</li>
                 <li>Export as RXN file for reaction schemes</li>
+              </Typography>
+              <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600, mt: 1 }}>Reaction conditions (text above/below arrows):</Typography>
+              <Typography variant="body2" component="ol" sx={{ pl: 2, '& li': { mb: 1 } }}>
+                <li><strong>Add conditions:</strong> Select the reaction arrow, then use the <strong>Text</strong> tool (or double-click near the arrow) to add reagent/condition text</li>
+                <li>Place text <strong>above</strong> the arrow for reagents (e.g. H₂SO₄, heat)</li>
+                <li>Place text <strong>below</strong> the arrow for solvents or additional conditions</li>
+                <li>Use the <strong>Plus (+)</strong> tool to add reactant/product separators between structures</li>
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 <strong>Tip:</strong> Look for the arrow/reaction icon in the drawing tools toolbar on the left.

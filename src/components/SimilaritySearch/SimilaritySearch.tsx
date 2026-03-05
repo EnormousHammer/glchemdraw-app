@@ -40,7 +40,7 @@ import {
   Star as StarIcon,
   StarBorder as StarBorderIcon,
 } from '@mui/icons-material';
-import * as pubchemCache from '@lib/pubchem/cache';
+import { searchByStructure } from '@lib/pubchem/structureSearch';
 
 interface SimilaritySearchProps {
   smiles?: string;
@@ -82,60 +82,25 @@ export const SimilaritySearch: React.FC<SimilaritySearchProps> = ({
     setResults([]);
 
     try {
-      // Mock similarity search - in real implementation, use RDKit or PubChem similarity API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock results
-      const mockResults: SimilarCompound[] = [
-        {
-          cid: 2244,
-          name: 'Aspirin',
-          smiles: 'CC(=O)OC1=CC=CC=C1C(=O)O',
-          similarity: 0.95,
-          formula: 'C9H8O4',
-          mw: 180.16,
-        },
-        {
-          cid: 2245,
-          name: 'Salicylic Acid',
-          smiles: 'C1=CC=C(C(=C1)C(=O)O)O',
-          similarity: 0.88,
-          formula: 'C7H6O3',
-          mw: 138.12,
-        },
-        {
-          cid: 2246,
-          name: 'Benzoic Acid',
-          smiles: 'C1=CC=C(C=C1)C(=O)O',
-          similarity: 0.75,
-          formula: 'C7H6O2',
-          mw: 122.12,
-        },
-        {
-          cid: 2247,
-          name: 'Phenylacetic Acid',
-          smiles: 'C1=CC=C(C=C1)CC(=O)O',
-          similarity: 0.68,
-          formula: 'C8H8O2',
-          mw: 136.15,
-        },
-        {
-          cid: 2248,
-          name: '4-Hydroxybenzoic Acid',
-          smiles: 'C1=CC(=CC=C1C(=O)O)O',
-          similarity: 0.62,
-          formula: 'C7H6O3',
-          mw: 138.12,
-        },
-      ];
+      const raw = await searchByStructure({
+        smiles,
+        searchType,
+        threshold: Math.round(similarityThreshold * 100),
+        maxRecords: maxResults,
+      });
 
-      // Filter by similarity threshold
-      const filteredResults = mockResults.filter(compound => 
-        compound.similarity >= similarityThreshold
-      ).slice(0, maxResults);
+      const filteredResults: SimilarCompound[] = raw
+        .filter((c) => searchType !== 'similarity' || c.similarity >= similarityThreshold)
+        .map((c) => ({
+          cid: c.cid,
+          name: c.name,
+          smiles: c.smiles,
+          similarity: c.similarity,
+          formula: c.formula,
+          mw: c.mw,
+        }));
 
       setResults(filteredResults);
-      
     } catch (err) {
       const errorMessage = (err as Error).message || 'Similarity search failed';
       setError(errorMessage);

@@ -93,6 +93,7 @@ async function searchPatents(cid, limit) {
     publicationDate: 'Unknown',
     patentNumber: id,
     url: `https://patents.google.com/patent/${id}`,
+    source: 'patent',
   }));
 }
 
@@ -128,7 +129,9 @@ export default async function handler(req, res) {
       searchPubMed(cid, limit),
       searchPatents(cid, Math.floor(limit / 2)),
     ]);
-    const combined = [...pubmedResults, ...patentResults].slice(0, limit);
+    // Rank: PubMed first (by year desc), then patents. Prioritize recent literature.
+    const sortedPubmed = [...pubmedResults].sort((a, b) => (b.year || 0) - (a.year || 0));
+    const combined = [...sortedPubmed, ...patentResults].slice(0, limit);
     return res.status(200).json(combined);
   } catch (err) {
     console.error('[Literature Proxy] Error:', err?.message);

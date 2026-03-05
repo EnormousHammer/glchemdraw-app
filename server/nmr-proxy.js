@@ -104,6 +104,17 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'nmr-proxy' });
 });
 
+/** Structure search proxy (PubChem similarity/substructure/superstructure). Local dev. Cloud: /api/structure-search-proxy */
+app.post('/structure-search-proxy', async (req, res) => {
+  try {
+    const handler = (await import('../api/structure-search-proxy.js')).default;
+    await handler(req, res);
+  } catch (err) {
+    console.error('[Structure Search Proxy]', err?.message);
+    res.status(500).json({ error: err?.message || 'Structure search failed' });
+  }
+});
+
 /** Literature search proxy (PubChem + NCBI). Local dev. Cloud: /api/literature-proxy */
 app.post('/literature-proxy', async (req, res) => {
   const { cid, limit = 20 } = req.body || {};

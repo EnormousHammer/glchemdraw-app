@@ -104,6 +104,21 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'nmr-proxy' });
 });
 
+/** Literature search proxy (PubChem + NCBI). Local dev. Cloud: /api/literature-proxy */
+app.post('/literature-proxy', async (req, res) => {
+  const { cid, limit = 20 } = req.body || {};
+  if (!cid || cid <= 0) {
+    return res.status(400).json({ error: 'Invalid CID' });
+  }
+  try {
+    const handler = (await import('../api/literature-proxy.js')).default;
+    await handler(req, res);
+  } catch (err) {
+    console.error('[Literature Proxy]', err?.message);
+    res.status(500).json({ error: err?.message || 'Literature search failed' });
+  }
+});
+
 /** CDXML → CDX (local dev). On Vercel, api/cdxml-to-cdx.py handles this. */
 app.post('/api/cdxml-to-cdx', async (req, res) => {
   const { cdxml } = req.body || {};

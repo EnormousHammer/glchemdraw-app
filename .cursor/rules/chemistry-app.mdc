@@ -42,7 +42,7 @@ GL-ChemDraw is a **chemical structure drawing and analysis application**. All fe
 **The app must work in both Tauri (desktop) and cloud (Vercel web).**
 
 - **API URLs:** Use `window.location.hostname === 'localhost'` (or `127.0.0.1`) → `http://localhost:3001/...`; else → `/api/...` (relative to origin)
-- **Examples:** `openai.ts`, `nmrdb.ts` — local uses dev:proxy, cloud uses Vercel serverless
+- **Examples:** `openai.ts`, `nmrdb.ts`, `literature.ts` — local uses dev:proxy, cloud uses Vercel serverless
 - **OCSR:** `/api/ocsr` — already relative; works in cloud
 - **Tauri-only:** Clipboard (ChemDraw-style), file save dialogs — guard with `__TAURI__ in window`; provide web fallbacks (navigator.clipboard, download links)
 - **Never hardcode** `localhost:3001` for APIs used in web builds

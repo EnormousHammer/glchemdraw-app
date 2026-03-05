@@ -1,14 +1,21 @@
 /**
  * PubChem Literature Integration
- * Searches scientific literature and patents
+ * Searches scientific literature and patents.
+ * Local: npm run dev:proxy (localhost:3001). Cloud (Vercel): /api/literature-proxy.
  */
 
 import axios from 'axios';
 import { pubchemThrottler } from './throttle';
 
 const PUG_REST_BASE = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
-const EUREKA_BASE = 'https://eurekaselect.com/api';
 const REQUEST_TIMEOUT = 30000;
+
+function getLiteratureProxyUrl(): string {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:3001/literature-proxy';
+  }
+  return '/api/literature-proxy';
+}
 
 export interface LiteratureReference {
   id: string;
@@ -36,7 +43,7 @@ export interface PatentReference {
 }
 
 /**
- * Search literature for a compound
+ * Search literature for a compound via proxy (cloud-safe, no CORS).
  */
 export async function searchLiterature(
   cid: number,
@@ -46,138 +53,27 @@ export async function searchLiterature(
     throw new Error('Invalid CID');
   }
 
+  const proxyUrl = getLiteratureProxyUrl();
+  const fullUrl = proxyUrl.startsWith('http')
+    ? proxyUrl
+    : `${typeof window !== 'undefined' ? window.location.origin : ''}${proxyUrl}`;
+
   try {
-    // Search PubMed
-    const pubmedResults = await searchPubMed(cid, limit);
-    
-    // Search patents
-    const patentResults = await searchPatents(cid, Math.floor(limit / 2));
-    
-    return [...pubmedResults, ...patentResults].slice(0, limit);
+    const res = await fetch(fullUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cid, limit }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error((err as { error?: string }).error || `Literature search failed (${res.status})`);
+    }
+    const data = (await res.json()) as (LiteratureReference | PatentReference)[];
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('[PubChem Literature] Error searching literature:', error);
     throw new Error(`Failed to search literature: ${(error as Error).message}`);
-  }
-}
-
-/**
- * Search PubMed for compound-related articles
- */
-async function searchPubMed(cid: number, limit: number): Promise<LiteratureReference[]> {
-  try {
-    const result = await pubchemThrottler.throttle(async () => {
-      const response = await axios.get(
-        `${PUG_REST_BASE}/compound/cid/${cid}/xrefs/PubMedID/JSON`,
-        {
-          timeout: REQUEST_TIMEOUT,
-          headers: { 'Accept': 'application/json' },
-        }
-      );
-      return response.data;
-    });
-
-    const pmids = result?.InformationList?.Information?.[0]?.PMID || [];
-    const references: LiteratureReference[] = [];
-
-    // Fetch details for each PMID (limited to avoid rate limits)
-    for (const pmid of pmids.slice(0, limit)) {
-      try {
-        const article = await fetchPubMedArticle(pmid);
-        if (article) {
-          references.push(article);
-        }
-      } catch (error) {
-        console.warn(`[PubChem Literature] Failed to fetch PMID ${pmid}:`, error);
-      }
-    }
-
-    return references;
-  } catch (error) {
-    console.error('[PubChem Literature] Error searching PubMed:', error);
-    return [];
-  }
-}
-
-/**
- * Fetch detailed article information from PubMed
- */
-async function fetchPubMedArticle(pmid: string): Promise<LiteratureReference | null> {
-  try {
-    const response = await axios.get(
-      `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${pmid}&retmode=xml&rettype=abstract`,
-      { timeout: REQUEST_TIMEOUT }
-    );
-
-    // Parse XML response (simplified)
-    const xml = response.data;
-    const titleMatch = xml.match(/<ArticleTitle>(.*?)<\/ArticleTitle>/);
-    const authorMatches = xml.match(/<Author><LastName>(.*?)<\/LastName><ForeName>(.*?)<\/ForeName><\/Author>/g);
-    const journalMatch = xml.match(/<Journal><Title>(.*?)<\/Title><\/Journal>/);
-    const yearMatch = xml.match(/<PubDate><Year>(\d{4})<\/Year><\/PubDate>/);
-    const abstractMatch = xml.match(/<AbstractText>(.*?)<\/AbstractText>/);
-
-    if (!titleMatch) return null;
-
-    const authors = authorMatches?.map((match: any) => {
-      const lastMatch = match.match(/<LastName>(.*?)<\/LastName>/);
-      const firstMatch = match.match(/<ForeName>(.*?)<\/ForeName>/);
-      return `${lastMatch?.[1] || ''}, ${firstMatch?.[1] || ''}`.trim();
-    }) || [];
-
-    return {
-      id: pmid,
-      title: titleMatch[1],
-      authors,
-      journal: journalMatch?.[1] || 'Unknown Journal',
-      year: parseInt(yearMatch?.[1] || '0'),
-      pmid,
-      abstract: abstractMatch?.[1] || undefined,
-      url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`,
-      source: 'pubmed',
-    };
-  } catch (error) {
-    console.error(`[PubChem Literature] Error fetching PMID ${pmid}:`, error);
-    return null;
-  }
-}
-
-/**
- * Search patents for compound
- */
-async function searchPatents(cid: number, limit: number): Promise<PatentReference[]> {
-  try {
-    const result = await pubchemThrottler.throttle(async () => {
-      const response = await axios.get(
-        `${PUG_REST_BASE}/compound/cid/${cid}/xrefs/PatentID/JSON`,
-        {
-          timeout: REQUEST_TIMEOUT,
-          headers: { 'Accept': 'application/json' },
-        }
-      );
-      return response.data;
-    });
-
-    const patentIds = result?.InformationList?.Information?.[0]?.PatentID || [];
-    const patents: PatentReference[] = [];
-
-    // Convert patent IDs to references (simplified)
-    for (const patentId of patentIds.slice(0, limit)) {
-      patents.push({
-        id: patentId,
-        title: `Patent ${patentId}`,
-        inventors: ['Unknown'],
-        assignee: 'Unknown',
-        filingDate: 'Unknown',
-        publicationDate: 'Unknown',
-        patentNumber: patentId,
-        url: `https://patents.google.com/patent/${patentId}`,
-      });
-    }
-
-    return patents;
-  } catch (error) {
-    console.error('[PubChem Literature] Error searching patents:', error);
-    return [];
   }
 }
 

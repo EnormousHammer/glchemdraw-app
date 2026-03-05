@@ -262,8 +262,18 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const ketcher = editorRef.current;
-        const molfile = await ketcher.getMolfile();
-        const smiles = await ketcher.getSmiles();
+        let molfile = '';
+        let smiles = '';
+        try {
+          [molfile, smiles] = await Promise.all([
+            ketcher.getMolfile?.().catch(() => ''),
+            ketcher.getSmiles?.().catch(() => ''),
+          ]);
+        } catch (_) {}
+        if (!molfile?.trim() && typeof ketcher.getRxn === 'function') {
+          const rxn = await ketcher.getRxn?.().catch(() => '');
+          molfile = (rxn || '').trim();
+        }
         if (onStructureChange) onStructureChange(molfile, smiles);
 
         // Issue #2: After full canvas update, check selection - show selected struct if any

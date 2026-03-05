@@ -30,6 +30,7 @@ import { Close as CloseIcon, Tune as TuneIcon } from '@mui/icons-material';
 type Units = 'inches' | 'cm' | 'pt';
 
 interface DrawingSettings {
+  chainAngle: number;    // Chain Angle – degrees (ChemDraw default 120°)
   bondLength: number;    // Fixed Length – stored in current units
   bondSpacing: number;   // Bond Spacing – always % of length
   boldWidth: number;     // Bold Width (stereoBondWidth) – in current units
@@ -56,6 +57,7 @@ const IN_TO_PT = 72.0;
 
 /** ChemDraw defaults (in inches, matching the Drawing tab screenshot). */
 const CHEMDRAW_DEFAULTS_IN = {
+  chainAngle: 120,
   bondLength: 0.2,
   bondSpacing: 18,
   boldWidth: 0.0278,
@@ -70,6 +72,15 @@ const CHEMDRAW_DEFAULTS_IN = {
   showCharge: true,
   showHydrogenLabels: true,
   showBondNumbers: false,
+} as const;
+
+/** ACS preset: bond 0.18", line 0.006" (ACS style). */
+const ACS_PRESET_IN = {
+  ...CHEMDRAW_DEFAULTS_IN,
+  chainAngle: 120,
+  bondLength: 0.18,
+  lineWidth: 0.006,
+  boldWidth: 0.022,
 } as const;
 
 /** Publication preset: slightly larger bonds, cleaner for papers. */
@@ -117,6 +128,8 @@ function fmt(v: number, u: Units): string {
 function toKetcherSettings(s: DrawingSettings): Record<string, unknown> {
   const inIn = (v: number) => toInches(v, s.units);
   return {
+    // Chain angle (degrees) – used for layout and new bond drawing
+    chainAngle: s.chainAngle,
     // Bond geometry (Ketcher expects cm for bondLength, pt for widths)
     bondLength:               inIn(s.bondLength)   * IN_TO_CM,
     bondLengthUnit:           'cm',
@@ -201,11 +214,12 @@ interface DocumentSettingsProps {
 }
 
 // Numeric fields that have draft strings
-type DraftKey = 'bondLength' | 'bondSpacing' | 'boldWidth' | 'lineWidth' | 'marginWidth' | 'hashSpacing';
+type DraftKey = 'chainAngle' | 'bondLength' | 'bondSpacing' | 'boldWidth' | 'lineWidth' | 'marginWidth' | 'hashSpacing';
 type Drafts = Record<DraftKey, string>;
 
 function makeDrafts(s: DrawingSettings): Drafts {
   return {
+    chainAngle:  s.chainAngle.toFixed(0),
     bondLength:  fmt(s.bondLength,  s.units),
     bondSpacing: s.bondSpacing.toFixed(0),
     boldWidth:   fmt(s.boldWidth,   s.units),
@@ -230,6 +244,8 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       const s = stored ? (JSON.parse(stored) as DrawingSettings) : DEFAULTS;
+      // Backwards compatibility: ensure chainAngle exists (added in Phase 1)
+      if (typeof s.chainAngle !== 'number') s.chainAngle = CHEMDRAW_DEFAULTS_IN.chainAngle;
       setSettings(s);
       setDrafts(makeDrafts(s));
     } catch {
@@ -255,8 +271,10 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
     }
     const clamped = field === 'bondSpacing'
       ? Math.max(1, Math.min(100, num))
-      : Math.max(0.0001, num);
-    const formatted = field === 'bondSpacing' ? clamped.toFixed(0) : fmt(clamped, settings.units);
+      : field === 'chainAngle'
+        ? Math.max(60, Math.min(180, num))
+        : Math.max(0.0001, num);
+    const formatted = (field === 'bondSpacing' || field === 'chainAngle') ? clamped.toFixed(0) : fmt(clamped, settings.units);
     setSettings((prev) => ({ ...prev, [field]: clamped }));
     setDrafts((prev) => ({ ...prev, [field]: formatted }));
   };
@@ -288,7 +306,9 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
       if (!isNaN(num)) {
         const clamped = field === 'bondSpacing'
           ? Math.max(1, Math.min(100, num))
-          : Math.max(0.0001, num);
+          : field === 'chainAngle'
+            ? Math.max(60, Math.min(180, num))
+            : Math.max(0.0001, num);
         (finalSettings as unknown as Record<string, unknown>)[field] = clamped;
       }
     }
@@ -320,6 +340,14 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
 
   const handlePublicationPreset = () => {
     const next = convertDimensions({ ...PUBLICATION_PRESET_IN, units: 'inches' }, settings.units);
+    next.chainAngle = PUBLICATION_PRESET_IN.chainAngle;
+    setSettings(next);
+    setDrafts(makeDrafts(next));
+  };
+
+  const handleACSPreset = () => {
+    const next = convertDimensions({ ...ACS_PRESET_IN, units: 'inches' }, settings.units);
+    next.chainAngle = ACS_PRESET_IN.chainAngle;
     setSettings(next);
     setDrafts(makeDrafts(next));
   };
@@ -412,7 +440,7 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           <Box>
             <FieldLabel>Chain Angle:</FieldLabel>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <SmallInput value="120" disabled onChange={() => {}} onCommit={() => {}} onRevert={() => {}} />
+              <SmallInput {...numProps('chainAngle')} />
               <UnitText>degrees</UnitText>
             </Box>
           </Box>
@@ -573,6 +601,13 @@ export const DocumentSettings: React.FC<DocumentSettingsProps> = ({
           sx={{ color: '#555', fontSize: '0.78rem', textTransform: 'none', mr: 1 }}
         >
           Reset to Defaults
+        </Button>
+        <Button
+          size="small"
+          onClick={handleACSPreset}
+          sx={{ color: '#1976d2', fontSize: '0.78rem', textTransform: 'none', mr: 0.5 }}
+        >
+          ACS
         </Button>
         <Button
           size="small"

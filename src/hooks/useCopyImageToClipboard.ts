@@ -17,6 +17,9 @@ let copyingFromCanvas = false;
 /** Ketcher generates at 72 DPI. Scale to target DPI for good quality paste elsewhere. */
 const CLIPBOARD_IMAGE_DPI = 150;
 
+/** DPI options for copy-as-image (Word/PPT paste). */
+export const COPY_IMAGE_DPI_OPTIONS = [72, 150, 300] as const;
+
 async function scalePngToDpi(blob: Blob, targetDpi: number): Promise<Blob> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -122,7 +125,7 @@ export async function getStructureCdxBytes(ketcher: any): Promise<Uint8Array | n
 }
 
 /** Get PNG blob for clipboard (scaled, cropped). Exported for Export menu. */
-export async function getClipboardPngBlob(ketcher: any): Promise<Blob | null> {
+export async function getClipboardPngBlob(ketcher: any, dpi: number = CLIPBOARD_IMAGE_DPI): Promise<Blob | null> {
   if (!ketcher?.generateImage) return null;
   try {
     let structStr: string;
@@ -136,18 +139,14 @@ export async function getClipboardPngBlob(ketcher: any): Promise<Blob | null> {
     }
     const rawBlob = await ketcher.generateImage(structStr, { outputFormat: 'png', backgroundColor: 'transparent' });
     const cropped = await cropPngToContent(rawBlob);
-    return await scalePngToDpi(cropped, CLIPBOARD_IMAGE_DPI);
+    return await scalePngToDpi(cropped, dpi);
   } catch {
     return null;
   }
 }
 
-export interface UseCopyImageToClipboardOptions {
-  onCopySuccess?: () => void;
-}
-
-/** Copy structure as PNG to clipboard. Uses selection if any, else full canvas. */
-async function copyStructureAsImage(ketcher: any): Promise<boolean> {
+/** Copy structure as image to clipboard with configurable DPI. For Word/PPT paste. */
+export async function copyStructureAsImageWithDpi(ketcher: any, dpi: number = CLIPBOARD_IMAGE_DPI): Promise<boolean> {
   if (!ketcher?.generateImage) return false;
   try {
     let structStr: string;
@@ -161,12 +160,11 @@ async function copyStructureAsImage(ketcher: any): Promise<boolean> {
     }
     const rawBlob = await ketcher.generateImage(structStr, { outputFormat: 'png', backgroundColor: 'transparent' });
     const cropped = await cropPngToContent(rawBlob);
-    const blob = await scalePngToDpi(cropped, CLIPBOARD_IMAGE_DPI);
+    const blob = await scalePngToDpi(cropped, dpi);
     const molfile = await getStructureMolfile(ketcher);
     if (molfile?.trim()) setStoredMol(molfile.trim());
     const cdxBytes = await getStructureCdxBytes(ketcher);
     if (isTauri) {
-      // Windows: use ChemDraw-style (EMF + MOL + CDX) for FindMolecule compatibility
       const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
       if (isWin) {
         try {
@@ -204,6 +202,15 @@ async function copyStructureAsImage(ketcher: any): Promise<boolean> {
     console.error('[copyStructureAsImage] Failed:', err);
     return false;
   }
+}
+
+export interface UseCopyImageToClipboardOptions {
+  onCopySuccess?: () => void;
+}
+
+/** Copy structure as PNG to clipboard. Uses selection if any, else full canvas. Default 150 DPI. */
+async function copyStructureAsImage(ketcher: any): Promise<boolean> {
+  return copyStructureAsImageWithDpi(ketcher, CLIPBOARD_IMAGE_DPI);
 }
 
 export function useCopyImageToClipboard(

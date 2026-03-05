@@ -7,7 +7,7 @@ import { exportAsMol, exportAsSdf, exportAsSmiles } from './structureExport';
 import { isTauriDesktop } from '../tauri/detectPlatform';
 
 export interface AdvancedExportOptions {
-  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'CDX' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
+  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'CDX' | 'RXN' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
   quality: 'Low' | 'Medium' | 'High' | 'Publication';
   width: number;
   height: number;
@@ -33,6 +33,7 @@ export const FORMAT_EXT: Record<string, { ext: string; mime: string }> = {
   PDF: { ext: '.pdf', mime: 'application/pdf' },
   MOL: { ext: '.mol', mime: 'chemical/x-mdl-molfile' },
   SDF: { ext: '.sdf', mime: 'chemical/x-mdl-sdfile' },
+  RXN: { ext: '.rxn', mime: 'chemical/x-mdl-rxnfile' },
   CDX: { ext: '.cdx', mime: 'application/octet-stream' },
   SMILES: { ext: '.smi', mime: 'text/plain' },
   InChI: { ext: '.txt', mime: 'text/plain' },
@@ -499,6 +500,25 @@ export async function performAdvancedExport(
         return { success: true };
       }
       return await exportAsSdf(molfile, `${baseName}.sdf`);
+    }
+    if (format === 'RXN') {
+      if (!ketcher?.getRxn) return { success: false, error: 'Editor not ready' };
+      const rxnfile = await ketcher.getRxn?.().catch(() => '');
+      if (!rxnfile?.trim()) return { success: false, error: 'No reaction to export. Draw a reaction with arrows on the canvas first.' };
+      if (fileHandle) {
+        await writeBlobToHandle(fileHandle, new Blob([rxnfile], { type: 'chemical/x-mdl-rxnfile' }));
+        return { success: true };
+      }
+      if (isTauriDesktop()) {
+        const { saveFile, writeTextFile } = await import('../tauri/fileOperations');
+        const path = await saveFile('Save RXN', `${baseName}.rxn`, [
+          { name: 'MDL RXN File', extensions: ['rxn'] },
+        ]);
+        if (!path) return { success: false, error: 'Save cancelled' };
+        await writeTextFile(path, rxnfile);
+        return { success: true };
+      }
+      return { success: true, downloadBlob: new Blob([rxnfile], { type: 'chemical/x-mdl-rxnfile' }), downloadFilename: `${baseName}.rxn` };
     }
     if (format === 'SMILES') {
       const smiles = structureData.smiles || '';

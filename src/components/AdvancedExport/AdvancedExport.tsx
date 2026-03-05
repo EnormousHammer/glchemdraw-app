@@ -42,7 +42,7 @@ import {
 } from '@mui/icons-material';
 
 interface ExportOptions {
-  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'CDX' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
+  format: 'PNG' | 'JPEG' | 'SVG' | 'PDF' | 'MOL' | 'SDF' | 'CDX' | 'RXN' | 'SMILES' | 'InChI' | 'InChIKey' | 'SMARTS';
   quality: 'Low' | 'Medium' | 'High' | 'Publication';
   width: number;
   height: number;
@@ -82,6 +82,7 @@ const FORMAT_OPTIONS = [
   { value: 'MOL',      label: 'MOL File',   icon: <CodeIcon />,  description: 'Chemical structure — ChemDraw compatible' },
   { value: 'SDF',      label: 'SDF File',   icon: <CodeIcon />,  description: 'Structure data file — multiple properties' },
   { value: 'CDX',      label: 'CDX File',   icon: <CodeIcon />,  description: 'ChemDraw binary — open in ChemDraw' },
+  { value: 'RXN',      label: 'RXN File',   icon: <CodeIcon />,  description: 'MDL reaction file — FreeChemDraw compatible' },
   { value: 'SMILES',   label: 'SMILES',     icon: <CodeIcon />,  description: 'Linear notation — copy into databases' },
   { value: 'InChI',    label: 'InChI',      icon: <CodeIcon />,  description: 'Standard chemical identifier' },
   { value: 'InChIKey', label: 'InChIKey',   icon: <CodeIcon />,  description: 'Hashed InChI — 27-char database key' },
@@ -94,6 +95,34 @@ const QUALITY_OPTIONS = [
   { value: 'High', label: 'High (300 DPI)', description: 'Good for printing' },
   { value: 'Publication', label: 'Publication (600 DPI)', description: 'Professional quality' },
 ];
+
+/** One-click export presets */
+const EXPORT_PRESETS = {
+  ACS: {
+    format: 'PNG' as const,
+    quality: 'Publication' as const,
+    dpi: 600,
+    width: 1200,
+    height: 900,
+    backgroundColor: 'white' as const,
+    blackAtoms: true,
+    includeProperties: false,
+    includeAnnotations: true,
+    includeTitle: true,
+  },
+  Publication: {
+    format: 'PNG' as const,
+    quality: 'Publication' as const,
+    dpi: 600,
+    width: 1600,
+    height: 1200,
+    backgroundColor: 'white' as const,
+    blackAtoms: false,
+    includeProperties: true,
+    includeAnnotations: true,
+    includeTitle: true,
+  },
+};
 
 const BACKGROUND_OPTIONS = [
   { value: 'white', label: 'White', description: 'Clean white background' },
@@ -200,11 +229,20 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
     }));
   }, []);
 
+  const applyPreset = useCallback((presetKey: 'ACS' | 'Publication') => {
+    const preset = EXPORT_PRESETS[presetKey];
+    setOptions(prev => ({ ...prev, ...preset }));
+    setWidthDraft(String(preset.width));
+    setHeightDraft(String(preset.height));
+  }, []);
+
   const downloadLinkRef = React.useRef<HTMLAnchorElement>(null);
   const downloadSectionRef = React.useRef<HTMLDivElement>(null);
 
   const handleExport = useCallback(async () => {
-    if (!structureData?.molfile && !structureData?.smiles) {
+    const hasStructure = structureData?.molfile || structureData?.smiles;
+    const isRxnFormat = options.format === 'RXN';
+    if (!hasStructure && !isRxnFormat) {
       setExportError('No structure data available for export. Draw a structure on the canvas first.');
       return;
     }
@@ -240,13 +278,14 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
       setIsExporting(false);
     }
   }, [options, onExport, structureData]);
+  const canExport = structureData?.molfile || structureData?.smiles || options.format === 'RXN';
 
   const getFormatDescription = (format: string) => {
     return FORMAT_OPTIONS.find(f => f.value === format)?.description || '';
   };
 
   const isImageFormat = ['PNG', 'JPEG', 'SVG', 'PDF'].includes(options.format);
-  const isDataFormat = ['MOL', 'SDF', 'CDX', 'SMILES', 'InChI', 'InChIKey', 'SMARTS'].includes(options.format);
+  const isDataFormat = ['MOL', 'SDF', 'CDX', 'RXN', 'SMILES', 'InChI', 'InChIKey', 'SMARTS'].includes(options.format);
 
   return (
     <Dialog
@@ -282,6 +321,32 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
                 <strong>Optional:</strong> Author, Title, and Date — leave blank if you prefer.
               </Typography>
             </Alert>
+          </Grid>
+
+          {/* Export Presets - one-click ACS / Publication */}
+          <Grid size={12}>
+            <Typography variant="h6" gutterBottom>
+              Quick Presets
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+              <Chip
+                label="ACS"
+                onClick={() => applyPreset('ACS')}
+                sx={{ cursor: 'pointer' }}
+                color="primary"
+                variant="outlined"
+              />
+              <Chip
+                label="Publication"
+                onClick={() => applyPreset('Publication')}
+                sx={{ cursor: 'pointer' }}
+                color="primary"
+                variant="outlined"
+              />
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              ACS: 600 DPI, black atoms for reports/slides. Publication: 600 DPI, full color for papers.
+            </Typography>
           </Grid>
 
           {/* Format Selection */}
@@ -559,7 +624,7 @@ export const AdvancedExport: React.FC<AdvancedExportProps> = ({
         <Button
           variant="contained"
           onClick={handleExport}
-          disabled={isExporting || !structureData?.molfile && !structureData?.smiles}
+          disabled={isExporting || !canExport}
           startIcon={isExporting ? <CircularProgress size={16} /> : <DownloadIcon />}
         >
           {isExporting ? 'Exporting...' : 'Export'}

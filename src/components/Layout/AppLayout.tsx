@@ -45,7 +45,7 @@ const ChemCanvas = lazy(() => import('../ChemCanvas/ChemCanvas'));
 import { BondTypeBar } from '../BondTypeBar';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
-import { getStructureCdxBytes, getStructureMolfile, getClipboardPngBlob } from '../../hooks/useCopyImageToClipboard';
+import { getStructureCdxBytes, getStructureMolfile, getClipboardPngBlob, copyStructureAsImageWithDpi } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
 import { pasteImageIntoSketch, uploadImageFileToSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
@@ -706,10 +706,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const handleAdvancedExport = useCallback(async (options: AdvancedExportOptions): Promise<ExportDownloadResult | void> => {
     const ketcher = ketcherRef.current;
     const struct = currentStructure;
-    if (!struct) throw new Error('No structure to export');
+    if (!struct && options.format !== 'RXN') throw new Error('No structure to export');
     const result = await performAdvancedExport(ketcher, options, {
-      molfile: struct.molfile,
-      smiles: struct.smiles,
+      molfile: struct?.molfile,
+      smiles: struct?.smiles,
       name: recognizedCompound?.name || recognizedCompound?.properties?.IUPACName,
       inchiKey: recognizedCompound?.inchiKey,
     });
@@ -1686,6 +1686,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           const toIn = (v: number, u: string) =>
                             u === 'cm' ? v / IN_TO_CM : u === 'pt' ? v / IN_TO_PT : v;
                           instance.setSettings({
+                            chainAngle:               s.chainAngle ?? 120,
                             bondLength:               toIn(s.bondLength,   s.units) * IN_TO_CM,
                             bondLengthUnit:           'cm',
                             bondSpacing:              s.bondSpacing,
@@ -1815,7 +1816,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             size="small"
                             variant="text"
                             onClick={(e) => setExportMenuAnchor(e.currentTarget)}
-                            disabled={!currentStructure?.molfile}
+                            disabled={!currentStructure?.molfile && !currentStructure?.smiles}
                             startIcon={<DownloadIcon sx={{ fontSize: 15, opacity: 0.85 }} />}
                             endIcon={<ExpandMoreIcon sx={{ fontSize: 14, opacity: 0.7 }} />}
                             sx={{
@@ -1834,7 +1835,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         </span>
                       </Tooltip>
                       <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                        <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Export as PNG / SVG / PDF / MOL / SDF / CDX…</MenuItem>
+                        <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Export as PNG / SVG / PDF / MOL / SDF / RXN / CDX…</MenuItem>
                         <MenuItem onClick={() => { setExportMenuAnchor(null); setShowBatchExportDialog(true); }}>Batch export (CSV)…</MenuItem>
                         <MenuItem onClick={() => {
                           setExportMenuAnchor(null);
@@ -1854,6 +1855,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             setSnackbarOpen(true);
                           }
                         }}>Copy shareable link</MenuItem>
+                        <Divider />
+                        <MenuItem onClick={async () => {
+                          setExportMenuAnchor(null);
+                          const ok = await copyStructureAsImageWithDpi(ketcherRef.current, 150);
+                          if (ok) { setSnackbarMessage('Structure copied as image (150 DPI)'); setSnackbarSeverity('success'); setSnackbarOpen(true); }
+                          else { setSnackbarMessage('Copy failed'); setSnackbarSeverity('error'); setSnackbarOpen(true); }
+                        }}>Copy as image (150 DPI)</MenuItem>
+                        <MenuItem onClick={async () => {
+                          setExportMenuAnchor(null);
+                          const ok = await copyStructureAsImageWithDpi(ketcherRef.current, 300);
+                          if (ok) { setSnackbarMessage('Structure copied as image (300 DPI)'); setSnackbarSeverity('success'); setSnackbarOpen(true); }
+                          else { setSnackbarMessage('Copy failed'); setSnackbarSeverity('error'); setSnackbarOpen(true); }
+                        }}>Copy as image (300 DPI)</MenuItem>
                         <Divider />
                         <MenuItem onClick={handleCopyAsKET}>Copy as KET</MenuItem>
                         <MenuItem onClick={handleSaveCDX}>Save as CDX</MenuItem>

@@ -995,7 +995,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       setTriggerSearchQuery(compoundName.trim());
     } catch (err) {
       console.error('[AppLayout] Upload image failed:', err);
-      setSnackbarMessage('Upload failed');
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setSnackbarMessage(msg);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }

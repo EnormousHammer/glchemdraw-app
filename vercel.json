@@ -4,6 +4,10 @@
   "framework": "vite",
   "installCommand": "npm install",
   "functions": {
+    "api/openai/chat.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "api/nmr-proxy.js": {
       "maxDuration": 60,
       "memory": 3008

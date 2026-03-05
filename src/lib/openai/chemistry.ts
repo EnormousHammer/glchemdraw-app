@@ -11,6 +11,48 @@ function sanitizeForAI(input: string, maxLen: number = 500): string {
   return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
 
+/** ~2MB base64 ≈ 1.5MB payload; only compress when larger to avoid Vercel 4.5MB limit */
+const COMPRESS_THRESHOLD = 2_000_000;
+const MAX_IMAGE_DIM = 1024;
+const JPEG_QUALITY = 0.82;
+
+/**
+ * Compress image for vision API when large - resize and re-encode as JPEG.
+ * Skips compression for small images (< ~2MB base64) to avoid quality loss and canvas issues.
+ */
+async function compressImageForVision(dataUrl: string): Promise<string> {
+  if (dataUrl.length < COMPRESS_THRESHOLD) return dataUrl;
+  if (typeof document === 'undefined' || !document.createElement) return dataUrl;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(w, h, 1));
+        const cw = Math.round(w * scale);
+        const ch = Math.round(h * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, cw, ch);
+        const jpeg = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+        resolve(jpeg);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = dataUrl;
+  });
+}
+
 /** Prepare SMILES for AI: single structure, 2-500 chars, valid chars only */
 export function prepareSmilesForAI(smiles: string | null | undefined, maxLen: number = 500): string | null {
   if (!smiles || typeof smiles !== 'string') return null;
@@ -27,30 +69,27 @@ export function prepareSmilesForAI(smiles: string | null | undefined, maxLen: nu
  * @returns Compound name (e.g. "aspirin", "benzene") or null
  */
 export async function imageToCompoundNameWithAI(dataUrl: string): Promise<string | null> {
-  const url = dataUrl.startsWith('data:') ? dataUrl : `data:image/png;base64,${dataUrl}`;
-  try {
-    const content = await chatWithOpenAIVision([
-      {
-        role: 'system',
-        content:
-          'You are a chemistry expert. Look at the chemical structure image. Return ONLY the common or IUPAC name of the compound, nothing else. No explanation, no markdown. Use the most searchable name (e.g. "aspirin" not "acetylsalicylic acid" for common compounds). If you cannot identify the structure, return the word FAIL.',
-      },
-      {
-        role: 'user',
-        content: [
-          { type: 'text' as const, text: 'What is this chemical compound? Reply with only its name.' },
-          { type: 'image_url' as const, image_url: { url } },
-        ],
-      },
-    ]);
-    const trimmed = content.trim();
-    if (!trimmed || /^FAIL$/i.test(trimmed)) return null;
-    const name = trimmed.split(/\n/)[0]?.trim();
-    if (name && name.length >= 2) return name;
-    return null;
-  } catch {
-    return null;
-  }
+  const raw = dataUrl.startsWith('data:') ? dataUrl : `data:image/png;base64,${dataUrl}`;
+  const url = await compressImageForVision(raw);
+  const content = await chatWithOpenAIVision([
+    {
+      role: 'system',
+      content:
+        'You are a chemistry expert. Look at the chemical structure image. Return ONLY the common or IUPAC name of the compound, nothing else. No explanation, no markdown. Use the most searchable name (e.g. "aspirin" not "acetylsalicylic acid" for common compounds). If you cannot identify the structure, return the word FAIL.',
+    },
+    {
+      role: 'user',
+      content: [
+        { type: 'text' as const, text: 'What is this chemical compound? Reply with only its name.' },
+        { type: 'image_url' as const, image_url: { url } },
+      ],
+    },
+  ]);
+  const trimmed = content.trim();
+  if (!trimmed || /^FAIL$/i.test(trimmed)) return null;
+  const name = trimmed.split(/\n/)[0]?.trim();
+  if (name && name.length >= 2) return name;
+  return null;
 }
 
 /**
@@ -60,7 +99,8 @@ export async function imageToCompoundNameWithAI(dataUrl: string): Promise<string
  * @returns SMILES or null
  */
 export async function imageToSmilesWithAI(dataUrl: string): Promise<string | null> {
-  const url = dataUrl.startsWith('data:') ? dataUrl : `data:image/png;base64,${dataUrl}`;
+  const raw = dataUrl.startsWith('data:') ? dataUrl : `data:image/png;base64,${dataUrl}`;
+  const url = await compressImageForVision(raw);
   try {
     const content = await chatWithOpenAIVision([
       {

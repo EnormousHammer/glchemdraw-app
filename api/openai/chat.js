@@ -35,11 +35,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'messages array required' });
   }
 
-  const hasVision = messages.some((m) => {
-    const c = m?.content;
-    return Array.isArray(c) && c.some((p) => p?.type === 'image_url');
-  });
-  const model = hasVision ? 'gpt-4o' : (process.env.OPENAI_MODEL || 'gpt-4o');
+  const model = process.env.OPENAI_MODEL || 'gpt-5.2-chat-latest';
 
   try {
     const openai = new OpenAI({ apiKey });

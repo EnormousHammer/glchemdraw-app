@@ -222,12 +222,13 @@ app.post('/openai/chat', async (req, res) => {
     return res.status(400).json({ error: 'messages array required' });
   }
   const userMsg = messages.find((m) => m.role === 'user');
-  const userPreview = userMsg?.content?.slice(0, 80) ?? '(no user message)';
-  console.log('[OpenAI] Request:', userPreview.replace(/\n/g, ' ') + (userMsg?.content?.length > 80 ? '...' : ''));
+  const userPreview = typeof userMsg?.content === 'string' ? userMsg.content?.slice(0, 80) : '(vision)';
+  console.log('[OpenAI] Request:', userPreview.replace(/\n/g, ' ') + (typeof userMsg?.content === 'string' && userMsg?.content?.length > 80 ? '...' : ''));
+  const model = process.env.OPENAI_MODEL || 'gpt-5.2-chat-latest';
   try {
     const openai = new OpenAI({ apiKey });
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5.2-chat-latest',
+      model,
       messages,
       max_completion_tokens: 4096,
     });

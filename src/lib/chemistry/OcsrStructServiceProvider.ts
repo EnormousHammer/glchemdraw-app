@@ -25,14 +25,29 @@ async function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-const standalone = new StandaloneStructServiceProvider();
+// Lazy-initialized: avoid module-level crash if ketcher-standalone fails to load
+// (e.g. WASM unavailable, version mismatch, or browser restrictions on Vercel)
+let _standalone: StandaloneStructServiceProvider | null = null;
+function getStandalone(): StandaloneStructServiceProvider {
+  if (!_standalone) {
+    _standalone = new StandaloneStructServiceProvider();
+  }
+  return _standalone;
+}
 
 export class OcsrStructServiceProvider {
-  mode = standalone.mode;
+  get mode() {
+    try {
+      return getStandalone().mode;
+    } catch {
+      return 'standalone' as const;
+    }
+  }
 
   createStructService(options?: unknown): unknown {
     // ketcher-react createApi expects createStructService to return the service SYNCHRONOUSLY
     // and immediately calls structService.info(). Returning a Promise causes "o.info is not a function".
+    const standalone = getStandalone();
     const create = (standalone as { createStructService: (o?: unknown) => Record<string, unknown> }).createStructService;
     const svc = create(options);
     // Mutate the original service so prototype methods (info, convert, etc.) are preserved.

@@ -37,7 +37,11 @@ import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
-import ChemCanvas from '../ChemCanvas/ChemCanvas';
+import { lazy } from 'react';
+// Lazy-load ChemCanvas so ketcher-standalone (the 23MB IndiGo WASM engine)
+// does NOT block the initial app render — the UI shell appears immediately
+// while the chemistry engine loads in the background.
+const ChemCanvas = lazy(() => import('../ChemCanvas/ChemCanvas'));
 import { BondTypeBar } from '../BondTypeBar';
 import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
@@ -1534,6 +1538,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   flexDirection: 'column',
                   overflow: 'hidden'
                 }}>
+                  <Suspense fallback={
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 2 }}>
+                      <CircularProgress size={40} />
+                    </Box>
+                  }>
                   <ChemCanvas
                     key={canvasKey}
                     onStructureChange={handleStructureChange}
@@ -1583,6 +1592,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       setSnackbarOpen(true);
                     }}
                   />
+                  </Suspense>
                 </Box>
               </Box>
 

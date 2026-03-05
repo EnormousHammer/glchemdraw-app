@@ -3,9 +3,12 @@ import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
 const host = process.env.TAURI_DEV_HOST;
+// When building for ELN embed (e.g. GLCHEMDRAW_EMBED=1), use base path so assets load from /glchemdraw/
+const base = process.env.GLCHEMDRAW_EMBED ? '/glchemdraw/' : '/';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   plugins: [react()],
 
   // Define global variables for browser compatibility
@@ -116,7 +119,11 @@ export default defineConfig({
 
   // Performance optimizations
   build: {
-    target: process.env.TAURI_PLATFORM == "windows" ? "chrome105" : "safari13",
+    // For Tauri desktop builds use platform-specific targets; for web/Vercel use modern ES2020
+    // (safari13 would force transpilation of modern JS, massively inflating the bundle)
+    target: process.env.TAURI_PLATFORM
+      ? (process.env.TAURI_PLATFORM === "windows" ? "chrome105" : "safari13")
+      : "es2020",
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     commonjsOptions: {
       transformMixedEsModules: true,
@@ -128,7 +135,9 @@ export default defineConfig({
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],
           'vendor-mui': ['@mui/material', '@emotion/react', '@emotion/styled'],
-          'vendor-ketcher': ['ketcher-core', 'ketcher-react'],
+          // ketcher-standalone is 74MB on disk – keep it out of the main chunk
+          // so the main bundle and ketcher chunks download in parallel
+          'vendor-ketcher': ['ketcher-core', 'ketcher-react', 'ketcher-standalone'],
           'vendor-nmrium': ['nmrium'],
         },
       },

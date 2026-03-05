@@ -101,17 +101,25 @@ async function getImageFromClipboard(): Promise<string | null> {
  */
 async function recognizeImageToStructure(dataUrl: string): Promise<string | null> {
   const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1]! : dataUrl;
+  const url = typeof window !== 'undefined' ? window.location.origin + OCSR_API : OCSR_API;
   try {
-    const res = await fetch(typeof window !== 'undefined' ? window.location.origin + OCSR_API : OCSR_API, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: base64 }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.warn('[OCSR] API error:', res.status, errBody?.slice(0, 200));
+      return null;
+    }
     const data = (await res.json()) as { struct?: string; smiles?: string };
     const struct = data.struct ?? data.smiles;
-    return struct && typeof struct === 'string' ? struct : null;
-  } catch {
+    const result = struct && typeof struct === 'string' ? struct.trim() : null;
+    if (!result) console.warn('[OCSR] No structure in response:', data);
+    return result || null;
+  } catch (e) {
+    console.warn('[OCSR] Request failed:', (e as Error)?.message);
     return null;
   }
 }

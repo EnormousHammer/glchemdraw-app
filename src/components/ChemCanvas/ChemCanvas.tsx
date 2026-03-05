@@ -274,6 +274,21 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
           const rxn = await ketcher.getRxn?.().catch(() => '');
           molfile = (rxn || '').trim();
         }
+        // Ketcher sometimes returns molfile as smiles (Indigo engine). Fallback: convert molfile to SMILES.
+        const looksLikeMol = smiles && /V2000|V3000|-INDIGO-|0999\s+V|\d{4}\s+-?\d+\.\d+\s+-?\d+\.\d+/.test(smiles);
+        if (molfile?.trim() && (!smiles?.trim() || looksLikeMol)) {
+          try {
+            const { molfileToSmiles } = await import('../../lib/chemistry/openchemlib');
+            const converted = molfileToSmiles(molfile);
+            if (converted) smiles = converted;
+          } catch (_) {
+            try {
+              const { molfileToSmiles } = await import('../../lib/chemistry/rdkit');
+              const converted = await molfileToSmiles(molfile);
+              if (converted) smiles = converted;
+            } catch (_) {}
+          }
+        }
         if (onStructureChange) onStructureChange(molfile, smiles);
 
         // Issue #2: After full canvas update, check selection - show selected struct if any

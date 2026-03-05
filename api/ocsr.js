@@ -1,12 +1,10 @@
 /**
  * Vercel Serverless Function: OCSR (Optical Chemical Structure Recognition)
  * Proxies image to free naturalproducts.net API (DECIMER) and returns SMILES.
- * No extra cost - runs on Vercel, calls free public API.
+ * Works on Vercel cloud - uses native FormData for fetch compatibility.
  *
  * Accepts: POST with JSON body { image: "base64string" } or { image: "data:image/png;base64,..." }
  */
-
-import FormData from 'form-data';
 
 const OCSR_API = 'https://api.naturalproducts.net/latest';
 
@@ -47,31 +45,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid base64 image' });
     }
 
-    // Use form-data package for reliable multipart in Node.js serverless (Blob can be unreliable)
+    // Native FormData + Blob (Node 18+) - works reliably with fetch on Vercel
+    const blob = new Blob([imageBuffer], { type: 'image/png' });
     const formData = new FormData();
-    formData.append('file', imageBuffer, {
-      filename: 'structure.png',
-      contentType: 'image/png',
-    });
+    formData.append('file', blob, 'structure.png');
     formData.append('hand_drawn', 'false');
 
     const response = await fetch(`${OCSR_API}/ocsr/process-upload`, {
       method: 'POST',
       body: formData,
-      headers: formData.getHeaders(),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('[OCSR] API error:', response.status, errText);
+      console.error('[OCSR] API error:', response.status, errText?.slice(0, 300));
       return res.status(502).json({
         error: 'Recognition failed',
-        details: errText.slice(0, 200),
+        details: errText?.slice(0, 200) || `HTTP ${response.status}`,
       });
     }
 
     const data = await response.json();
-    // naturalproducts.net returns smiles as array (split by "." for multiple structures)
+    // naturalproducts.net returns smiles in various formats
     let smiles = data?.smiles ?? data?.SMILES ?? data?.result?.[0]?.smiles ?? data?.[0];
     if (Array.isArray(smiles)) smiles = smiles[0];
     if (smiles && typeof smiles !== 'string') smiles = String(smiles);
@@ -85,9 +80,9 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ struct: smiles.trim(), smiles: smiles.trim() });
   } catch (err) {
-    console.error('[OCSR] Error:', err);
+    console.error('[OCSR] Error:', err?.message || err);
     return res.status(500).json({
-      error: err.message || 'Recognition failed',
+      error: err?.message || 'Recognition failed',
     });
   }
 }

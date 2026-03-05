@@ -980,7 +980,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setSnackbarSeverity('success');
         setSnackbarOpen(true);
       } else if (result.success && result.type === 'image') {
-        setSnackbarMessage('Image added (structure recognition failed)');
+        setSnackbarMessage('Structure not recognized — image added as picture. Try Ketcher Recognize or a clearer image.');
         setSnackbarSeverity('info');
         setSnackbarOpen(true);
       } else {

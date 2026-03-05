@@ -104,6 +104,17 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'nmr-proxy' });
 });
 
+/** OCSR (image → structure). Local dev. Cloud: /api/ocsr */
+app.post('/api/ocsr', async (req, res) => {
+  try {
+    const handler = (await import('../api/ocsr.js')).default;
+    await handler(req, res);
+  } catch (err) {
+    console.error('[OCSR Proxy]', err?.message);
+    res.status(500).json({ error: err?.message || 'OCSR failed' });
+  }
+});
+
 /** Structure search proxy (PubChem similarity/substructure/superstructure). Local dev. Cloud: /api/structure-search-proxy */
 app.post('/structure-search-proxy', async (req, res) => {
   try {

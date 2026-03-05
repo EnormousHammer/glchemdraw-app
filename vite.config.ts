@@ -79,6 +79,10 @@ export default defineConfig({
     },
     // Proxy for API in web mode
     proxy: {
+      '/api/ocsr': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
       '/api/cdxml-to-cdx': {
         target: 'http://localhost:3001',
         changeOrigin: true,

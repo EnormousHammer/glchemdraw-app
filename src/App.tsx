@@ -12,7 +12,12 @@ import LoadingScreen from '@components/LoadingScreen';
 import { AIContextProvider } from './contexts/AIContext';
 
 function App() {
-  const [isLoading, setIsLoading] = useState(true);
+  // Skip intro when embedded in ELN (iframe) or ?embed=1 - open instantly for lab notebook workflow
+  const skipIntro = typeof window !== 'undefined' && (
+    window !== window.parent ||
+    new URLSearchParams(window.location.search).get('embed') === '1'
+  );
+  const [isLoading, setIsLoading] = useState(!skipIntro);
 
   useEffect(() => {
     // Preload NMR predictor databases in background for faster first prediction

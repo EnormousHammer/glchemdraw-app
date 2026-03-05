@@ -18,8 +18,31 @@ export interface PubChemError {
   status?: number;
 }
 
+/** Common chemical name typos/variants for fuzzy search fallback */
+const FUZZY_NAME_CORRECTIONS: Record<string, string> = {
+  benzin: 'benzene', benzine: 'benzene', benzen: 'benzene',
+  aspirine: 'aspirin', asprin: 'aspirin',
+  ethanol: 'ethanol', etanol: 'ethanol',
+  acetaminophen: 'acetaminophen', paracetamol: 'acetaminophen',
+  caffein: 'caffeine', caffiene: 'caffeine',
+  glucose: 'glucose', glucos: 'glucose',
+  methanol: 'methanol', metanol: 'methanol',
+  acetona: 'acetone', aceton: 'acetone',
+  glycerin: 'glycerol', glycerine: 'glycerol',
+  sulfuric: 'sulfuric acid', sulphuric: 'sulfuric acid',
+};
+
+function getFuzzyVariants(name: string): string[] {
+  const t = name.trim().toLowerCase();
+  const variants = [name.trim(), t];
+  if (FUZZY_NAME_CORRECTIONS[t]) variants.push(FUZZY_NAME_CORRECTIONS[t]!);
+  if (t.endsWith('e') && t.length > 3) variants.push(t.slice(0, -1));
+  if (!t.endsWith('e') && t.length > 3) variants.push(t + 'e');
+  return [...new Set(variants)];
+}
+
 /**
- * Search for compound by name and get CID
+ * Search for compound by name and get CID (with fuzzy fallback for common typos)
  * @param name - Compound name
  * @returns CID or null if not found
  */
@@ -43,8 +66,29 @@ export async function getCIDByName(name: string): Promise<number | null> {
       return response.data;
     });
 
-    const cid = result?.IdentifierList?.CID?.[0];
-    return cid ? parseInt(cid) : null;
+    let cid = result?.IdentifierList?.CID?.[0];
+    if (cid) return parseInt(cid);
+
+    // Fuzzy fallback: try common typos/variants
+    const variants = getFuzzyVariants(name);
+    for (const variant of variants) {
+      if (variant === name.trim()) continue;
+      try {
+        const vUrl = `${PUG_REST_BASE}/compound/name/${encodeURIComponent(variant)}/cids/JSON`;
+        const vResult = await pubchemThrottler.throttle(async () => {
+          const res = await axios.get(vUrl, { timeout: REQUEST_TIMEOUT, headers: { 'Accept': 'application/json' } });
+          return res.data;
+        });
+        cid = vResult?.IdentifierList?.CID?.[0];
+        if (cid) {
+          console.log(`[PubChem] Fuzzy match: "${name}" → "${variant}" (CID ${cid})`);
+          return parseInt(cid);
+        }
+      } catch {
+        continue;
+      }
+    }
+    return null;
   } catch (error) {
     console.error('[PubChem] Error searching for compound:', error);
     return null;
@@ -215,6 +259,7 @@ export async function get3DSDF(cid: number): Promise<string | null> {
 
 /**
  * Get CID by SMILES (exact match)
+ * Uses POST when SMILES contains / or \ (stereochemistry) to avoid 400 from URL path parsing.
  * @param smiles - SMILES string
  * @returns CID or null if not found
  */
@@ -223,16 +268,30 @@ export async function getCIDBySMILES(smiles: string): Promise<number | null> {
     throw new Error('SMILES string cannot be empty');
   }
 
-  const sanitizedSmiles = encodeURIComponent(smiles.trim());
-  const url = `${PUG_REST_BASE}/compound/smiles/${sanitizedSmiles}/cids/JSON`;
+  const trimmed = smiles.trim();
+  const usePost = /[\/\\]/.test(trimmed); // POST avoids 400 for stereochemistry chars in URL path
 
   try {
     const result = await pubchemThrottler.throttle(async () => {
+      if (usePost) {
+        const response = await axios.post(
+          `${PUG_REST_BASE}/compound/smiles/cids/JSON`,
+          new URLSearchParams({ smiles: trimmed }).toString(),
+          {
+            timeout: REQUEST_TIMEOUT,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+          }
+        );
+        return response.data;
+      }
+      const sanitizedSmiles = encodeURIComponent(trimmed);
+      const url = `${PUG_REST_BASE}/compound/smiles/${sanitizedSmiles}/cids/JSON`;
       const response = await axios.get(url, {
         timeout: REQUEST_TIMEOUT,
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers: { 'Accept': 'application/json' },
       });
       return response.data;
     });
@@ -247,6 +306,7 @@ export async function getCIDBySMILES(smiles: string): Promise<number | null> {
 
 /**
  * Search for compounds by SMILES
+ * Uses POST when SMILES contains / or \ (stereochemistry) to avoid 400 from URL path parsing.
  * @param smiles - SMILES string
  * @param searchType - Type of search (identity, similarity, substructure)
  */
@@ -258,18 +318,46 @@ export async function searchBySmiles(
     throw new Error('SMILES string cannot be empty');
   }
 
-  const sanitizedSmiles = encodeURIComponent(smiles.trim());
-  const url = searchType === 'identity'
-    ? `${PUG_REST_BASE}/compound/smiles/${sanitizedSmiles}/cids/JSON`
-    : `${PUG_REST_BASE}/compound/fastsimilarity_2d/smiles/${sanitizedSmiles}/cids/JSON`;
+  const trimmed = smiles.trim();
+  const usePost = /[\/\\]/.test(trimmed);
 
   try {
     const result = await pubchemThrottler.throttle(async () => {
+      if (usePost && searchType === 'identity') {
+        const response = await axios.post(
+          `${PUG_REST_BASE}/compound/smiles/cids/JSON`,
+          new URLSearchParams({ smiles: trimmed }).toString(),
+          {
+            timeout: REQUEST_TIMEOUT,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+          }
+        );
+        return response.data;
+      }
+      if (usePost && searchType !== 'identity') {
+        const response = await axios.post(
+          `${PUG_REST_BASE}/compound/fastsimilarity_2d/smiles/cids/JSON`,
+          new URLSearchParams({ smiles: trimmed }).toString(),
+          {
+            timeout: REQUEST_TIMEOUT,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+          }
+        );
+        return response.data;
+      }
+      const sanitizedSmiles = encodeURIComponent(trimmed);
+      const url = searchType === 'identity'
+        ? `${PUG_REST_BASE}/compound/smiles/${sanitizedSmiles}/cids/JSON`
+        : `${PUG_REST_BASE}/compound/fastsimilarity_2d/smiles/${sanitizedSmiles}/cids/JSON`;
       const response = await axios.get(url, {
         timeout: REQUEST_TIMEOUT,
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers: { 'Accept': 'application/json' },
       });
       return response.data;
     });

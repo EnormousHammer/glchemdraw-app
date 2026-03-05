@@ -47,7 +47,7 @@ import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { getStructureCdxBytes, getStructureMolfile, getClipboardPngBlob } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
-import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
+import { pasteImageIntoSketch, uploadImageFileToSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
 import { BiopolymerSequenceDialog } from '../BiopolymerSequence';
 import { FunctionalGroupDialog } from '../FunctionalGroup/FunctionalGroupDialog';
@@ -57,9 +57,14 @@ import { AccessibilityMenu } from '../AccessibilityMenu';
 import { DocumentSettings } from '../DocumentSettings';
 import { AdvancedExport, type ExportDownloadResult } from '../AdvancedExport/AdvancedExport';
 import { AIIntegration } from '../AIIntegration';
+import { SafetyPanel } from '../SafetyPanel';
+import { BatchNMRDialog } from '../BatchNMR';
+import { BatchExportDialog } from '../BatchExport';
+import { LiteratureSearchDialog } from '../LiteratureSearch';
 import { performAdvancedExport, type AdvancedExportOptions } from '@lib/export/advancedExport';
 import { peptideToHelm, dnaToHelm, rnaToHelm } from '../../lib/chemistry/helmFormat';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import ImageIcon from '@mui/icons-material/Image';
 import { useAIContext } from '@/contexts/AIContext';
 
 /** Styled keyboard key for shortcuts dialog */
@@ -118,6 +123,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [biotoolMenuAnchor, setBiotoolMenuAnchor] = useState<null | HTMLElement>(null);
   const [showReactionHelpDialog, setShowReactionHelpDialog] = useState(false);
   const [showNMRPredictionDialog, setShowNMRPredictionDialog] = useState(false);
+  const [showBatchNMRDialog, setShowBatchNMRDialog] = useState(false);
+  const [showBatchExportDialog, setShowBatchExportDialog] = useState(false);
+  const [showLiteratureDialog, setShowLiteratureDialog] = useState(false);
   const [showBiopolymerSequenceDialog, setShowBiopolymerSequenceDialog] = useState(false);
   const [showFunctionalGroupDialog, setShowFunctionalGroupDialog] = useState(false);
   const [showTemplateLibraryDialog, setShowTemplateLibraryDialog] = useState(false);
@@ -129,6 +137,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [canvasKey, setCanvasKey] = useState(0);
   const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [aiSectionExpanded, setAiSectionExpanded] = useState(false);
+  const [aiAnalysisType, setAiAnalysisType] = useState<'comprehensive' | 'naming' | 'properties' | 'reactions' | 'safety'>('comprehensive');
   const [stereoInfo, setStereoInfo] = useState<{
     chiralCenters: number;
     unspecifiedCenters: number;
@@ -175,9 +184,35 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   // Refs
   const ketcherRef = useRef<any>(null);
   const fullCanvasRef = useRef<StructureData | null>(null);
+  const shareableLinkParamsRef = useRef<{ smiles?: string; cid?: string } | null>(null);
   const hasSelectionRef = useRef(false);
   const chemicalInfoScrollRef = useRef<HTMLDivElement>(null);
   const aiSectionRef = useRef<HTMLDivElement>(null);
+
+  // Shareable links: ?smiles=... or ?cid=... — load structure when Ketcher is ready
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const smiles = params.get('smiles')?.trim();
+    const cid = params.get('cid')?.trim();
+    if (smiles || cid) {
+      shareableLinkParamsRef.current = { smiles: smiles || undefined, cid: cid || undefined };
+    }
+  }, []);
+
+  // ? key opens shortcuts dialog
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+        setShowShortcutsDialog(true);
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // ELN iframe embedding: postMessage bridge for GL Chemtec ELN
   useEffect(() => {
@@ -904,6 +939,35 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, []);
 
+  // Upload image file → OCSR recognition → structure or image on canvas
+  const uploadImageInputRef = useRef<HTMLInputElement>(null);
+  const handleUploadImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const result = await uploadImageFileToSketch(ketcherRef, file);
+      if (result.success && result.type === 'structure') {
+        setSnackbarMessage('Structure extracted from image');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      } else if (result.success && result.type === 'image') {
+        setSnackbarMessage('Image added (structure recognition failed)');
+        setSnackbarSeverity('info');
+        setSnackbarOpen(true);
+      } else {
+        setSnackbarMessage('Could not process image');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+      }
+    } catch (err) {
+      console.error('[AppLayout] Upload image failed:', err);
+      setSnackbarMessage('Upload failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
   // Paste from clipboard: image → OCSR recognition first, else image; or structure (MOL/SMILES)
   const handlePasteFromClipboard = useCallback(async () => {
     try {
@@ -1548,8 +1612,57 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     onStructureChange={handleStructureChange}
                     onSelectionChange={handleSelectionChange}
                     onError={(error) => console.error('[AppLayout] ChemCanvas error:', error)}
-                    onKetcherInit={(instance) => {
+                    onKetcherInit={async (instance) => {
                       ketcherRef.current = instance;
+                      // Shareable links: load ?smiles= or ?cid= from URL
+                      const params = shareableLinkParamsRef.current;
+                      if (params && instance?.setMolecule) {
+                        shareableLinkParamsRef.current = null;
+                        try {
+                          if (params.smiles) {
+                            const { convertSmilesToMol } = await import('../../lib/chemistry/smilesToMol');
+                            const mol = await convertSmilesToMol(params.smiles);
+                            if (mol) {
+                              await instance.setMolecule(mol);
+                              setSnackbarMessage('Structure loaded from shareable link');
+                              setSnackbarSeverity('success');
+                              setSnackbarOpen(true);
+                            }
+                          } else if (params.cid) {
+                            const cidNum = parseInt(params.cid, 10);
+                            if (Number.isFinite(cidNum)) {
+                              const { getPropertiesByCID } = await import('../../lib/pubchem/api');
+                              const { getSafetyDataByCID } = await import('../../lib/pubchem/safety');
+                              const { getCASNumber } = await import('../../lib/pubchem/api');
+                              const [properties, safety, casNumber] = await Promise.all([
+                                getPropertiesByCID(cidNum, ['MolecularWeight', 'MolecularFormula', 'CanonicalSMILES', 'InChI', 'InChIKey', 'IUPACName', 'XLogP', 'ExactMass', 'TPSA', 'HBondDonorCount', 'HBondAcceptorCount', 'RotatableBondCount', 'Complexity', 'HeavyAtomCount', 'Charge']),
+                                getSafetyDataByCID(cidNum),
+                                getCASNumber(cidNum)
+                              ]);
+                              if (properties?.CanonicalSMILES) {
+                                const { convertSmilesToMol } = await import('../../lib/chemistry/smilesToMol');
+                                const mol = await convertSmilesToMol(properties.CanonicalSMILES);
+                                if (mol) {
+                                  await instance.setMolecule(mol);
+                                  setRecognizedCompound({ cid: cidNum, name: properties.IUPACName || '', properties, inchiKey: properties.InChIKey });
+                                  setChemicalData({
+                                    physicalProperties: { molecularWeight: properties.MolecularWeight, molecularFormula: properties.MolecularFormula, exactMass: properties.ExactMass, monoIsotopicMass: null, density: null, meltingPoint: null, boilingPoint: null },
+                                    safetyData: safety ? { hazardClass: safety.hazardClass, flashPoint: safety.flashPoint, autoignition: safety.autoignition, ld50: safety.ld50 || safety.oralLd50, healthHazards: safety.healthHazards, fireHazards: safety.fireHazards, flammability: safety.flammability, nfpaRating: safety.nfpaRating, ghsClassification: safety.ghsClassification, firstAid: safety.firstAid, exposureLimits: safety.exposureLimits, personalProtection: safety.personalProtection, storage: safety.storage, disposal: safety.disposal, incompatibilities: safety.incompatibilities } : null,
+                                    descriptors: { logP: properties.XLogP, tpsa: properties.TPSA, hBondDonors: properties.HBondDonorCount, hBondAcceptors: properties.HBondAcceptorCount, rotatableBonds: properties.RotatableBondCount, complexity: properties.Complexity, heavyAtomCount: properties.HeavyAtomCount, formalCharge: properties.Charge },
+                                    regulatory: { casNumber, pubchemCID: cidNum, inchi: properties.InChI, inchiKey: properties.InChIKey, smiles: properties.CanonicalSMILES, iupacName: properties.IUPACName },
+                                    spectral: { nmrAvailable: null, irSpectrum: null, massSpectrum: null }
+                                  });
+                                  setSnackbarMessage(`Loaded from link: ${properties.IUPACName || `CID ${cidNum}`}`);
+                                  setSnackbarSeverity('success');
+                                  setSnackbarOpen(true);
+                                }
+                              }
+                            }
+                          }
+                        } catch (err) {
+                          console.warn('[AppLayout] Shareable link load failed:', err);
+                        }
+                      }
                       const ev = (instance?.editor as any)?.events;
                       ev?.switchToMoleculesMode?.add?.(reapplyKetcherLayout);
                       // Re-apply persisted drawing settings on each Ketcher init
@@ -1710,6 +1823,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       </Tooltip>
                       <Menu anchorEl={exportMenuAnchor} open={!!exportMenuAnchor} onClose={() => setExportMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
                         <MenuItem onClick={() => { setExportMenuAnchor(null); setShowAdvancedExportDialog(true); }}>Export as PNG / SVG / PDF / MOL / SDF…</MenuItem>
+                        <MenuItem onClick={() => { setExportMenuAnchor(null); setShowBatchExportDialog(true); }}>Batch export (CSV)…</MenuItem>
+                        <MenuItem onClick={() => {
+                          setExportMenuAnchor(null);
+                          const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
+                          const cid = recognizedCompound?.cid;
+                          const base = window.location.origin + window.location.pathname;
+                          const url = cid ? `${base}?cid=${cid}` : smiles ? `${base}?smiles=${encodeURIComponent(smiles)}` : null;
+                          if (url) {
+                            navigator.clipboard.writeText(url).then(() => {
+                              setSnackbarMessage('Shareable link copied!');
+                              setSnackbarSeverity('success');
+                              setSnackbarOpen(true);
+                            });
+                          } else {
+                            setSnackbarMessage('Draw a structure first');
+                            setSnackbarSeverity('warning');
+                            setSnackbarOpen(true);
+                          }
+                        }}>Copy shareable link</MenuItem>
                         <Divider />
                         <MenuItem onClick={handleCopyAsKET}>Copy as KET</MenuItem>
                         <MenuItem onClick={handleSaveCDX}>Save as CDX</MenuItem>
@@ -1848,6 +1980,30 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           }}
                         >Bond Type</Button>
                       </Tooltip>
+                      <input
+                        type="file"
+                        ref={uploadImageInputRef}
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={handleUploadImage}
+                        style={{ display: 'none' }}
+                      />
+                      <Tooltip title="Upload image → extract structure (OCSR)">
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => uploadImageInputRef.current?.click()}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            minWidth: 0,
+                            px: 1,
+                            '& .MuiButton-startIcon': { mr: 0.5 },
+                          }}
+                          startIcon={<ImageIcon sx={{ fontSize: 15, opacity: 0.85 }} />}
+                        >
+                          Upload image
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="Paste from clipboard (use when Ctrl+V doesn't work)">
                         <Button
                           size="small"
@@ -1916,6 +2072,31 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           >NMR</Button>
                         </span>
                       </Tooltip>
+                      <Tooltip title="Batch NMR – paste multiple SMILES">
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => setShowBatchNMRDialog(true)}
+                          sx={{ textTransform: 'none', fontSize: '0.65rem', minWidth: 0, px: 0.75 }}
+                        >
+                          Batch
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Predict likely reactions & products (AI)">
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => {
+                            setAiSectionExpanded(true);
+                            setAiAnalysisType('reactions');
+                            setTimeout(() => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                          }}
+                          disabled={!currentStructure?.smiles}
+                          sx={{ textTransform: 'none', fontSize: '0.65rem', minWidth: 0, px: 0.75 }}
+                        >
+                          Predict products
+                        </Button>
+                      </Tooltip>
                       <Tooltip title="AI Assistant">
                         <IconButton
                           size="small"
@@ -1976,6 +2157,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       }}
                     >
                       View 3D
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => setShowLiteratureDialog(true)}
+                      sx={{ textTransform: 'none', fontSize: '0.7rem', minWidth: 0, px: 0.75 }}
+                    >
+                      Find papers
                     </Button>
                   </Box>
                   <Stack spacing={0.25}>
@@ -2275,6 +2464,34 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                             </Typography>
                             <ContentCopyIcon sx={{ fontSize: 12, opacity: 0.5 }} />
                           </Box>
+                        </Box>
+                      )}
+                      {chemicalData.physicalProperties.exactMass && (
+                        <Box sx={{ mt: 0.5, p: 0.75, borderRadius: 1, bgcolor: 'action.hover' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.65rem', letterSpacing: '0.05em' }}>MASS SPEC (m/z)</Typography>
+                          <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                            {(() => {
+                              const m = typeof chemicalData.physicalProperties.exactMass === 'number' ? chemicalData.physicalProperties.exactMass : parseFloat(chemicalData.physicalProperties.exactMass);
+                              if (!Number.isFinite(m)) return null;
+                              const H = 1.00728, Na = 22.98922;
+                              return (
+                                <>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                                    <Typography component="span" variant="caption">[M+H]+</Typography>
+                                    <Typography component="span" variant="caption" sx={{ fontFamily: 'monospace' }}>{(m + H).toFixed(2)}</Typography>
+                                  </Box>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                                    <Typography component="span" variant="caption">[M-H]-</Typography>
+                                    <Typography component="span" variant="caption" sx={{ fontFamily: 'monospace' }}>{(m - H).toFixed(2)}</Typography>
+                                  </Box>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                                    <Typography component="span" variant="caption">[M+Na]+</Typography>
+                                    <Typography component="span" variant="caption" sx={{ fontFamily: 'monospace' }}>{(m + Na).toFixed(2)}</Typography>
+                                  </Box>
+                                </>
+                              );
+                            })()}
+                          </Stack>
                         </Box>
                       )}
                       {chemicalData.physicalProperties.monoIsotopicMass && (
@@ -2719,52 +2936,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 )
               )}
 
-              {/* Safety - PubChem or AI summary */}
+              {/* Safety - GHS pictograms, hazard data, AI summary */}
               {(chemicalData.safetyData || aiSafetySummary || currentStructure?.smiles) && (
-                <Box sx={{ p: 1.25, minWidth: 0, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-                  <Box sx={{ py: 0.5, px: 0.75, mb: 0.5, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'action.hover', borderRadius: 0.5, borderLeft: '3px solid', borderLeftColor: 'primary.main' }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.72rem', letterSpacing: '0.08em', color: 'text.primary', textTransform: 'uppercase' }}>
-                      Safety
-                    </Typography>
-                  </Box>
-                  {aiSafetySummary ? (
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem', lineHeight: 1.5 }}>{aiSafetySummary}</Typography>
-                  ) : chemicalData.safetyData && (chemicalData.safetyData.ghsClassification || chemicalData.safetyData.hazardClass || chemicalData.safetyData.flashPoint) ? (
-                    <Stack spacing={0.25}>
-                      {chemicalData.safetyData.ghsClassification && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, p: 0.5, borderRadius: 1 }}>
-                          <Typography variant="caption" color="text.secondary">GHS:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500 }}>{chemicalData.safetyData.ghsClassification}</Typography>
-                        </Box>
-                      )}
-                      {chemicalData.safetyData.hazardClass && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, p: 0.5, borderRadius: 1 }}>
-                          <Typography variant="caption" color="text.secondary">Hazard Class:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500 }}>{chemicalData.safetyData.hazardClass}</Typography>
-                        </Box>
-                      )}
-                      {chemicalData.safetyData.flashPoint && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 0, p: 0.5, borderRadius: 1 }}>
-                          <Typography variant="caption" color="text.secondary">Flash Point:</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 500 }}>{chemicalData.safetyData.flashPoint}</Typography>
-                        </Box>
-                      )}
-                    </Stack>
-                  ) : (
-                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                      <Button
-                        size="small"
-                        variant="text"
-                        onClick={handleGetSafetySummary}
-                        disabled={aiSafetyLoading}
-                        startIcon={aiSafetyLoading ? <CircularProgress size={14} /> : <PsychologyIcon sx={{ fontSize: 15 }} />}
-                        sx={{ fontSize: '0.7rem', fontWeight: 500, letterSpacing: '0.03em', color: 'primary.main', '&:hover': { bgcolor: 'action.hover' } }}
-                      >
-                        {aiSafetyLoading ? 'Generating...' : 'Get safety summary'}
-                      </Button>
-                    </Box>
-                  )}
-                </Box>
+                <SafetyPanel
+                  safetyData={chemicalData.safetyData}
+                  aiSafetySummary={aiSafetySummary}
+                  onGetSafetySummary={handleGetSafetySummary}
+                  aiSafetyLoading={aiSafetyLoading}
+                />
               )}
 
               {/* Stereochemistry (RDKit) */}
@@ -2909,6 +3088,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           <AIIntegration
                             smiles={currentStructure?.smiles ?? undefined}
                             molfile={currentStructure?.molfile ?? undefined}
+                            initialAnalysisType={aiAnalysisType}
                             existingData={recognizedCompound || chemicalData.physicalProperties || chemicalData.descriptors || chemicalData.regulatory ? {
                               name: recognizedCompound?.name,
                               iupacName: recognizedCompound?.properties?.IUPACName || aiIupacName || undefined,
@@ -3032,6 +3212,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onClose={() => setShowNMRPredictionDialog(false)}
           smiles={currentStructure?.smiles ?? null}
           molfile={currentStructure?.molfile ?? undefined}
+        />
+
+        <BatchNMRDialog open={showBatchNMRDialog} onClose={() => setShowBatchNMRDialog(false)} />
+        <BatchExportDialog open={showBatchExportDialog} onClose={() => setShowBatchExportDialog(false)} />
+        <LiteratureSearchDialog
+          open={showLiteratureDialog}
+          onClose={() => setShowLiteratureDialog(false)}
+          cid={recognizedCompound?.cid ?? null}
+          compoundName={recognizedCompound?.name}
         />
 
         {/* Functional Group Dialog (AI-powered) */}

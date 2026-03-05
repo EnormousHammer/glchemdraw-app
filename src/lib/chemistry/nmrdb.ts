@@ -1,7 +1,7 @@
 /**
  * nmrdb.org NMR prediction client
  * Uses the larger NMRShiftDB database (via nmrdb.org) for ¹H and ¹³C predictions.
- * Requires the local proxy server (npm run dev:proxy) when running in web mode.
+ * Local: npm run dev:proxy (localhost:3001). Cloud (Vercel): /api/nmr-proxy.
  */
 
 export interface PredictedPeak {
@@ -11,11 +11,18 @@ export interface PredictedPeak {
   nbAtoms: number;
 }
 
-const NMR_PROXY_URL = 'http://localhost:3001/nmr-proxy';
 const NMRDB_BASE = 'https://www.nmrdb.org/service.php';
 
+function getNmrProxyUrl(): string {
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:3001/nmr-proxy';
+  }
+  return '/api/nmr-proxy';
+}
+
 /**
- * Fetch NMR prediction from nmrdb.org via local proxy.
+ * Fetch NMR prediction from nmrdb.org via proxy.
+ * Local: npm run dev:proxy. Cloud (Vercel): /api/nmr-proxy.
  * Returns { protonPeaks, carbonPeaks } or null on failure.
  */
 export async function fetchNMRFromNmrdb(smiles: string): Promise<{
@@ -24,7 +31,8 @@ export async function fetchNMRFromNmrdb(smiles: string): Promise<{
 } | null> {
   const encoded = encodeURIComponent(smiles);
   const url = `${NMRDB_BASE}?name=all-predictions&smiles=${encoded}`;
-  const proxyUrl = `${NMR_PROXY_URL}?url=${encodeURIComponent(url)}`;
+  const proxyBase = getNmrProxyUrl();
+  const proxyUrl = proxyBase.startsWith('http') ? `${proxyBase}?url=${encodeURIComponent(url)}` : `${typeof window !== 'undefined' ? window.location.origin : ''}${proxyBase}?url=${encodeURIComponent(url)}`;
 
   try {
     const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(30_000) });

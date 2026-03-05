@@ -71,56 +71,53 @@ export async function getStructureMolfile(ketcher: any): Promise<string | null> 
   }
 }
 
+/** Decode base64 or raw string to CDX bytes. Ketcher/Indigo returns base64. */
+function decodeCdxString(str: string): Uint8Array | null {
+  if (!str || typeof str !== 'string' || str.length === 0) return null;
+  try {
+    const binary = atob(str);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
 /** Exported for use by Export menu copy handlers. */
 export async function getStructureCdxBytes(ketcher: any): Promise<Uint8Array | null> {
+  if (!ketcher) return null;
+  const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+  // 1. Try ketcher.getCDX() - uses full canvas struct, returns base64
+  try {
+    const str = await ketcher.getCDX?.();
+    const bytes = decodeCdxString(str);
+    if (bytes?.length) {
+      if (isTauri) console.debug('[getStructureCdxBytes] got CDX via getCDX(), len:', bytes.length);
+      return bytes;
+    }
+  } catch (e) {
+    if (isTauri) console.debug('[getStructureCdxBytes] getCDX failed:', (e as Error)?.message);
+  }
+  // 2. Try getStructure with selection/full struct
   const struct = ketcher.editor?.structSelected?.();
   const targetStruct = struct && !struct.isBlank?.() ? struct : ketcher.editor?.struct?.();
-  if (!targetStruct?.isBlank?.()) {
+  if (targetStruct && !targetStruct.isBlank?.()) {
     try {
-      const { getStructure } = await import('ketcher-core');
-      const { SupportedFormat } = await import('ketcher-core');
-      // binaryCdx or cdx returns base64; decode to bytes for clipboard
-      const str = await getStructure(
-        ketcher.id,
-        ketcher.formatterFactory,
-        targetStruct,
-        SupportedFormat.binaryCdx
-      );
-      if (str && typeof str === 'string' && str.length > 0) {
-        try {
-          const binary = atob(str);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const { getStructure, SupportedFormat } = await import('ketcher-core');
+      for (const fmt of [SupportedFormat.binaryCdx, SupportedFormat.cdx]) {
+        const str = await getStructure(ketcher.id, ketcher.formatterFactory, targetStruct, fmt);
+        const bytes = decodeCdxString(str);
+        if (bytes?.length) {
+          if (isTauri) console.debug('[getStructureCdxBytes] got CDX via getStructure', fmt, 'len:', bytes.length);
           return bytes;
-        } catch {
-          /* not base64, skip */
         }
       }
-    } catch {
-      try {
-        const { getStructure } = await import('ketcher-core');
-        const { SupportedFormat } = await import('ketcher-core');
-        const str = await getStructure(
-          ketcher.id,
-          ketcher.formatterFactory,
-          targetStruct,
-          SupportedFormat.cdx
-        );
-        if (str && typeof str === 'string' && str.length > 0) {
-          try {
-            const binary = atob(str);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            return bytes;
-          } catch {
-            /* not base64, skip */
-          }
-        }
-      } catch {
-        /* ignore */
-      }
+    } catch (e) {
+      if (isTauri) console.debug('[getStructureCdxBytes] getStructure failed:', (e as Error)?.message);
     }
   }
+  if (isTauri) console.debug('[getStructureCdxBytes] no CDX available');
   return null;
 }
 

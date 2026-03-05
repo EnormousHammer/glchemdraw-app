@@ -28,6 +28,25 @@ GL-ChemDraw is a **chemical structure drawing and analysis application**. All fe
 | PubChemSearch | AI fallback when no compounds found |
 | NameToStructure | AI fallback when PubChem fails |
 
+## FindMolecule Integration – DO NOT FORGET
+
+**Only one option works:** Copy for FindMolecule (extension + native host + cdx-mol + ClipboardWin).
+
+**What does NOT work (user verified):**
+- Send to FindMolecule (URL) – redirects to login, structure never loads
+- CDXML paste (text/plain) – FindMolecule does not accept it
+- Save CDXML + upload – FindMolecule has NO file upload for structures
+
+## Cloud Compatibility (Desktop + Web)
+
+**The app must work in both Tauri (desktop) and cloud (Vercel web).**
+
+- **API URLs:** Use `window.location.hostname === 'localhost'` (or `127.0.0.1`) → `http://localhost:3001/...`; else → `/api/...` (relative to origin)
+- **Examples:** `openai.ts`, `nmrdb.ts` — local uses dev:proxy, cloud uses Vercel serverless
+- **OCSR:** `/api/ocsr` — already relative; works in cloud
+- **Tauri-only:** Clipboard (ChemDraw-style), file save dialogs — guard with `__TAURI__ in window`; provide web fallbacks (navigator.clipboard, download links)
+- **Never hardcode** `localhost:3001` for APIs used in web builds
+
 ## Remember
 
 - This is a **chemical structure app** — prioritize structure drawing, validation, and chemistry-specific analysis

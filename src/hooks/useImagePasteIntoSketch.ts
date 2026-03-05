@@ -157,6 +157,37 @@ function addImageToCanvas(ketcher: any, dataUrl: string): Promise<boolean> {
 
 export type ImagePasteResult = { success: true; type: 'image' } | { success: true; type: 'structure' } | { success: false };
 
+/**
+ * Upload image file → OCSR recognition → structure or image on canvas.
+ * Use for "Upload image" button (structure from image).
+ */
+export async function uploadImageFileToSketch(
+  ketcherRef: React.RefObject<any>,
+  file: File
+): Promise<ImagePasteResult> {
+  const ketcher = ketcherRef?.current;
+  if (!ketcher) return { success: false };
+  const mime = file.type?.toLowerCase();
+  if (!IMAGE_MIMES.includes(mime)) return { success: false };
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  const smiles = await recognizeImageToStructure(dataUrl);
+  if (smiles && typeof ketcher.setMolecule === 'function') {
+    try {
+      await ketcher.setMolecule(smiles);
+      return { success: true, type: 'structure' };
+    } catch {
+      // Fall through
+    }
+  }
+  const ok = await addImageToCanvas(ketcher, dataUrl);
+  return ok ? { success: true, type: 'image' } : { success: false };
+}
+
 /** Heuristic: text looks like MOL or SMILES. */
 function looksLikeStructure(text: string): boolean {
   const t = text.trim();

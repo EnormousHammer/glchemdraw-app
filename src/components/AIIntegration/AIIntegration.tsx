@@ -32,6 +32,8 @@ import { CHEMISTRY_FORMATTING_INSTRUCTION } from '@/lib/openai/chemistryFormatti
 interface AIIntegrationProps {
   smiles?: string;
   molfile?: string;
+  /** When set, use this analysis type and optionally auto-run when structure is present */
+  initialAnalysisType?: 'comprehensive' | 'naming' | 'properties' | 'reactions' | 'safety';
   /** Summary of data we already have from PubChem - AI should NOT repeat this */
   existingData?: {
     name?: string;
@@ -143,6 +145,7 @@ interface AIAnalysis {
 export const AIIntegration: React.FC<AIIntegrationProps> = ({
   smiles,
   molfile,
+  initialAnalysisType,
   existingData,
   onStructureGenerated,
   onError,
@@ -150,11 +153,15 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [analysisType, setAnalysisType] = useState<'comprehensive' | 'naming' | 'properties' | 'reactions' | 'safety'>('comprehensive');
+  const [analysisType, setAnalysisType] = useState<'comprehensive' | 'naming' | 'properties' | 'reactions' | 'safety'>(initialAnalysisType || 'comprehensive');
   const [progress, setProgress] = useState(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const { context: aiContext } = useAIContext();
+
+  useEffect(() => {
+    if (initialAnalysisType) setAnalysisType(initialAnalysisType);
+  }, [initialAnalysisType]);
 
   // Scroll results into view when analysis completes
   useEffect(() => {

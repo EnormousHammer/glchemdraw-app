@@ -9,7 +9,7 @@
  * Check if running in Tauri (desktop) environment
  */
 export function isTauriDesktop(): boolean {
-  return '__TAURI__' in window;
+  return typeof window !== 'undefined' && '__TAURI__' in window;
 }
 
 /**

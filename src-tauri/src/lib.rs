@@ -251,6 +251,43 @@ async fn copy_cdx_to_clipboard(cdx_bytes: Vec<u8>) -> Result<(), String> {
     clipboard_emf::write_cdx_only_to_clipboard(&cdx_bytes)
 }
 
+#[cfg(windows)]
+fn spawn_python_for_cdx(script_arg: &str) -> Result<tokio::process::Child, String> {
+    let try_spawn = |cmd: &str, args: &[&str]| {
+        Command::new(cmd)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+    };
+    // Try python, python3, py -3 (Windows launcher), then common install paths
+    if let Ok(c) = try_spawn("python", &[script_arg]) {
+        return Ok(c);
+    }
+    if let Ok(c) = try_spawn("python3", &[script_arg]) {
+        return Ok(c);
+    }
+    if let Ok(c) = try_spawn("py", &["-3", script_arg]) {
+        return Ok(c);
+    }
+    if let Ok(c) = try_spawn("py", &[script_arg]) {
+        return Ok(c);
+    }
+    for path in [
+        r"C:\Python311\python.exe",
+        r"C:\Python312\python.exe",
+        r"C:\Python310\python.exe",
+    ] {
+        if Path::new(path).exists() {
+            if let Ok(c) = try_spawn(path, &[script_arg]) {
+                return Ok(c);
+            }
+        }
+    }
+    Err("Python not found. Install: pip install cdx-mol.".to_string())
+}
+
 /// Convert CDXML to ChemDraw CDX binary and put on clipboard.
 /// Uses pycdxml/cdx-mol (pip install cdx-mol) for ChemDraw-compatible output.
 /// Windows only. Returns error if Python/cdx-mol not found or conversion fails.
@@ -269,21 +306,9 @@ async fn copy_cdx_from_cdxml(cdxml: String) -> Result<(), String> {
         let script_path = script_dir.join("cdxml_to_cdx.py");
         fs::write(&script_path, script).map_err(|e| format!("Failed to write script: {}", e))?;
 
-        let mut child = Command::new("python")
-            .arg(script_path.to_str().unwrap())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .or_else(|_| {
-                Command::new("python3")
-                    .arg(script_path.to_str().unwrap())
-                    .stdin(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-            })
-            .map_err(|e| format!("Python not found. Install: pip install cdx-mol. Error: {}", e))?;
+        // Try python, python3, py -3 (Windows launcher), then common install paths (app may have minimal PATH)
+        let script_arg = script_path.to_str().unwrap();
+        let mut child = spawn_python_for_cdx(script_arg)?;
 
         if let Some(mut stdin) = child.stdin.take() {
             let _ = tokio::io::AsyncWriteExt::write_all(&mut stdin, cdxml.as_bytes()).await;
@@ -314,7 +339,8 @@ async fn copy_cdx_from_cdxml(cdxml: String) -> Result<(), String> {
     }
 }
 
-/// Copy ChemDraw-style: EMF + MOL + CDX (Windows only)
+/// Copy ChemDraw-style: EMF + MOL + CDX (Windows only).
+/// For FindMolecule paste and Word. Uses SetClipboardData directly.
 #[tauri::command]
 async fn copy_chemdraw_style(
     png_bytes: Vec<u8>,

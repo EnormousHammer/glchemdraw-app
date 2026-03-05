@@ -212,39 +212,7 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
     setExplainError(null);
 
     try {
-      // 1. Try OpenAI first - needs valid SMILES (2-500 chars), single structure, never molfile
-      const { prepareSmilesForAI } = await import('@/lib/openai/chemistry');
-      const smiForAI = prepareSmilesForAI(smilesForNmrdb ?? '', 500);
-      setLoadingPhase('openai');
-      if (smiForAI) {
-      try {
-        const { chatWithOpenAI } = await import('@/lib/openai');
-        const userMsg = `Predict ALL NMR chemical shifts for SMILES: ${smiForAI}. This will be reviewed by PhD chemists—provide accurate, literature-typical values. List every ¹H and ¹³C signal. If the molecule contains N, P, or F, also list ¹⁵N, ³¹P, or ¹⁹F. One signal per line. Do not omit any signals.`;
-        const content = await chatWithOpenAI([
-          {
-            role: 'system',
-            content: 'You are an expert organic chemist. Predict NMR chemical shifts from SMILES. Your output will be used by PhD chemists and must be ACCURATE and COMPLETE. Use literature-typical chemical shift values (e.g. aliphatic CH3 ~0.9–1.3, aromatic ~7–8, carbonyl C ~170–220 ppm). List EVERY chemically distinct signal. Format: 1H: δ X.XX ppm (nH), 13C: δ X.XX ppm (nC), 15N: δ X.XX ppm (nN), 31P: δ X.XX ppm (nP), 19F: δ X.XX ppm (nF). Include all ¹H and ¹³C signals. Include ¹⁵N, ³¹P, ¹⁹F only if the molecule contains N, P, or F. Be precise: equivalent nuclei share one signal with correct multiplicity count. Reply with ONLY the signals, one per line. No other text.',
-          },
-          {
-            role: 'user',
-            content: appendUserContext(userMsg, aiContext),
-          },
-        ]);
-        const aiResult = parseAINMRResponse(content);
-        const hasAny = Object.values(aiResult).some((arr) => arr.length > 0);
-        if (hasAny) {
-          setPeaks(aiResult);
-          setLoading(false);
-          return;
-        }
-      } catch (aiErr) {
-        console.warn('[NMR] OpenAI prediction failed, trying nmrdb:', aiErr);
-      }
-      } else {
-        console.log('[NMR] Skipping AI (no valid SMILES), trying nmrdb/nmr-predictor');
-      }
-
-      // 2. Try nmrdb.org (¹H, ¹³C only)
+      // 1. Try nmrdb.org first (¹H, ¹³C only) - fast for known compounds
       if (smilesForNmrdb) {
         setLoadingPhase('nmrdb');
         const { fetchNMRFromNmrdb } = await import('@/lib/chemistry/nmrdb');
@@ -257,6 +225,36 @@ export const NMRPredictionDialog: React.FC<NMRPredictionDialogProps> = ({
           });
           setLoading(false);
           return;
+        }
+      }
+
+      // 2. When nmrdb fails → auto try AI (no extra click)
+      const { prepareSmilesForAI } = await import('@/lib/openai/chemistry');
+      const smiForAI = prepareSmilesForAI(smilesForNmrdb ?? '', 500);
+      setLoadingPhase('openai');
+      if (smiForAI) {
+        try {
+          const { chatWithOpenAI } = await import('@/lib/openai');
+          const userMsg = `Predict ALL NMR chemical shifts for SMILES: ${smiForAI}. This will be reviewed by PhD chemists—provide accurate, literature-typical values. List every ¹H and ¹³C signal. If the molecule contains N, P, or F, also list ¹⁵N, ³¹P, or ¹⁹F. One signal per line. Do not omit any signals.`;
+          const content = await chatWithOpenAI([
+            {
+              role: 'system',
+              content: 'You are an expert organic chemist. Predict NMR chemical shifts from SMILES. Your output will be used by PhD chemists and must be ACCURATE and COMPLETE. Use literature-typical chemical shift values (e.g. aliphatic CH3 ~0.9–1.3, aromatic ~7–8, carbonyl C ~170–220 ppm). List EVERY chemically distinct signal. Format: 1H: δ X.XX ppm (nH), 13C: δ X.XX ppm (nC), 15N: δ X.XX ppm (nN), 31P: δ X.XX ppm (nP), 19F: δ X.XX ppm (nF). Include all ¹H and ¹³C signals. Include ¹⁵N, ³¹P, ¹⁹F only if the molecule contains N, P, or F. Be precise: equivalent nuclei share one signal with correct multiplicity count. Reply with ONLY the signals, one per line. No other text.',
+            },
+            {
+              role: 'user',
+              content: appendUserContext(userMsg, aiContext),
+            },
+          ]);
+          const aiResult = parseAINMRResponse(content);
+          const hasAny = Object.values(aiResult).some((arr) => arr.length > 0);
+          if (hasAny) {
+            setPeaks(aiResult);
+            setLoading(false);
+            return;
+          }
+        } catch (aiErr) {
+          console.warn('[NMR] AI prediction failed, trying nmr-predictor:', aiErr);
         }
       }
 

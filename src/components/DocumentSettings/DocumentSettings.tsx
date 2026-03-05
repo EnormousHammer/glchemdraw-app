@@ -91,7 +91,8 @@ const PUBLICATION_PRESET_IN = {
   boldWidth: 0.025,
 } as const;
 
-const DEFAULTS: DrawingSettings = { ...CHEMDRAW_DEFAULTS_IN, units: 'inches' };
+/** Default for new users: ACS style (bond 0.18", line 0.006") - publication-ready. */
+const DEFAULTS: DrawingSettings = { ...ACS_PRESET_IN, units: 'inches' };
 const STORAGE_KEY = 'glchemdraw_drawing_settings';
 
 // ─── Unit helpers ─────────────────────────────────────────────────────────────

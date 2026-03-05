@@ -5,7 +5,7 @@
 use std::ptr::null_mut;
 
 #[cfg(windows)]
-use windows::Win32::Foundation::{HWND, RECT};
+use windows::Win32::Foundation::{HANDLE, HWND, RECT};
 #[cfg(windows)]
 use windows::Win32::Graphics::Gdi::{
     CloseEnhMetaFile, CreateCompatibleDC, CreateEnhMetaFileW, CreateDIBSection,
@@ -14,12 +14,14 @@ use windows::Win32::Graphics::Gdi::{
 };
 #[cfg(windows)]
 use windows::Win32::System::DataExchange::{
-    CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData, CF_ENHMETAFILE, CF_UNICODETEXT,
+    CloseClipboard, EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData,
 };
 #[cfg(windows)]
 use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 #[cfg(windows)]
-use windows::Win32::UI::WindowsAndMessaging::{GetDesktopWindow, RegisterClipboardFormatW};
+use windows::Win32::System::Ole::{CF_ENHMETAFILE, CF_UNICODETEXT};
+#[cfg(windows)]
+use windows::Win32::UI::WindowsAndMessaging::GetDesktopWindow;
 #[cfg(windows)]
 use windows::core::PCWSTR;
 
@@ -33,24 +35,26 @@ pub fn write_chemdraw_style_to_clipboard(
     let h_emf = create_emf_from_png(png_bytes)?;
 
     unsafe {
-        if !OpenClipboard(HWND::default()).as_bool() {
+        if OpenClipboard(HWND::default()).is_err() {
             let _ = DeleteEnhMetaFile(h_emf);
             return Err("OpenClipboard failed".to_string());
         }
         let _ = EmptyClipboard();
 
-        // 1. EMF
-        let _ = SetClipboardData(CF_ENHMETAFILE, h_emf);
+        // 1. EMF (HENHMETAFILE is compatible with HANDLE for clipboard)
+        let h_emf_handle = HANDLE(h_emf.0);
+        let _ = SetClipboardData(CF_ENHMETAFILE.0 as u32, h_emf_handle);
 
         // 2. MOL as text (CF_UNICODETEXT)
         if !mol_text.is_empty() {
             let utf16: Vec<u16> = mol_text.encode_utf16().chain(std::iter::once(0)).collect();
             let size = utf16.len() * 2;
             if let Some(h_mol) = GlobalAlloc(GMEM_MOVEABLE, size).ok() {
-                if let Some(ptr) = GlobalLock(h_mol) {
+                let ptr = GlobalLock(h_mol);
+                if !ptr.is_null() {
                     std::ptr::copy_nonoverlapping(utf16.as_ptr() as *const u8, ptr as *mut u8, size);
                     let _ = GlobalUnlock(h_mol);
-                    let _ = SetClipboardData(CF_UNICODETEXT, h_mol);
+                    let _ = SetClipboardData(CF_UNICODETEXT.0 as u32, HANDLE(h_mol.0));
                 }
             }
         }
@@ -63,10 +67,11 @@ pub fn write_chemdraw_style_to_clipboard(
                 if cdx_format != 0 {
                     let size = cdx.len();
                     if let Some(h_cdx) = GlobalAlloc(GMEM_MOVEABLE, size).ok() {
-                        if let Some(ptr) = GlobalLock(h_cdx) {
+                        let ptr = GlobalLock(h_cdx);
+                        if !ptr.is_null() {
                             std::ptr::copy_nonoverlapping(cdx.as_ptr(), ptr as *mut u8, size);
                             let _ = GlobalUnlock(h_cdx);
-                            let _ = SetClipboardData(cdx_format, h_cdx);
+                            let _ = SetClipboardData(cdx_format, HANDLE(h_cdx.0));
                         }
                     }
                 }
@@ -89,11 +94,14 @@ fn create_emf_from_png(png_bytes: &[u8]) -> Result<windows::Win32::Graphics::Gdi
     }
 
     let rgba = img.to_rgba8();
-    let mut bgra: Vec<u8> = rgba.pixels().flat_map(|p| [p[2], p[1], p[0], p[3]]).collect();
+    let bgra: Vec<u8> = rgba.pixels().flat_map(|p| [p[2], p[1], p[0], p[3]]).collect();
 
     unsafe {
         let hwnd = GetDesktopWindow();
-        let hdc_screen = GetDC(hwnd).map_err(|e| format!("GetDC failed: {}", e))?;
+        let hdc_screen = GetDC(hwnd);
+        if hdc_screen.is_invalid() {
+            return Err("GetDC failed".to_string());
+        }
 
         let bmi = BITMAPINFOHEADER {
             biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
@@ -133,14 +141,18 @@ fn create_emf_from_png(png_bytes: &[u8]) -> Result<windows::Win32::Graphics::Gdi
 
         std::ptr::copy_nonoverlapping(bgra.as_ptr(), bits_ptr as *mut u8, bgra.len());
 
-        let hdc_mem = CreateCompatibleDC(hdc_screen).map_err(|e| format!("CreateCompatibleDC failed: {}", e))?;
+        let hdc_mem = CreateCompatibleDC(hdc_screen);
+        if hdc_mem.is_invalid() {
+            let _ = ReleaseDC(hwnd, hdc_screen);
+            return Err("CreateCompatibleDC failed".to_string());
+        }
         let old_bm = SelectObject(hdc_mem, hbm_dib);
 
         let w_mm = (width as f64 * 25.4 / 96.0 * 100.0) as i32;
         let h_mm = (height as f64 * 25.4 / 96.0 * 100.0) as i32;
         let rect = RECT { left: 0, top: 0, right: w_mm, bottom: h_mm };
 
-        let hdc_emf = CreateEnhMetaFileW(HDC::default(), None, &rect, None);
+        let hdc_emf = CreateEnhMetaFileW(HDC::default(), None, Some(&rect), None);
         if hdc_emf.is_invalid() {
             let _ = SelectObject(hdc_mem, old_bm);
             let _ = DeleteObject(hbm_dib);
@@ -174,21 +186,22 @@ pub fn write_cdx_only_to_clipboard(cdx_bytes: &[u8]) -> Result<(), String> {
         return Err("Empty CDX data".to_string());
     }
     let name: Vec<u16> = "ChemDraw Interchange Format\0".encode_utf16().collect();
-    let cdx_format = RegisterClipboardFormatW(PCWSTR::from_raw(name.as_ptr()));
+    let cdx_format = unsafe { RegisterClipboardFormatW(PCWSTR::from_raw(name.as_ptr())) };
     if cdx_format == 0 {
         return Err("RegisterClipboardFormat CDX failed".to_string());
     }
     unsafe {
-        if !OpenClipboard(HWND::default()).as_bool() {
+        if OpenClipboard(HWND::default()).is_err() {
             return Err("OpenClipboard failed".to_string());
         }
         let _ = EmptyClipboard();
         let size = cdx_bytes.len();
         if let Some(h_cdx) = GlobalAlloc(GMEM_MOVEABLE, size).ok() {
-            if let Some(ptr) = GlobalLock(h_cdx) {
+            let ptr = GlobalLock(h_cdx);
+            if !ptr.is_null() {
                 std::ptr::copy_nonoverlapping(cdx_bytes.as_ptr(), ptr as *mut u8, size);
                 let _ = GlobalUnlock(h_cdx);
-                let _ = SetClipboardData(cdx_format, h_cdx);
+                let _ = SetClipboardData(cdx_format, HANDLE(h_cdx.0));
             }
         }
         let _ = CloseClipboard();

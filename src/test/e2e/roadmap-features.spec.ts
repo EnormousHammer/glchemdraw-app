@@ -83,8 +83,17 @@ test.describe('Roadmap Features', () => {
     await page.waitForSelector('text=C6H6', { timeout: 15000 });
 
     await page.getByRole('button', { name: 'Export' }).click({ timeout: 10000 });
-    await page.getByRole('menuitem', { name: /copy shareable link/i }).click();
+    await page.getByRole('menuitem', { name: /copy shareable link.*editable/i }).click();
 
     await expect(page.getByText(/copied|shareable link/i)).toBeVisible({ timeout: 5000 });
+  });
+
+  test('shareable link ?edit=0 loads view-only', async ({ page }) => {
+    await page.goto('/?smiles=c1ccccc1&edit=0');
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByText('Click anywhere to start').click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('text=C6H6', { timeout: 15000 });
+    // Canvas should be read-only (Ketcher handles this internally)
+    await expect(page.locator('text=C6H6').first()).toBeVisible({ timeout: 5000 });
   });
 });

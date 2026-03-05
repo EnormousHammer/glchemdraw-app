@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/png" href="/GLC_icon.png" />
-  <title>FindMolecule Setup – GL-ChemDraw</title>
+  <title>Copy to FindMolecule – GL-ChemDraw</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -45,19 +45,26 @@
     }
     .btn {
       display: inline-block;
-      padding: 0.6rem 1.2rem;
+      padding: 0.75rem 1.5rem;
       background: #1976d2;
       color: #fff;
       text-decoration: none;
       border-radius: 8px;
-      font-weight: 500;
-      font-size: 0.95rem;
+      font-weight: 600;
+      font-size: 1rem;
       transition: background 0.2s;
     }
     .btn:hover { background: #1565c0; }
+    .btn-primary {
+      background: #10b981;
+      font-size: 1.1rem;
+      padding: 0.9rem 1.8rem;
+    }
+    .btn-primary:hover { background: #059669; }
     .btn-secondary {
       background: #64748b;
       margin-left: 0.5rem;
+      font-weight: 500;
     }
     .btn-secondary:hover { background: #475569; }
     ol { margin: 0; padding-left: 1.25rem; }
@@ -76,41 +83,60 @@
       font-size: 0.9rem;
     }
     .back a:hover { color: #1976d2; }
+    .step-num { font-weight: 700; color: #1976d2; }
+    .simple { font-size: 1.05rem; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="back"><a href="/">← Back to GL-ChemDraw</a></div>
-    <h1>Copy to FindMolecule ELN</h1>
-    <p class="subtitle">Set up the Chrome extension and native host to paste structures from GL-ChemDraw into FindMolecule.</p>
+    <h1>Copy to FindMolecule</h1>
+    <p class="subtitle">Paste chemical structures from GL-ChemDraw into FindMolecule. Two quick steps.</p>
 
+    <!-- Step 1: One-click installer (preferred) -->
     <div class="card">
-      <h2>1. Download the Chrome extension</h2>
-      <p>This is the <strong>GL-ChemDraw Clipboard for FindMolecule</strong> extension. It runs in Chrome and forwards structures to the Windows clipboard.</p>
-      <a href="/downloads/glchemdraw-clipboard-extension.zip" class="btn" download>Download extension (.zip)</a>
+      <h2>Step 1: Install the clipboard helper (one click)</h2>
+      <p class="simple">Download and run the installer. No Python or technical setup needed.</p>
+      <a href="/downloads/GL-ChemDraw-Setup.exe" class="btn btn-primary" download>Download & run installer</a>
+      <p style="margin-top:1rem;font-size:0.9rem;color:#64748b;">Double-click the downloaded file and follow the prompts. Done.</p>
     </div>
 
+    <!-- Step 2: Extension -->
     <div class="card">
-      <h2>2. Download the native host</h2>
-      <p>This small program runs on your PC and puts the structure on the Windows clipboard in ChemDraw format so FindMolecule can paste it.</p>
-      <a href="/downloads/glchemdraw-native-host.zip" class="btn" download>Download native host (.zip)</a>
-    </div>
-
-    <div class="card">
-      <h2>3. Install both</h2>
-      <ol>
-        <li><strong>Native host:</strong> Extract the zip, open PowerShell in that folder, run <code>.\install.ps1 -User</code>. (Requires Python 3 with <code>pywin32</code> and <code>cdx-mol</code> – the script installs them if needed.)</li>
-        <li><strong>Extension:</strong> Extract the zip. In Chrome, go to <code>chrome://extensions</code>, turn on Developer mode, click <strong>Load unpacked</strong>, and select the extracted folder.</li>
+      <h2>Step 2: Add the Chrome extension</h2>
+      <p class="simple">Download the extension, then load it in Chrome.</p>
+      <a href="/downloads/glchemdraw-clipboard-extension.zip" class="btn" download>Download extension</a>
+      <ol style="margin-top:1rem;">
+        <li>Extract the zip (right-click → Extract all)</li>
+        <li>Open Chrome and go to <strong>chrome://extensions</strong></li>
+        <li>Turn on <strong>Developer mode</strong> (top right)</li>
+        <li>Click <strong>Load unpacked</strong> and select the extracted folder</li>
       </ol>
-      <div class="note">
-        <strong>Requirements:</strong> Windows, Chrome (or Chromium), Python 3. The native host uses the Windows clipboard.
-      </div>
     </div>
 
+    <!-- Use it -->
     <div class="card">
-      <h2>4. Use it</h2>
-      <p>In GL-ChemDraw: <strong>Export → Copy for FindMolecule</strong>. Then paste (Ctrl+V) in FindMolecule.</p>
+      <h2>That's it</h2>
+      <p class="simple">In GL-ChemDraw: <strong>Export → Copy for FindMolecule</strong>. Then paste (Ctrl+V) in FindMolecule.</p>
+    </div>
+
+    <!-- Fallback for no exe -->
+    <div class="card" id="fallback" style="display:none;">
+      <h2>Alternative: Manual install (if you have Python)</h2>
+      <p>If the one-click installer isn't available, use the zip:</p>
+      <a href="/downloads/glchemdraw-native-host.zip" class="btn btn-secondary" download>Download native host (.zip)</a>
+      <p style="margin-top:1rem;font-size:0.9rem;">Extract, open PowerShell in that folder, run <code>.\install.ps1 -User</code></p>
+    </div>
+
+    <div class="note">
+      <strong>Requirements:</strong> Windows, Chrome (or Edge). The clipboard helper runs on your PC.
     </div>
   </div>
+  <script>
+    // Hide fallback if one-click installer exists
+    fetch('/downloads/GL-ChemDraw-Setup.exe', { method: 'HEAD' })
+      .then(r => { if (!r.ok) document.getElementById('fallback').style.display = 'block'; })
+      .catch(() => document.getElementById('fallback').style.display = 'block');
+  </script>
 </body>
 </html>

@@ -73,4 +73,5 @@ release/
 *.zip
 *.msi
 *.exe
+!public/downloads/GL-ChemDraw-Setup.exe
 .vercel

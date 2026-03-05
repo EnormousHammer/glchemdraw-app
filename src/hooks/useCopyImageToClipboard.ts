@@ -194,6 +194,11 @@ export async function copyStructureAsImageWithDpi(ketcher: any, dpi: number = CL
         await writeImage(new Uint8Array(await blob.arrayBuffer()));
       }
     } else {
+      // Web/cloud: use Clipboard API (requires HTTPS secure context)
+      if (typeof navigator?.clipboard?.write !== 'function' || typeof ClipboardItem === 'undefined') {
+        console.warn('[copyStructureAsImage] Clipboard API not available (requires HTTPS)');
+        return false;
+      }
       const pngBlob = blob.type === 'image/png' ? blob : new Blob([await blob.arrayBuffer()], { type: 'image/png' });
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
     }

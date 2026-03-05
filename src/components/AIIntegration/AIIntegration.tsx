@@ -25,6 +25,7 @@ import {
   ContentCopy as CopyIcon,
   CheckCircle as SuccessIcon,
   PlayArrow as PlayIcon,
+  Biotech as SynthesisIcon,
 } from '@mui/icons-material';
 import { formatChemistryText } from '@/lib/utils/stripMarkdown';
 import { CHEMISTRY_FORMATTING_INSTRUCTION } from '@/lib/openai/chemistryFormatting';
@@ -328,6 +329,36 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
     }
   }, [smiles, molfile, getSmilesForPrompt, aiContext]);
 
+  const handleSuggestSynthesis = useCallback(async () => {
+    if (!smiles && !molfile) {
+      setError('Please provide a structure for synthesis suggestion');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError(null);
+    setAnalysis(null);
+
+    try {
+      const smi = (await getSmilesForPrompt()).trim();
+      if (!smi || smi.length < 2) {
+        throw new Error('Could not get SMILES for structure');
+      }
+      const { aiSuggestRetrosynthesis } = await import('@/lib/openai/chemistry');
+      const result = await aiSuggestRetrosynthesis(smi, aiContext);
+      if (result) {
+        setAnalysis({ aiRawText: result });
+      } else {
+        setError('Could not generate synthesis suggestions');
+      }
+    } catch (err) {
+      const errorMessage = (err as Error).message || 'Synthesis suggestion failed';
+      setError(errorMessage);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [smiles, molfile, getSmilesForPrompt, aiContext]);
+
   const getDrugLikenessColor = (score: number) => {
     if (score >= 80) return 'success';
     if (score >= 60) return 'warning';
@@ -379,6 +410,9 @@ export const AIIntegration: React.FC<AIIntegrationProps> = ({
           </Button>
           <Button size="small" variant="text" onClick={handlePredictReactions} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<PlayIcon sx={{ fontSize: 15, opacity: 0.85 }} />} sx={{ textTransform: 'none', fontWeight: 500, fontSize: '0.7rem', letterSpacing: '0.03em', color: 'text.secondary', px: 1, py: 0.5, borderRadius: 1, '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
             Predict Reactions
+          </Button>
+          <Button size="small" variant="text" onClick={handleSuggestSynthesis} disabled={isAnalyzing || (!smiles && !molfile)} startIcon={<SynthesisIcon sx={{ fontSize: 15, opacity: 0.85 }} />} sx={{ textTransform: 'none', fontWeight: 500, fontSize: '0.7rem', letterSpacing: '0.03em', color: 'text.secondary', px: 1, py: 0.5, borderRadius: 1, '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
+            Suggest Synthesis
           </Button>
         </Box>
       </Box>

@@ -52,6 +52,8 @@ interface AppToolbarProps {
   onDocumentSettings?: () => void;
   onAiClick?: () => void;
   rightContent?: React.ReactNode;
+  /** Compact mode for embed (?embed=1) - smaller header */
+  compact?: boolean;
 }
 
 const AppToolbar: React.FC<AppToolbarProps> = ({
@@ -73,7 +75,9 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onDocumentSettings,
   onAiClick,
   rightContent,
+  compact = false,
 }) => {
+  const toolbarHeight = compact ? 40 : 56;
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showShortcuts, setShowShortcuts] = React.useState(false);
 
@@ -106,7 +110,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         right: 0,
         width: '100%',
         minWidth: '100%',
-        height: '56px',
+        height: `${toolbarHeight}px`,
         position: 'fixed',
         margin: 0,
       }}
@@ -114,9 +118,9 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
       <MuiToolbar 
         sx={{ 
           py: 0,
-          px: 3,
-          minHeight: '56px !important',
-          maxHeight: '56px',
+          px: compact ? 1.5 : 3,
+          minHeight: `${toolbarHeight}px !important`,
+          maxHeight: `${toolbarHeight}px`,
         }}
       >
         {/* Logo - Complex molecular structure (AI-inspired) */}

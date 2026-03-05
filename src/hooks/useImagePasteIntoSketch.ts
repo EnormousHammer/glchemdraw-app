@@ -8,7 +8,7 @@
  * OCSR via /api/ocsr (naturalproducts.net) returns SMILES → setMolecule for editable structure.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, type RefObject } from 'react';
 import { fromImageCreation, Vec2, Scale } from 'ketcher-core';
 import { takeStoredMol } from './clipboardStructureStore';
 
@@ -166,7 +166,8 @@ function addImageToCanvas(ketcher: any, dataUrl: string): Promise<boolean> {
 export type ImagePasteResult =
   | { success: true; type: 'image' }
   | { success: true; type: 'structure'; source?: 'ocsr' | 'ai' }
-  | { success: false };
+  | { success: true; type: 'compound_name'; name: string }
+  | { success: false; hadImage?: boolean };
 
 /**
  * Upload image file → OCSR recognition → structure or image on canvas.
@@ -301,6 +302,7 @@ export async function pasteImageIntoSketch(
   }
 
   if (dataUrl) {
+    // 1. OCSR → structure
     let smiles = await recognizeImageToStructure(dataUrl);
     let source: 'ocsr' | 'ai' = 'ocsr';
     if (!smiles) {
@@ -317,21 +319,40 @@ export async function pasteImageIntoSketch(
         await ketcher.setMolecule(smiles);
         return { success: true, type: 'structure', source };
       } catch {
-        // Fall through to add as image
+        // Fall through
       }
     }
-    const ok = await addImageToCanvas(ketcher, dataUrl);
-    return ok ? { success: true, type: 'image' } : { success: false };
+    // 2. AI compound name → search (never add image to canvas)
+    try {
+      const { imageToCompoundNameWithAI } = await import('@/lib/openai/chemistry');
+      const name = await imageToCompoundNameWithAI(dataUrl);
+      if (name?.trim()) {
+        return { success: true, type: 'compound_name', name: name.trim() };
+      }
+    } catch (e) {
+      console.warn('[pasteImageIntoSketch] AI compound name failed:', (e as Error)?.message);
+    }
+    return { success: false, hadImage: true };
   }
   return { success: false };
 }
 
+export interface UseImagePasteOptions {
+  /** Ketcher editor ref */
+  ketcherRef: RefObject<any>;
+  /** When AI identifies compound name from image, trigger search instead of adding to canvas */
+  onCompoundName?: (name: string) => void;
+  /** When image present but recognition failed (for snackbar) */
+  onImageRecognitionFailed?: () => void;
+}
+
 /**
  * Hook: intercepts paste event when Ketcher is focused.
- * - If clipboard has image: tries OCSR → structure if recognized, else image
+ * - If clipboard has image: OCSR → structure, else AI compound name → search, else fail (never add image)
  * - If no image: dispatches Ketcher's pasteFromClipboard so structure data is pasted
  */
-export function useImagePasteIntoSketch(ketcherRef: React.RefObject<any>) {
+export function useImagePasteIntoSketch(options: UseImagePasteOptions) {
+  const { ketcherRef, onCompoundName, onImageRecognitionFailed } = options;
   const handlePaste = useCallback(
     async (e: ClipboardEvent) => {
       const target = e.target as HTMLElement;
@@ -344,19 +365,32 @@ export function useImagePasteIntoSketch(ketcherRef: React.RefObject<any>) {
       e.preventDefault();
       e.stopPropagation();
 
-      // Use event clipboardData when available (no permission needed)
       const result = await pasteImageIntoSketch(ketcherRef, e.clipboardData);
-      if (result.success) {
-        return; // image or structure pasted
+      if (result.success && result.type === 'structure') {
+        return;
       }
-      // No image/structure: try Ketcher's built-in paste (event or events)
+      if (result.success && result.type === 'compound_name' && onCompoundName) {
+        onCompoundName(result.name);
+        return;
+      }
+      if (result.success && result.type === 'compound_name' && !onCompoundName) {
+        return; // No callback - can't trigger search
+      }
+      if (result.success && result.type === 'image') {
+        return;
+      }
+      if (!result.success && result.hadImage) {
+        onImageRecognitionFailed?.();
+        return;
+      }
+      // No image/structure: try Ketcher's built-in paste
       const editor = ketcher.editor;
       const ev = (editor as any)?.event ?? (editor as any)?.events;
       if (ev?.pasteFromClipboard?.dispatch) {
         ev.pasteFromClipboard.dispatch();
       }
     },
-    [ketcherRef]
+    [ketcherRef, onCompoundName, onImageRecognitionFailed]
   );
 
   useEffect(() => {

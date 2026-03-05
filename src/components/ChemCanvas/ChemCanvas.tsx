@@ -45,7 +45,8 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   // Ctrl+C copies structure as image (uses Tauri native clipboard when in desktop app)
   useCopyImageToClipboard(editorRef, { onCopySuccess: onCopyImageSuccess });
   // Paste: image → OCSR/structure or AI compound name → search (never add image to canvas)
-  useImagePasteIntoSketch(editorRef, {
+  useImagePasteIntoSketch({
+    ketcherRef: editorRef,
     onCompoundName: onPasteCompoundName,
     onImageRecognitionFailed: onPasteImageRecognitionFailed,
   });

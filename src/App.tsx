@@ -22,6 +22,8 @@ function App() {
   useEffect(() => {
     // Preload NMR predictor databases in background for faster first prediction
     import('@/lib/nmr/preloadNmrPredictor').then(({ preloadNmrPredictor }) => preloadNmrPredictor());
+    // Preload ChemCanvas (Ketcher) chunk during loading screen so canvas is ready sooner
+    import('@/components/ChemCanvas/ChemCanvas');
   }, []);
 
   const handleError = (error: Error, errorInfo: React.ErrorInfo) => {

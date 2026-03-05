@@ -19,6 +19,10 @@ interface ChemCanvasProps {
   readonly?: boolean;
   onKetcherInit?: (instance: any) => void;
   onCopyImageSuccess?: () => void;
+  /** When paste image → AI identifies compound name → trigger search */
+  onPasteCompoundName?: (name: string) => void;
+  /** When paste image but recognition failed */
+  onPasteImageRecognitionFailed?: () => void;
 }
 
 export const ChemCanvas: React.FC<ChemCanvasProps> = ({
@@ -29,6 +33,8 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   readonly = false,
   onKetcherInit,
   onCopyImageSuccess,
+  onPasteCompoundName,
+  onPasteImageRecognitionFailed,
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +44,11 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
 
   // Ctrl+C copies structure as image (uses Tauri native clipboard when in desktop app)
   useCopyImageToClipboard(editorRef, { onCopySuccess: onCopyImageSuccess });
-  // Paste: image or structure (Ctrl+V and Paste button)
-  useImagePasteIntoSketch(editorRef);
+  // Paste: image → OCSR/structure or AI compound name → search (never add image to canvas)
+  useImagePasteIntoSketch(editorRef, {
+    onCompoundName: onPasteCompoundName,
+    onImageRecognitionFailed: onPasteImageRecognitionFailed,
+  });
 
   // Ensure Delete/Backspace reach the canvas when focus is elsewhere (e.g. after clicking Chemical Info)
   useEffect(() => {
@@ -242,10 +251,10 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
   const staticResourcesUrl = useMemo(() => process.env.PUBLIC_URL || window.location.origin, []);
 
   useEffect(() => {
-    // Only run once on mount
+    // Brief delay for Ketcher layout to settle; reduced from 1000ms for faster canvas appearance
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1000);
+    }, 150);
     
     return () => clearTimeout(timer);
   }, []);

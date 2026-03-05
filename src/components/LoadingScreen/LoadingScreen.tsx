@@ -1,6 +1,6 @@
 /**
  * LoadingScreen Component
- * Background video with particles, animations, and 5-second timer
+ * Background video with particles, animations, and 2.5-second timer
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -16,7 +16,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => onComplete(), 5000);
+    const timer = setTimeout(() => onComplete(), 2500);
     return () => clearTimeout(timer);
   }, [onComplete]);
 

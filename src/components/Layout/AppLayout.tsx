@@ -47,8 +47,7 @@ import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { getStructureCdxBytes, getStructureMolfile, getClipboardPngBlob, copyStructureAsImageWithDpi } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
-import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
-import { imageToCompoundNameWithAI } from '../../lib/openai/chemistry';
+import { pasteImageIntoSketch, uploadImageFileToSketch } from '../../hooks/useImagePasteIntoSketch';
 import { NMRPredictionDialog } from '../NMRPrediction';
 import { BiopolymerSequenceDialog } from '../BiopolymerSequence';
 import { FunctionalGroupDialog } from '../FunctionalGroup/FunctionalGroupDialog';
@@ -968,7 +967,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, []);
 
-  // Upload image file → AI identifies compound → search by name → load structure (never add image to canvas)
+  // Upload image file → OCSR or AI → structure on canvas (editable, not as image)
   const uploadImageInputRef = useRef<HTMLInputElement>(null);
   const [triggerSearchQuery, setTriggerSearchQuery] = useState<string | null>(null);
   const handleUploadImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -976,23 +975,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     e.target.value = '';
     if (!file) return;
     try {
-      setSnackbarMessage('Identifying compound with AI...');
+      setSnackbarMessage('Recognizing structure...');
       setSnackbarSeverity('info');
       setSnackbarOpen(true);
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = reject;
-        r.readAsDataURL(file);
-      });
-      const compoundName = await imageToCompoundNameWithAI(dataUrl);
-      if (!compoundName?.trim()) {
-        setSnackbarMessage('Could not identify compound from image. Try a clearer structure image.');
+      const result = await uploadImageFileToSketch(ketcherRef, file);
+      if (result.success && result.type === 'structure') {
+        setSnackbarMessage(result.source === 'ai' ? 'Structure loaded (AI)' : 'Structure loaded');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+        return;
+      }
+      if (result.success && result.type === 'image') {
+        setSnackbarMessage('Could not recognize structure; image placed on canvas.');
         setSnackbarSeverity('warning');
         setSnackbarOpen(true);
         return;
       }
-      setTriggerSearchQuery(compoundName.trim());
+      setSnackbarMessage('Could not identify compound from image. Try a clearer structure image.');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
     } catch (err) {
       console.error('[AppLayout] Upload image failed:', err);
       const msg = err instanceof Error ? err.message : 'Upload failed';
@@ -1018,9 +1019,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setSnackbarOpen(true);
         return;
       }
-      if (result.success && result.type === 'image') {
-        setSnackbarMessage('Image pasted (recognition failed or not a structure)');
-        setSnackbarSeverity('success');
+      if (result.success && result.type === 'compound_name') {
+        setTriggerSearchQuery(result.name);
+        setSnackbarMessage(`Searching for: ${result.name}`);
+        setSnackbarSeverity('info');
+        setSnackbarOpen(true);
+        return;
+      }
+      if (!result.success && result.hadImage) {
+        setSnackbarMessage('Could not identify compound from image. Try a clearer structure image.');
+        setSnackbarSeverity('warning');
         setSnackbarOpen(true);
         return;
       }
@@ -1726,6 +1734,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     onStructureChange={handleStructureChange}
                     onSelectionChange={handleSelectionChange}
                     onError={(error) => console.error('[AppLayout] ChemCanvas error:', error)}
+                    onPasteCompoundName={(name) => {
+                      setTriggerSearchQuery(name);
+                      setSnackbarMessage(`Searching for: ${name}`);
+                      setSnackbarSeverity('info');
+                      setSnackbarOpen(true);
+                    }}
+                    onPasteImageRecognitionFailed={() => {
+                      setSnackbarMessage('Could not identify compound from image. Try a clearer structure image.');
+                      setSnackbarSeverity('warning');
+                      setSnackbarOpen(true);
+                    }}
                     onKetcherInit={async (instance) => {
                       ketcherRef.current = instance;
                       // Shareable links: load ?smiles= or ?cid= from URL
@@ -2135,7 +2154,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         onChange={handleUploadImage}
                         style={{ display: 'none' }}
                       />
-                      <Tooltip title="Upload image → AI identifies compound → search & load structure">
+                      <Tooltip title="Upload image → structure drawn on canvas (OCSR or AI)">
                         <Button
                           size="small"
                           variant="text"

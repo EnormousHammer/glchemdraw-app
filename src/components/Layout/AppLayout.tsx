@@ -47,7 +47,8 @@ import ValidationPanel from '../ValidationPanel/ValidationPanel';
 import PubChem3DViewer from '../PubChem3DViewer/PubChem3DViewer';
 import { getStructureCdxBytes, getStructureMolfile, getClipboardPngBlob, copyStructureAsImageWithDpi } from '../../hooks/useCopyImageToClipboard';
 import { alignStructures, type AlignMode } from '@lib/alignStructures';
-import { pasteImageIntoSketch, uploadImageFileToSketch } from '../../hooks/useImagePasteIntoSketch';
+import { pasteImageIntoSketch } from '../../hooks/useImagePasteIntoSketch';
+import { imageToCompoundNameWithAI } from '../../lib/openai/chemistry';
 import { NMRPredictionDialog } from '../NMRPrediction';
 import { BiopolymerSequenceDialog } from '../BiopolymerSequence';
 import { FunctionalGroupDialog } from '../FunctionalGroup/FunctionalGroupDialog';
@@ -967,27 +968,31 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, []);
 
-  // Upload image file → OCSR recognition → structure or image on canvas
+  // Upload image file → AI identifies compound → search by name → load structure (never add image to canvas)
   const uploadImageInputRef = useRef<HTMLInputElement>(null);
+  const [triggerSearchQuery, setTriggerSearchQuery] = useState<string | null>(null);
   const handleUploadImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
     try {
-      const result = await uploadImageFileToSketch(ketcherRef, file);
-      if (result.success && result.type === 'structure') {
-        setSnackbarMessage(result.source === 'ai' ? 'Structure extracted with AI' : 'Structure extracted from image');
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-      } else if (result.success && result.type === 'image') {
-        setSnackbarMessage('Structure not recognized — image added as picture. Try Ketcher Recognize or a clearer image.');
-        setSnackbarSeverity('info');
-        setSnackbarOpen(true);
-      } else {
-        setSnackbarMessage('Could not process image');
+      setSnackbarMessage('Identifying compound with AI...');
+      setSnackbarSeverity('info');
+      setSnackbarOpen(true);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const compoundName = await imageToCompoundNameWithAI(dataUrl);
+      if (!compoundName?.trim()) {
+        setSnackbarMessage('Could not identify compound from image. Try a clearer structure image.');
         setSnackbarSeverity('warning');
         setSnackbarOpen(true);
+        return;
       }
+      setTriggerSearchQuery(compoundName.trim());
     } catch (err) {
       console.error('[AppLayout] Upload image failed:', err);
       setSnackbarMessage('Upload failed');
@@ -1458,6 +1463,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   };
 
+  const handleTriggerSearchComplete = useCallback(() => {
+    setTriggerSearchQuery(null);
+  }, []);
+
   const handleGetAiIupacName = useCallback(async () => {
     const smiles = currentStructure?.smiles || chemicalData.regulatory?.smiles;
     if (!smiles) return;
@@ -1659,6 +1668,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onRedo={() => {}}
           onClear={handleClear}
           onSearchByName={handleSearchByName}
+          triggerSearchWithQuery={triggerSearchQuery}
+          onTriggerSearchComplete={handleTriggerSearchComplete}
           onShortcutsClick={() => setShowShortcutsDialog(true)}
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
@@ -2123,7 +2134,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         onChange={handleUploadImage}
                         style={{ display: 'none' }}
                       />
-                      <Tooltip title="Upload image → extract structure (OCSR)">
+                      <Tooltip title="Upload image → AI identifies compound → search & load structure">
                         <Button
                           size="small"
                           variant="text"

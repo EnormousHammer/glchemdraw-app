@@ -21,6 +21,39 @@ export function prepareSmilesForAI(smiles: string | null | undefined, maxLen: nu
 }
 
 /**
+ * Convert chemical structure image to compound name using AI vision.
+ * Used for upload flow: image → AI → search by name → load from PubChem.
+ * @param dataUrl - data:image/png;base64,... or base64 string
+ * @returns Compound name (e.g. "aspirin", "benzene") or null
+ */
+export async function imageToCompoundNameWithAI(dataUrl: string): Promise<string | null> {
+  const url = dataUrl.startsWith('data:') ? dataUrl : `data:image/png;base64,${dataUrl}`;
+  try {
+    const content = await chatWithOpenAIVision([
+      {
+        role: 'system',
+        content:
+          'You are a chemistry expert. Look at the chemical structure image. Return ONLY the common or IUPAC name of the compound, nothing else. No explanation, no markdown. Use the most searchable name (e.g. "aspirin" not "acetylsalicylic acid" for common compounds). If you cannot identify the structure, return the word FAIL.',
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'text' as const, text: 'What is this chemical compound? Reply with only its name.' },
+          { type: 'image_url' as const, image_url: { url } },
+        ],
+      },
+    ]);
+    const trimmed = content.trim();
+    if (!trimmed || /^FAIL$/i.test(trimmed)) return null;
+    const name = trimmed.split(/\n/)[0]?.trim();
+    if (name && name.length >= 2) return name;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Convert chemical structure image to SMILES using AI vision.
  * Fallback when OCSR (naturalproducts.net) fails.
  * @param dataUrl - data:image/png;base64,... or base64 string

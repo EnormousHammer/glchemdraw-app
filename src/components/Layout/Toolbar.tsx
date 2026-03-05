@@ -46,6 +46,9 @@ interface AppToolbarProps {
   onNameToStructure?: () => void;
   onAdvancedExport?: () => void;
   onSearchByName?: (name: string) => void;
+  /** When set, displays in search box and triggers search (e.g. from image upload) */
+  triggerSearchWithQuery?: string | null;
+  onTriggerSearchComplete?: () => void;
   onShortcutsClick?: () => void;
   onReactionsClick?: () => void;
   onFaqClick?: () => void;
@@ -69,6 +72,8 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onNameToStructure,
   onAdvancedExport,
   onSearchByName,
+  triggerSearchWithQuery,
+  onTriggerSearchComplete,
   onShortcutsClick,
   onReactionsClick,
   onFaqClick,
@@ -80,6 +85,15 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   const toolbarHeight = compact ? 40 : 56;
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showShortcuts, setShowShortcuts] = React.useState(false);
+
+  // When parent triggers search (e.g. from image upload), show query and run search
+  React.useEffect(() => {
+    if (triggerSearchWithQuery?.trim() && onSearchByName) {
+      setSearchQuery(triggerSearchWithQuery.trim());
+      onSearchByName(triggerSearchWithQuery.trim());
+      onTriggerSearchComplete?.();
+    }
+  }, [triggerSearchWithQuery, onSearchByName, onTriggerSearchComplete]);
 
   const handleSearch = () => {
     if (onSearchByName && searchQuery.trim()) {

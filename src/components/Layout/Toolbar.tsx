@@ -50,6 +50,7 @@ interface AppToolbarProps {
   onReactionsClick?: () => void;
   onFaqClick?: () => void;
   onDocumentSettings?: () => void;
+  onAiClick?: () => void;
   rightContent?: React.ReactNode;
 }
 
@@ -70,6 +71,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onReactionsClick,
   onFaqClick,
   onDocumentSettings,
+  onAiClick,
   rightContent,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -82,8 +84,9 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
     }
   };
 
-  const handleKeyPress = (event: React.KeyboardEvent) => {
+  const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
+      event.preventDefault();
       handleSearch();
     }
   };
@@ -175,7 +178,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
             placeholder="Search compound name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             style={{
               width: '220px',
               height: '36px',
@@ -274,6 +277,37 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
                   color: '#0f172a !important',
                   boxShadow: '0 0 0 1px rgba(255,255,255,0.5)',
                   '& .MuiChip-icon': { color: '#0f172a !important' }
+                }
+              }}
+            />
+          </Tooltip>
+        )}
+
+        <Box sx={{ width: 8 }} />
+
+        {/* AI chip - scrolls to AI section */}
+        {onAiClick && (
+          <Tooltip title="AI Assistant — run analysis, name, reactions" arrow placement="bottom">
+            <Chip
+              icon={<SparkleIcon sx={{ fontSize: 14, color: '#7c3aed' }} />}
+              label="AI"
+              size="small"
+              variant="outlined"
+              onClick={onAiClick}
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                height: 26,
+                bgcolor: 'rgba(124,58,237,0.15) !important',
+                borderColor: 'rgba(124,58,237,0.5)',
+                color: '#a78bfa !important',
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: 'rgba(124,58,237,0.25) !important',
+                  borderColor: '#7c3aed',
+                  color: '#c4b5fd !important',
+                  boxShadow: '0 0 0 1px rgba(124,58,237,0.4)',
+                  '& .MuiChip-icon': { color: '#a78bfa !important' }
                 }
               }}
             />

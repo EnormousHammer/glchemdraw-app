@@ -71,7 +71,7 @@ export const TemplateLibraryDialog: React.FC<TemplateLibraryDialogProps> = ({
         Template Library
       </DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 500 }}>
           Click a template to add it to the canvas. Connect it to your structure.
         </Typography>
         <TextField

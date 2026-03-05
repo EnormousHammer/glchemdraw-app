@@ -194,7 +194,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onComplete }) => {
             letterSpacing: 3,
           }}
         >
-          LOADING
+          Loading chemistry engine
           <Box
             component="span"
             sx={{

@@ -113,6 +113,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     inchiKey?: string;
   } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchNotFound, setSearchNotFound] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('info');
@@ -1050,6 +1051,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     if (!hasSelectionRef.current) {
       setCurrentStructure(structure);
       if (smiles) {
+        setSearchNotFound(null);
         await fetchComprehensiveData(smiles);
       } else {
         setRecognizedCompound(null);
@@ -1068,6 +1070,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const handleSelectionChange = useCallback(async (molfile: string | null, smiles: string | null) => {
     if (molfile && smiles) {
       hasSelectionRef.current = true;
+      setSearchNotFound(null);
       setCurrentStructure({ molfile, smiles });
       await fetchComprehensiveData(smiles);
     } else {
@@ -1075,6 +1078,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       // Fall back to full canvas when nothing selected
       const full = fullCanvasRef.current;
       if (full) {
+        setSearchNotFound(null);
         setCurrentStructure(full);
         if (full.smiles) {
           await fetchComprehensiveData(full.smiles);
@@ -1370,11 +1374,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
             }
           }
           
+          setSearchNotFound(null);
           setSnackbarMessage(`Found compound: ${properties.IUPACName || name}`);
           setSnackbarSeverity('success');
           setSnackbarOpen(true);
         } else {
           console.log('[AppLayout] No properties found for name:', name);
+          setSearchNotFound(name);
           setSnackbarMessage(`No data found for: ${name}`);
           setSnackbarSeverity('warning');
           setSnackbarOpen(true);
@@ -1389,21 +1395,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
             const molContent = await convertSmilesToMol(aiSmiles);
             if (molContent) {
               await ketcherRef.current.setMolecule(molContent);
+              setSearchNotFound(null);
               setSnackbarMessage(`AI found structure for: ${name}`);
               setSnackbarSeverity('success');
               setSnackbarOpen(true);
               await fetchComprehensiveData(aiSmiles);
             } else {
+              setSearchNotFound(name);
               setSnackbarMessage(`Compound not found: ${name}`);
               setSnackbarSeverity('warning');
               setSnackbarOpen(true);
             }
           } else {
+            setSearchNotFound(name);
             setSnackbarMessage(`Compound not found: ${name}`);
             setSnackbarSeverity('warning');
             setSnackbarOpen(true);
           }
         } catch {
+          setSearchNotFound(name);
           setSnackbarMessage(`Compound not found: ${name}`);
           setSnackbarSeverity('warning');
           setSnackbarOpen(true);
@@ -1519,6 +1529,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       try {
         ketcherRef.current.editor.clear();
         setCurrentStructure(null);
+        setSearchNotFound(null);
         setRecognizedCompound(null);
         setAiIupacName(null);
         setAiProperties(null);
@@ -1567,6 +1578,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onShortcutsClick={() => setShowShortcutsDialog(true)}
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
+          onAiClick={() => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
         />
 
         {/* Main Content - Conditional View */}
@@ -3115,12 +3127,26 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       </Accordion>
                     </Box>
 
-                    {/* Empty state */}
+                    {/* Empty state or search not found */}
                     {!recognizedCompound && !currentStructure?.smiles && (
                       <Box sx={{ p: 1.5, minWidth: 0, borderRadius: 1, border: '1px dashed', borderColor: 'divider', textAlign: 'center', minHeight: 48 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', letterSpacing: '0.04em', fontWeight: 500 }}>
-                          Draw a structure or search for a compound to see detailed information
-                        </Typography>
+                        {searchNotFound ? (
+                          <Box>
+                            <Typography variant="body2" color="error.main" sx={{ fontWeight: 500, mb: 0.5 }}>
+                              Compound not found: {searchNotFound}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                              Try a different name or draw the structure
+                            </Typography>
+                            <Button size="small" variant="outlined" onClick={() => setSearchNotFound(null)}>
+                              Dismiss
+                            </Button>
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', letterSpacing: '0.04em', fontWeight: 500 }}>
+                            Draw a structure or search for a compound to see detailed information
+                          </Typography>
+                        )}
                       </Box>
                     )}
                   </Stack>
@@ -3131,10 +3157,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           })()}
         </Box>
 
-        {/* Snackbar for notifications */}
+        {/* Snackbar for notifications — longer for "not found" so user sees it */}
         <Snackbar
           open={snackbarOpen}
-          autoHideDuration={4000}
+          autoHideDuration={snackbarMessage?.toLowerCase().includes('not found') ? 6000 : 4000}
           onClose={() => setSnackbarOpen(false)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         >

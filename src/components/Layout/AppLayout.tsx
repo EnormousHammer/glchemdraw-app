@@ -1088,7 +1088,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const handleStructureChange = useCallback(async (molfile: string, smiles: string) => {
     console.log('[AppLayout] Structure changed:', { molfile, smiles });
     // Treat empty canvas as no structure - keeps Chemical Info clean (no errors/placeholders)
-    const isEmpty = !molfile?.trim() && !smiles?.trim();
+    // Defense-in-depth: also check isStructureEmpty (Ketcher may emit delayed change with molfile-as-smiles)
+    let isEmpty = !molfile?.trim() && !smiles?.trim();
+    if (!isEmpty) {
+      try {
+        const { isStructureEmpty } = await import('../../lib/chemistry/structureUtils');
+        isEmpty = isStructureEmpty(molfile, smiles);
+      } catch (_) {}
+    }
     const structure: StructureData | null = isEmpty ? null : { molfile, smiles };
     fullCanvasRef.current = structure;
     // If no selection active, full canvas is what we display
@@ -1112,7 +1119,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
   // Handle selection change (Issue #2: show chemical info for selected structure only)
   const handleSelectionChange = useCallback(async (molfile: string | null, smiles: string | null) => {
-    if (molfile && smiles) {
+    // Reject empty/invalid structures (molfile-as-smiles from Ketcher)
+    let isEmpty = !molfile?.trim() && !smiles?.trim();
+    if (!isEmpty && molfile && smiles) {
+      try {
+        const { isStructureEmpty } = await import('../../lib/chemistry/structureUtils');
+        isEmpty = isStructureEmpty(molfile, smiles);
+      } catch (_) {}
+    }
+    if (molfile && smiles && !isEmpty) {
       hasSelectionRef.current = true;
       setSearchNotFound(null);
       setCurrentStructure({ molfile, smiles });
@@ -1122,6 +1137,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       // Fall back to full canvas when nothing selected
       const full = fullCanvasRef.current;
       if (full) {
+        // Also verify full is not empty (delayed Ketcher events)
+        try {
+          const { isStructureEmpty } = await import('../../lib/chemistry/structureUtils');
+          if (isStructureEmpty(full.molfile, full.smiles)) {
+            setCurrentStructure(null);
+            setRecognizedCompound(null);
+            setChemicalData({
+              physicalProperties: null,
+              safetyData: null,
+              descriptors: null,
+              regulatory: null,
+              spectral: null,
+            });
+            return;
+          }
+        } catch (_) {}
         setSearchNotFound(null);
         setCurrentStructure(full);
         if (full.smiles) {

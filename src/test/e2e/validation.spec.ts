@@ -22,7 +22,9 @@ test.describe('Structure Validation', () => {
 
   test('should show empty state when no structure', async ({ page }) => {
     // Check for empty state message (validation or info panel)
-    const emptyMessage = page.locator('text=Draw a structure to see validation feedback').or(
+    const emptyMessage = page.locator('text=Draw a structure to see chemical information').or(
+      page.locator('text=Draw a structure to see validation feedback')
+    ).or(
       page.locator('text=Draw a structure or search for a compound to see detailed information')
     );
     await expect(emptyMessage.first()).toBeVisible();

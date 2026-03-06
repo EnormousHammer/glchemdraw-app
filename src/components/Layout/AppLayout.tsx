@@ -66,6 +66,7 @@ import { performAdvancedExport, type AdvancedExportOptions } from '@lib/export/a
 import { peptideToHelm, dnaToHelm, rnaToHelm } from '../../lib/chemistry/helmFormat';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ImageIcon from '@mui/icons-material/Image';
+import ScienceIcon from '@mui/icons-material/Science';
 import { useAIContext } from '@/contexts/AIContext';
 
 /** Styled keyboard key for shortcuts dialog */
@@ -1086,12 +1087,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   // Handle structure changes from the canvas (full canvas)
   const handleStructureChange = useCallback(async (molfile: string, smiles: string) => {
     console.log('[AppLayout] Structure changed:', { molfile, smiles });
-    const structure: StructureData = { molfile, smiles };
+    // Treat empty canvas as no structure - keeps Chemical Info clean (no errors/placeholders)
+    const isEmpty = !molfile?.trim() && !smiles?.trim();
+    const structure: StructureData | null = isEmpty ? null : { molfile, smiles };
     fullCanvasRef.current = structure;
     // If no selection active, full canvas is what we display
     if (!hasSelectionRef.current) {
       setCurrentStructure(structure);
-      if (smiles) {
+      if (smiles?.trim()) {
         setSearchNotFound(null);
         await fetchComprehensiveData(smiles);
       } else {
@@ -2295,6 +2298,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
                 {/* Content area */}
                 <Box sx={{ flex: 1, minWidth: 0, overflow: 'auto', p: 1.25, display: 'flex', flexDirection: 'column', gap: 0.5, bgcolor: 'background.paper' }}>
+                  {!currentStructure ? (
+                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', py: 4 }}>
+                      <Box>
+                        <ScienceIcon sx={{ fontSize: 48, mb: 1.5, opacity: 0.4, color: 'text.secondary' }} />
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 500, letterSpacing: '0.02em' }}>
+                          Draw a structure to see chemical information
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ) : (
                   <Stack spacing={0.75} sx={{ minWidth: 0 }}>
                     {/* Structure Validation */}
                     <ValidationPanel
@@ -3347,6 +3360,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       </Box>
                     )}
                   </Stack>
+                  )}
                 </Box>
               </Box>
                 </>

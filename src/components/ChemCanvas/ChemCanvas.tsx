@@ -299,7 +299,17 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
             } catch (_) {}
           }
         }
-        if (onStructureChange) onStructureChange(molfile, smiles);
+        // Treat empty canvas (0 atoms) as no structure - pass empty to avoid errors/placeholders in Chemical Info
+        const { isStructureEmpty } = await import('../../lib/chemistry/structureUtils');
+        const empty = isStructureEmpty(molfile, smiles);
+        const [finalMolfile, finalSmiles] = empty ? ['', ''] : [molfile, smiles];
+        if (onStructureChange) onStructureChange(finalMolfile, finalSmiles);
+
+        // When canvas is empty, clear selection state so Chemical Info shows empty
+        if (empty && onSelectionChange) {
+          onSelectionChange(null, null);
+          return;
+        }
 
         // Issue #2: After full canvas update, check selection - show selected struct if any
         if (onSelectionChange && ketcher?.editor?.structSelected) {

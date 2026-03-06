@@ -38,6 +38,8 @@ export type BondTypeId =
 
 interface BondTypeBarProps {
   ketcherRef: React.RefObject<any>;
+  /** When true, ketcher is ready – re-run selection subscription (refs don't trigger re-renders) */
+  ketcherReady?: boolean;
   /** Compact mode for inline display */
   compact?: boolean;
   /** Called when bond type applied (for snackbar) */
@@ -57,6 +59,7 @@ const BOND_TYPES: { id: BondTypeId; label: string; icon: React.ReactNode; type: 
 
 export const BondTypeBar: React.FC<BondTypeBarProps> = ({
   ketcherRef,
+  ketcherReady = true,
   compact = false,
   onApplied,
   onError,
@@ -121,9 +124,20 @@ export const BondTypeBar: React.FC<BondTypeBarProps> = ({
           if (typeof editor.tool === 'function') {
             editor.tool(toolName);
             onApplied?.(`Draw mode: ${def.label}`);
+            // Focus canvas so next click draws on canvas (not Chemical Info panel)
+            const ketcherRoot = document.querySelector('.Ketcher-root') as HTMLElement | null;
+            if (ketcherRoot) {
+              ketcherRoot.setAttribute('tabindex', '-1');
+              ketcherRoot.focus({ preventScroll: true });
+            }
           } else if ((editor as any).events?.selectTool?.dispatch) {
             (editor as any).events.selectTool.dispatch([toolName]);
             onApplied?.(`Draw mode: ${def.label}`);
+            const ketcherRoot = document.querySelector('.Ketcher-root') as HTMLElement | null;
+            if (ketcherRoot) {
+              ketcherRoot.setAttribute('tabindex', '-1');
+              ketcherRoot.focus({ preventScroll: true });
+            }
           } else {
             onError?.('Could not set bond tool.');
           }
@@ -150,17 +164,16 @@ export const BondTypeBar: React.FC<BondTypeBarProps> = ({
       }
     };
 
-    let sub: { detach?: () => void } | undefined;
     try {
-      sub = ev.add(handler);
+      ev.add(handler);
+      handler();
     } catch (_) {}
-    handler();
     return () => {
       try {
-        sub?.detach?.();
+        ev.remove(handler);
       } catch (_) {}
     };
-  }, [ketcherRef]);
+  }, [ketcherRef, ketcherReady]);
 
   const hasBondSelection = selectedBondIds.length > 0;
 

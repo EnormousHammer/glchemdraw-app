@@ -138,6 +138,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [showDocumentSettings, setShowDocumentSettings] = useState(false);
   const [showAdvancedExportDialog, setShowAdvancedExportDialog] = useState(false);
   const [showBondTypeBar, setShowBondTypeBar] = useState(false);
+  const [ketcherReady, setKetcherReady] = useState(false);
   const [canvasKey, setCanvasKey] = useState(0);
   const [biopolymerDialogMode, setBiopolymerDialogMode] = useState<'PEPTIDE' | 'RNA' | 'DNA'>('PEPTIDE');
   const [aiSectionExpanded, setAiSectionExpanded] = useState(false);
@@ -913,6 +914,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     // Fallback: remount canvas when Ketcher API unavailable
     setCanvasKey((k) => k + 1);
     ketcherRef.current = null;
+    setKetcherReady(false);
     setSnackbarMessage('Switched to Molecules mode');
     setSnackbarSeverity('success');
     setSnackbarOpen(true);
@@ -1781,6 +1783,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                     }}
                     onKetcherInit={async (instance) => {
                       ketcherRef.current = instance;
+                      setKetcherReady(true);
                       // Shareable links: load ?smiles= or ?cid= from URL
                       const params = shareableLinkParamsRef.current;
                       if (params && instance?.setMolecule) {
@@ -2318,6 +2321,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                       <Box sx={{ py: 1, display: 'flex', justifyContent: 'center', borderTop: 1, borderColor: 'divider' }}>
                         <BondTypeBar
                           ketcherRef={ketcherRef}
+                          ketcherReady={ketcherReady}
                           compact
                           onApplied={(msg) => { setSnackbarMessage(msg); setSnackbarSeverity('success'); setSnackbarOpen(true); }}
                           onError={(msg) => { setSnackbarMessage(msg); setSnackbarSeverity('warning'); setSnackbarOpen(true); }}

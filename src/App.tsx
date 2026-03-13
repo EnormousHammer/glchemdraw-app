@@ -20,8 +20,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(!skipIntro);
 
   useEffect(() => {
-    // Preload NMR predictor databases in background for faster first prediction
-    import('@/lib/nmr/preloadNmrPredictor').then(({ preloadNmrPredictor }) => preloadNmrPredictor());
+    // Defer NMR preload to avoid competing with initial app/canvas load (10s delay)
+    const timer = setTimeout(() => {
+      import('@/lib/nmr/preloadNmrPredictor').then(({ preloadNmrPredictor }) => preloadNmrPredictor());
+    }, 10000);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleError = (error: Error, errorInfo: React.ErrorInfo) => {

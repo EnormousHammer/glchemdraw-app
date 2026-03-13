@@ -34,6 +34,16 @@ import BiotechIcon from '@mui/icons-material/Biotech';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
+import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
+import TextFieldsIcon from '@mui/icons-material/TextFields';
+import AddIcon from '@mui/icons-material/Add';
+import TabIcon from '@mui/icons-material/Tab';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import { ThemeProvider } from '@mui/material/styles';
 import theme from '../../theme';
 import AppToolbar from '../Layout/Toolbar';
@@ -124,6 +134,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [alignMenuAnchor, setAlignMenuAnchor] = useState<null | HTMLElement>(null);
   const [biotoolMenuAnchor, setBiotoolMenuAnchor] = useState<null | HTMLElement>(null);
+  const [textBelowMenuAnchor, setTextBelowMenuAnchor] = useState<null | HTMLElement>(null);
   const [showReactionHelpDialog, setShowReactionHelpDialog] = useState(false);
   const [showNMRPredictionDialog, setShowNMRPredictionDialog] = useState(false);
   const [showBatchNMRDialog, setShowBatchNMRDialog] = useState(false);
@@ -166,6 +177,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const [readOnlyFromUrl, setReadOnlyFromUrl] = useState(false);
   const [isEmbeddedInELN, setIsEmbeddedInELN] = useState(false);
   const [isEmbedMode, setIsEmbedMode] = useState(false);
+  // Multi-page canvas support
+  interface CanvasPage { id: number; name: string; ketData: string | null; }
+  const [canvasPages, setCanvasPages] = useState<CanvasPage[]>([{ id: 1, name: 'Page 1', ketData: null }]);
+  const [activePageId, setActivePageId] = useState(1);
+  const nextPageIdRef = useRef(2);
+  const [editingPageId, setEditingPageId] = useState<number | null>(null);
+  const [editingPageName, setEditingPageName] = useState('');
   const [chemicalInfoWidth, setChemicalInfoWidth] = useState(() => {
     const saved = localStorage.getItem('glchemdraw_chemical_info_width');
     const n = saved ? parseInt(saved, 10) : 360;
@@ -199,6 +217,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const aiSectionRef = useRef<HTMLDivElement>(null);
   const lastAutoAiNameSmilesRef = useRef<string | null>(null);
   const lastAutoSafetySmilesRef = useRef<string | null>(null);
+  const lastFetchedSmilesRef = useRef<string | null>(null);
+  const fetchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Shareable links: ?smiles=... or ?cid=... + optional ?edit=1 (editable) or ?edit=0 (view-only)
   useEffect(() => {
@@ -784,6 +804,350 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
+  // Expand abbreviation labels (Boc, Fmoc, Cbz, TBS, etc.) into full structures.
+  // Uses Ketcher's S-group expansion if available, otherwise re-converts the full
+  // structure through SMILES → molfile round-trip which strips abbreviations.
+  const handleExpandLabels = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) return;
+    try {
+      // Ketcher stores abbreviated groups as S-groups (superatom type).
+      // The most reliable expansion method: get SMILES (always fully expanded)
+      // then reload the structure from SMILES.
+      let smiles = '';
+      try { smiles = await ketcher.getSmiles?.(); } catch (_) {}
+      if (!smiles?.trim()) {
+        setSnackbarMessage('No structure to expand');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
+      const { convertSmilesToMol } = await import('../../lib/chemistry/smilesToMol');
+      const mol = await convertSmilesToMol(smiles);
+      if (mol) {
+        await ketcher.setMolecule(mol);
+        await ketcher.layout?.();
+        setSnackbarMessage('Labels expanded into full structures');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      } else {
+        setSnackbarMessage('Could not expand labels');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+      }
+    } catch (err) {
+      console.error('[AppLayout] Expand labels failed:', err);
+      setSnackbarMessage('Expand labels failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  // Structure scale: enlarge or compress the drawn structure on canvas.
+  // Directly modifies atom positions in the editor's internal struct and
+  // re-renders, bypassing setMolecule which normalizes coordinates.
+  const handleScaleStructure = useCallback(async (factor: number) => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher?.editor) return;
+    try {
+      const ed = ketcher.editor;
+      const st = ed.struct();
+      if (!st?.atoms?.size) {
+        setSnackbarMessage('No structure to resize');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
+      // Calculate centroid
+      let cx = 0, cy = 0, count = 0;
+      st.atoms.forEach((atom: any) => {
+        if (atom.pp) { cx += atom.pp.x; cy += atom.pp.y; count++; }
+      });
+      if (count === 0) return;
+      cx /= count; cy /= count;
+
+      // Scale each atom position around the centroid
+      st.atoms.forEach((atom: any) => {
+        if (atom.pp) {
+          atom.pp.x = cx + (atom.pp.x - cx) * factor;
+          atom.pp.y = cy + (atom.pp.y - cy) * factor;
+        }
+      });
+      // Force the renderer to re-render from updated struct coordinates
+      ed.render.update(true);
+      const pct = Math.round(factor * 100);
+      const label = factor > 1 ? 'enlarged' : 'compressed';
+      setSnackbarMessage(`Structure ${label} to ${pct}%`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('[AppLayout] Scale structure failed:', err);
+      setSnackbarMessage('Scale failed: ' + (err instanceof Error ? err.message : 'unknown error'));
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  // Enhanced structure clean-up: runs Ketcher's aromatize → clean (2D coord optimization)
+  // → layout (bond length/angle fix) → center, similar to ChemDraw's two-click clean.
+  const handleDeepClean = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher?.editor) return;
+    try {
+      const ed = ketcher.editor;
+      const st = ed.struct();
+      if (!st?.atoms?.size) {
+        setSnackbarMessage('No structure to clean');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
+      const indigo = (ketcher as any)._indigo;
+      if (!indigo?.clean || !indigo?.layout) {
+        setSnackbarMessage('Indigo service not available');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+        return;
+      }
+      const cleaned = await indigo.clean(st);
+      const laidOut = await indigo.layout(cleaned);
+      ed.render.setMolecule(laidOut);
+      if (typeof ed.centerStruct === 'function') ed.centerStruct();
+      setSnackbarMessage('Structure cleaned (optimized bonds + layout + centered)');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('[AppLayout] Deep clean failed:', err);
+      setSnackbarMessage('Clean-up failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  // Add text annotation below the structure (compound name, formula, MW)
+  const handleAddTextBelowStructure = useCallback(async (textType: 'name' | 'formula' | 'mw' | 'all') => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher?.editor) return;
+    const name = recognizedCompound?.name || chemicalData.regulatory?.iupacName || aiIupacName || '';
+    const formula = chemicalData.physicalProperties?.molecularFormula || '';
+    const mw = chemicalData.physicalProperties?.molecularWeight || '';
+    let text = '';
+    switch (textType) {
+      case 'name': text = name || 'N/A'; break;
+      case 'formula': text = formula ? `Formula: ${formula}` : 'Formula: N/A'; break;
+      case 'mw': text = mw ? `MW: ${mw}` : 'MW: N/A'; break;
+      case 'all': {
+        const parts: string[] = [];
+        if (name) parts.push(name);
+        if (formula) parts.push(`Formula: ${formula}`);
+        if (mw) parts.push(`MW: ${mw}`);
+        text = parts.join('\n') || 'N/A';
+        break;
+      }
+    }
+    try {
+      const ed = ketcher.editor;
+      const st = ed.struct();
+      if (!st?.atoms?.size) {
+        await navigator.clipboard.writeText(text);
+        setSnackbarMessage(`${textType} copied — draw a structure first`);
+        setSnackbarSeverity('info');
+        setSnackbarOpen(true);
+        return;
+      }
+      // Get Vec2 constructor from an existing atom
+      let Vec2Ctor: any = null;
+      st.atoms.forEach((atom: any) => {
+        if (atom.pp && !Vec2Ctor) Vec2Ctor = atom.pp.constructor;
+      });
+      if (!Vec2Ctor) {
+        await navigator.clipboard.writeText(text);
+        setSnackbarMessage(`${textType} copied — use Text tool (T) to paste`);
+        setSnackbarSeverity('info');
+        setSnackbarOpen(true);
+        return;
+      }
+      // Calculate bounding box
+      let minX = Infinity, maxX = -Infinity, maxY = -Infinity;
+      st.atoms.forEach((atom: any) => {
+        if (atom.pp) {
+          minX = Math.min(minX, atom.pp.x);
+          maxX = Math.max(maxX, atom.pp.x);
+          maxY = Math.max(maxY, atom.pp.y);
+        }
+      });
+      // Draft.js content format for Ketcher text
+      const blocks = text.split('\n').map((line: string) => ({
+        text: line, entityRanges: [] as any[], inlineStyleRanges: [] as any[]
+      }));
+      const draftContent = JSON.stringify({ blocks, entityMap: {} });
+      // Factory that creates text objects compatible with Ketcher's serializer
+      const createTextObj = (content: string, pos: { x: number; y: number; z: number }) => {
+        const obj: any = {
+          content,
+          position: new Vec2Ctor(pos),
+          pos: [],
+          initiallySelected: false,
+          getInitiallySelected() { return this.initiallySelected || false; },
+          setInitiallySelected(v: boolean) { this.initiallySelected = v; },
+          setPos(coords: any[]) { this.pos = coords || []; },
+          clone() { return createTextObj(this.content, this.position); },
+        };
+        return obj;
+      };
+      const textObj = createTextObj(draftContent, {
+        x: (minX + maxX) / 2 - 1,
+        y: maxY + 1.5,
+        z: 0,
+      });
+      st.texts.add(textObj);
+      ed.render.setMolecule(st);
+      setSnackbarMessage(`Added ${textType} below structure`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('[AppLayout] Add text failed:', err);
+      try {
+        await navigator.clipboard.writeText(text);
+        setSnackbarMessage(`Text copied — use Text tool (T) to paste below structure`);
+        setSnackbarSeverity('info');
+        setSnackbarOpen(true);
+      } catch (_) {
+        setSnackbarMessage('Failed to add text');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+      }
+    }
+  }, [recognizedCompound, chemicalData, aiIupacName]);
+
+  // Save current canvas state (KET fallback to molfile)
+  const saveCurrentPageData = useCallback(async (): Promise<string | null> => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) return null;
+    try {
+      const ket = await ketcher.getKet?.();
+      if (ket?.trim()) return ket;
+    } catch (_) {}
+    try {
+      const mol = await ketcher.getMolfile?.();
+      if (mol?.trim()) return mol;
+    } catch (_) {}
+    return null;
+  }, []);
+
+  // Restore canvas from saved data (handles KET or molfile)
+  const restorePageData = useCallback(async (data: string | null) => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) return;
+    if (!data?.trim()) {
+      ketcher.editor?.clear?.();
+      return;
+    }
+    try {
+      await ketcher.setMolecule(data);
+    } catch (err) {
+      console.error('[AppLayout] Failed to restore page:', err);
+      ketcher.editor?.clear?.();
+    }
+  }, []);
+
+  // Multi-page canvas: save current page, switch to another
+  const handleSwitchPage = useCallback(async (targetPageId: number) => {
+    if (targetPageId === activePageId) return;
+    const pageData = await saveCurrentPageData();
+    setCanvasPages(prev => prev.map(p =>
+      p.id === activePageId ? { ...p, ketData: pageData } : p
+    ));
+    const targetPage = canvasPages.find(p => p.id === targetPageId);
+    await restorePageData(targetPage?.ketData ?? null);
+    setActivePageId(targetPageId);
+    setCurrentStructure(null);
+    setRecognizedCompound(null);
+  }, [activePageId, canvasPages, saveCurrentPageData, restorePageData]);
+
+  const handleAddPage = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) return;
+    const pageData = await saveCurrentPageData();
+    setCanvasPages(prev => {
+      const updated = prev.map(p =>
+        p.id === activePageId ? { ...p, ketData: pageData } : p
+      );
+      const newId = nextPageIdRef.current++;
+      return [...updated, { id: newId, name: `Page ${newId}`, ketData: null }];
+    });
+    ketcher.editor?.clear?.();
+    setActivePageId(nextPageIdRef.current - 1);
+    setCurrentStructure(null);
+    setRecognizedCompound(null);
+    setSnackbarMessage('New page created');
+    setSnackbarSeverity('success');
+    setSnackbarOpen(true);
+  }, [activePageId, saveCurrentPageData]);
+
+  const handleDeletePage = useCallback(async (pageId: number) => {
+    if (canvasPages.length <= 1) {
+      setSnackbarMessage('Cannot delete the last page');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+      return;
+    }
+    const remaining = canvasPages.filter(p => p.id !== pageId);
+    setCanvasPages(remaining);
+    if (activePageId === pageId) {
+      const newActive = remaining[0];
+      setActivePageId(newActive.id);
+      await restorePageData(newActive.ketData ?? null);
+      setCurrentStructure(null);
+      setRecognizedCompound(null);
+    }
+  }, [canvasPages, activePageId, restorePageData]);
+
+  const handleRenamePage = useCallback((pageId: number, newName: string) => {
+    setCanvasPages(prev => prev.map(p =>
+      p.id === pageId ? { ...p, name: newName || p.name } : p
+    ));
+    setEditingPageId(null);
+  }, []);
+
+  // Export MOL file download for FindMolecule (direct download approach)
+  const handleDownloadMolForFindMolecule = useCallback(async () => {
+    const ketcher = ketcherRef.current;
+    if (!ketcher) {
+      setSnackbarMessage('No structure to export');
+      setSnackbarSeverity('warning');
+      setSnackbarOpen(true);
+      return;
+    }
+    try {
+      const molfile = await ketcher.getMolfile?.();
+      if (!molfile?.trim()) {
+        setSnackbarMessage('No structure to export');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
+      const blob = new Blob([molfile], { type: 'chemical/x-mdl-molfile' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const name = recognizedCompound?.name || 'structure';
+      a.download = `${name.replace(/[^a-zA-Z0-9-_]/g, '_')}.mol`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setSnackbarMessage('MOL file downloaded — import into FindMolecule');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('[AppLayout] MOL download failed:', err);
+      setSnackbarMessage('MOL download failed');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  }, [recognizedCompound]);
+
   // Ctrl+S → open our Export dialog instead of Ketcher's built-in save overlay
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1087,10 +1451,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   }, []);
 
   // Handle structure changes from the canvas (full canvas)
+  // Debounced to avoid repeated PubChem fetches on rapid Ketcher events
   const handleStructureChange = useCallback(async (molfile: string, smiles: string) => {
-    console.log('[AppLayout] Structure changed:', { molfile, smiles });
-    // Treat empty canvas as no structure - keeps Chemical Info clean (no errors/placeholders)
-    // Defense-in-depth: also check isStructureEmpty (Ketcher may emit delayed change with molfile-as-smiles)
     let isEmpty = !molfile?.trim() && !smiles?.trim();
     if (!isEmpty) {
       try {
@@ -1100,12 +1462,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
     const structure: StructureData | null = isEmpty ? null : { molfile, smiles };
     fullCanvasRef.current = structure;
-    // If no selection active, full canvas is what we display
     if (!hasSelectionRef.current) {
       setCurrentStructure(structure);
       if (smiles?.trim()) {
         setSearchNotFound(null);
-        await fetchComprehensiveData(smiles);
+        if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+        fetchDebounceRef.current = setTimeout(() => fetchComprehensiveData(smiles), 500);
       } else {
         setRecognizedCompound(null);
         setChemicalData({
@@ -1133,13 +1495,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       hasSelectionRef.current = true;
       setSearchNotFound(null);
       setCurrentStructure({ molfile, smiles });
-      await fetchComprehensiveData(smiles);
+      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+      fetchDebounceRef.current = setTimeout(() => fetchComprehensiveData(smiles), 500);
     } else {
       hasSelectionRef.current = false;
-      // Fall back to full canvas when nothing selected
       const full = fullCanvasRef.current;
       if (full) {
-        // Also verify full is not empty (delayed Ketcher events)
         try {
           const { isStructureEmpty } = await import('../../lib/chemistry/structureUtils');
           if (isStructureEmpty(full.molfile, full.smiles)) {
@@ -1158,7 +1519,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setSearchNotFound(null);
         setCurrentStructure(full);
         if (full.smiles) {
-          await fetchComprehensiveData(full.smiles);
+          if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+          fetchDebounceRef.current = setTimeout(() => fetchComprehensiveData(full.smiles), 500);
         }
       } else {
         setCurrentStructure(null);
@@ -1174,8 +1536,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, []);
 
-  // Fetch comprehensive chemical data from PubChem API
+  // Fetch comprehensive chemical data from PubChem API (with deduplication)
   const fetchComprehensiveData = async (smiles: string) => {
+    if (!smiles?.trim()) return;
+    // Skip if we already fetched for this exact SMILES
+    if (lastFetchedSmilesRef.current === smiles) return;
+    lastFetchedSmilesRef.current = smiles;
     try {
       setIsSearching(true);
       console.log('[AppLayout] Fetching REAL data from PubChem for SMILES:', smiles);
@@ -1333,6 +1699,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
   const handleSearchByName = async (name: string) => {
     try {
       setIsSearching(true);
+      lastFetchedSmilesRef.current = null;
       console.log('[AppLayout] Searching by name:', name);
       
       const { getCIDByName, getPropertiesByCID, getCASNumber } = await import('../../lib/pubchem/api');
@@ -1669,6 +2036,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setAiStereoExplanation(null);
         lastAutoAiNameSmilesRef.current = null;
         lastAutoSafetySmilesRef.current = null;
+        lastFetchedSmilesRef.current = null;
         setChemicalData({
           physicalProperties: null,
           safetyData: null,
@@ -1878,6 +2246,58 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                   />
                   </Suspense>
                 </Box>
+                {/* Multi-page tabs */}
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: (t) => t.palette.mode === 'light' ? 'grey.50' : 'grey.900',
+                  px: 0.5,
+                  py: 0.25,
+                  gap: 0.25,
+                  minHeight: 30,
+                  flexShrink: 0,
+                  overflow: 'auto',
+                  '&::-webkit-scrollbar': { height: 3 },
+                  '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 2 },
+                }}>
+                  {canvasPages.map((page) => (
+                    <Chip
+                      key={page.id}
+                      label={editingPageId === page.id ? (
+                        <input
+                          autoFocus
+                          value={editingPageName}
+                          onChange={(e) => setEditingPageName(e.target.value)}
+                          onBlur={() => handleRenamePage(page.id, editingPageName)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleRenamePage(page.id, editingPageName); }}
+                          style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '0.7rem', width: 60, color: 'inherit' }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : page.name}
+                      size="small"
+                      variant={page.id === activePageId ? 'filled' : 'outlined'}
+                      color={page.id === activePageId ? 'primary' : 'default'}
+                      onClick={() => handleSwitchPage(page.id)}
+                      onDoubleClick={() => { setEditingPageId(page.id); setEditingPageName(page.name); }}
+                      onDelete={canvasPages.length > 1 ? () => handleDeletePage(page.id) : undefined}
+                      deleteIcon={<CloseIcon sx={{ fontSize: 12 }} />}
+                      sx={{
+                        height: 24,
+                        fontSize: '0.7rem',
+                        fontWeight: page.id === activePageId ? 600 : 400,
+                        cursor: 'pointer',
+                        '& .MuiChip-deleteIcon': { fontSize: 12, ml: 0 },
+                      }}
+                    />
+                  ))}
+                  <Tooltip title="New page" placement="top">
+                    <IconButton size="small" onClick={handleAddPage} sx={{ width: 22, height: 22, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover' } }}>
+                      <AddIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               </Box>
 
               {/* Resize handle - wider hit area for reliable dragging */}
@@ -2051,6 +2471,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={handleSaveCDX}>Save as CDX</MenuItem>
                         <Divider />
                         <MenuItem onClick={handleCopyForFindMolecule}>Copy for FindMolecule (paste into ELN)</MenuItem>
+                        <MenuItem onClick={handleDownloadMolForFindMolecule}>
+                          <SaveAltIcon sx={{ fontSize: 16, mr: 1, opacity: 0.7 }} />
+                          Download MOL for FindMolecule
+                        </MenuItem>
                         <MenuItem component="a" href="/findmolecule-setup" target="_blank" rel="noopener noreferrer" onClick={() => setExportMenuAnchor(null)} sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>Setup: Install extension & native host</MenuItem>
                       </Menu>
                       <Tooltip title="Document drawing settings">
@@ -2227,11 +2651,43 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                           }}
                         >Paste</Button>
                       </Tooltip>
-                      <Tooltip title="Layout">
+                      <Tooltip title="Layout (fix bond lengths & angles)">
                         <IconButton size="small" onClick={handleLayout} sx={{ width: 28, height: 28, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
                           <AutoFixHighIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title="Deep Clean (aromatize + clean + layout — ChemDraw-style)">
+                        <IconButton size="small" onClick={handleDeepClean} sx={{ width: 28, height: 28, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
+                          <CleaningServicesIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Expand abbreviation labels (Boc, Fmoc, Cbz, TBS…) into full structures">
+                        <IconButton size="small" onClick={handleExpandLabels} sx={{ width: 28, height: 28, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
+                          <UnfoldMoreIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Enlarge structure">
+                        <IconButton size="small" onClick={() => handleScaleStructure(1.25)} sx={{ width: 28, height: 28, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
+                          <ZoomInIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Compress structure">
+                        <IconButton size="small" onClick={() => handleScaleStructure(0.8)} sx={{ width: 28, height: 28, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
+                          <ZoomOutIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Add compound name/formula/MW below structure">
+                        <IconButton size="small" onClick={(e) => setTextBelowMenuAnchor(e.currentTarget)} sx={{ width: 28, height: 28, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
+                          <TextFieldsIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Menu anchorEl={textBelowMenuAnchor} open={!!textBelowMenuAnchor} onClose={() => setTextBelowMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }}>
+                        <MenuItem onClick={() => { setTextBelowMenuAnchor(null); handleAddTextBelowStructure('name'); }}>Paste compound name</MenuItem>
+                        <MenuItem onClick={() => { setTextBelowMenuAnchor(null); handleAddTextBelowStructure('formula'); }}>Paste molecular formula</MenuItem>
+                        <MenuItem onClick={() => { setTextBelowMenuAnchor(null); handleAddTextBelowStructure('mw'); }}>Paste molecular weight</MenuItem>
+                        <Divider />
+                        <MenuItem onClick={() => { setTextBelowMenuAnchor(null); handleAddTextBelowStructure('all'); }}>Paste all (name + formula + MW)</MenuItem>
+                      </Menu>
                       <Tooltip title="Align">
                         <IconButton size="small" onClick={(e) => setAlignMenuAnchor(e.currentTarget)} sx={{ width: 28, height: 28, color: 'text.secondary', '&:hover': { bgcolor: 'action.hover', color: 'text.primary' } }}>
                           <FormatAlignLeftIcon sx={{ fontSize: 16 }} />

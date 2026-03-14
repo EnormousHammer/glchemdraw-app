@@ -50,7 +50,7 @@
     "jszip": "^3.10.1",
     "ketcher-core": "3.12.0-rc.2",
     "ketcher-react": "3.12.0-rc.2",
-    "ketcher-standalone": "^3.8.0",
+    "ketcher-standalone": "^3.12.0-rc.2",
     "lodash": "^4.17.21",
     "nmr-predictor": "^1.2.0",
     "nmrium": "^1.6.1",

@@ -31,6 +31,7 @@ import {
   SelectAll as SelectAllIcon,
   ArrowForward as ArrowForwardIcon,
   Tune as TuneIcon,
+  Extension as ExtensionIcon,
 } from '@mui/icons-material';
 
 interface AppToolbarProps {
@@ -52,6 +53,8 @@ interface AppToolbarProps {
   onShortcutsClick?: () => void;
   onReactionsClick?: () => void;
   onFaqClick?: () => void;
+  /** Show "Install" chip for FindMolecule extension (web only) */
+  showFindMoleculeInstall?: boolean;
   onDocumentSettings?: () => void;
   onAiClick?: () => void;
   rightContent?: React.ReactNode;
@@ -77,6 +80,7 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
   onShortcutsClick,
   onReactionsClick,
   onFaqClick,
+  showFindMoleculeInstall = false,
   onDocumentSettings,
   onAiClick,
   rightContent,
@@ -240,6 +244,42 @@ const AppToolbar: React.FC<AppToolbarProps> = ({
         </>
 
         <Box sx={{ flexGrow: 1 }} />
+
+        {/* FindMolecule Install (web only) */}
+        {showFindMoleculeInstall && (
+          <Tooltip title="Install extension for paste into FindMolecule" arrow placement="bottom">
+            <Chip
+              icon={<ExtensionIcon sx={{ fontSize: 14, color: '#0f172a' }} />}
+              label="Install"
+              size="small"
+              variant="outlined"
+              component="a"
+              href="/findmolecule-setup"
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                height: 26,
+                bgcolor: 'white !important',
+                borderColor: 'rgba(255,255,255,0.4)',
+                color: '#0f172a !important',
+                cursor: 'pointer',
+                textDecoration: 'none',
+                '&:hover': {
+                  bgcolor: 'white !important',
+                  borderColor: 'rgba(255,255,255,0.7)',
+                  color: '#0f172a !important',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.5)',
+                  textDecoration: 'none',
+                  '& .MuiChip-icon': { color: '#0f172a !important' }
+                }
+              }}
+            />
+          </Tooltip>
+        )}
+
+        <Box sx={{ width: 8 }} />
 
         {/* Shortcuts */}
         {onShortcutsClick && (

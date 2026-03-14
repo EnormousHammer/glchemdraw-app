@@ -2119,6 +2119,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           onReactionsClick={() => setShowReactionHelpDialog(true)}
           onFaqClick={() => setShowFaqDialog(true)}
           onAiClick={() => aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          showFindMoleculeInstall={!isTauri}
         />
 
         {/* Main Content - Conditional View */}
@@ -3897,6 +3898,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           autoHideDuration={snackbarMessage?.toLowerCase().includes('not found') ? 6000 : 4000}
           onClose={() => setSnackbarOpen(false)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          action={
+            snackbarMessage?.includes('Install the Chrome extension') ? (
+              <Button color="inherit" size="small" href="/findmolecule-setup" target="_blank" rel="noopener noreferrer" onClick={() => setSnackbarOpen(false)}>
+                Setup
+              </Button>
+            ) : null
+          }
         >
           <Alert 
             onClose={() => setSnackbarOpen(false)} 

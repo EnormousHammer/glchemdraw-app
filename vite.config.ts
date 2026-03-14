@@ -163,10 +163,17 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],
-          'vendor-mui': ['@mui/material', '@emotion/react', '@emotion/styled'],
-          // ketcher-standalone is 74MB on disk – keep it out of the main chunk
-          // so the main bundle and ketcher chunks download in parallel
-          'vendor-ketcher': ['ketcher-core', 'ketcher-react', 'ketcher-standalone'],
+          // Bundle Ketcher with MUI/Emotion so macromolecules chunk (which imports from
+          // ketcher-react and uses styled(MUI components)) shares the same Emotion instance.
+          // Splitting vendor-ketcher separately caused __emotion_real undefined on Vercel.
+          'vendor-mui-ketcher': [
+            '@mui/material',
+            '@emotion/react',
+            '@emotion/styled',
+            'ketcher-core',
+            'ketcher-react',
+            'ketcher-standalone',
+          ],
           'vendor-nmrium': ['nmrium'],
         },
       },

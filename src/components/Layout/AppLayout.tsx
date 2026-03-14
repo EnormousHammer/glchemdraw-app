@@ -680,10 +680,39 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       return;
     }
 
-    // Browser: get CDXML (required) + Ketcher CDX (optional fallback), send to extension.
-    // Native host uses cdx-mol to convert CDXML → ChemDraw CDX (ClipboardWin compatible).
+    // Browser: get CDXML → send to local proxy → proxy writes CDX to Windows clipboard.
+    // No extension needed — the dev proxy (localhost:3001) handles clipboard via Python.
     try {
       const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
+      if (!cdxml?.trim()) {
+        setSnackbarMessage('No structure to copy');
+        setSnackbarSeverity('warning');
+        setSnackbarOpen(true);
+        return;
+      }
+
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apiUrl = isLocal ? 'http://localhost:3001/api/clipboard-cdx' : '/api/clipboard-cdx';
+
+      try {
+        const resp = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cdxml: cdxml.trim() }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+          setSnackbarMessage('Copied CDX to clipboard — paste (Ctrl+V) into FindMolecule');
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
+          return;
+        }
+        console.warn('[Copy for FindMolecule] Proxy clipboard failed:', result.error);
+      } catch (proxyErr) {
+        console.warn('[Copy for FindMolecule] Proxy unavailable:', (proxyErr as Error).message);
+      }
+
+      // Fallback 1: try the browser extension (if installed)
       const cdxBytes = await getStructureCdxBytes(ketcher);
       let cdxBase64: string | null = null;
       if (cdxBytes?.length) {
@@ -692,47 +721,36 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         cdxBase64 = btoa(b64);
       }
 
-      if (cdxml?.trim()) {
-        const done = new Promise<{ success: boolean; error?: string }>((resolve) => {
-          let resolved = false;
-          const handler = (e: Event) => {
-            if (resolved) return;
-            resolved = true;
-            document.removeEventListener('glchemdraw-copy-cdx-done', handler);
-            resolve((e as CustomEvent).detail || { success: false });
-          };
-          document.addEventListener('glchemdraw-copy-cdx-done', handler);
-          document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', {
-            detail: { cdxBase64, cdxml: cdxml.trim() },
-          }));
-          setTimeout(() => {
-            if (resolved) return;
-            resolved = true;
-            document.removeEventListener('glchemdraw-copy-cdx-done', handler);
-            resolve({ success: false, error: 'Extension or native host not installed' });
-          }, 3000);
-        });
+      const extResult = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+        let resolved = false;
+        const handler = (e: Event) => {
+          if (resolved) return;
+          resolved = true;
+          document.removeEventListener('glchemdraw-copy-cdx-done', handler);
+          resolve((e as CustomEvent).detail || { success: false });
+        };
+        document.addEventListener('glchemdraw-copy-cdx-done', handler);
+        document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', {
+          detail: { cdxBase64, cdxml: cdxml.trim() },
+        }));
+        setTimeout(() => {
+          if (resolved) return;
+          resolved = true;
+          document.removeEventListener('glchemdraw-copy-cdx-done', handler);
+          resolve({ success: false, error: 'Extension not installed' });
+        }, 2000);
+      });
 
-        const result = await done;
-        if (result.success) {
-          setSnackbarMessage('Copied – paste (Ctrl+V) into FindMolecule');
-          setSnackbarSeverity('success');
-          setSnackbarOpen(true);
-          return;
-        }
-      }
-
-      // Fallback: CDXML text (no extension). Install extension + cdx-mol for best results.
-      // CDXML paste may not work; use Save CDXML + upload, or Send to FindMolecule (URL).
-      if (cdxml?.trim()) {
-        await navigator.clipboard.writeText(cdxml.trim());
-        setSnackbarMessage('Copied CDXML. For FindMolecule: install extension, or use Save CDXML + upload, or Send to FindMolecule');
-        setSnackbarSeverity('info');
+      if (extResult.success) {
+        setSnackbarMessage('Copied CDX — paste (Ctrl+V) into FindMolecule');
+        setSnackbarSeverity('success');
         setSnackbarOpen(true);
         return;
       }
 
-      setSnackbarMessage('No structure to copy. Install extension + native host for FindMolecule paste.');
+      // Fallback 2: copy CDXML as plain text
+      await navigator.clipboard.writeText(cdxml.trim());
+      setSnackbarMessage('CDX clipboard failed (install cdx-mol + pywin32). Copied CDXML text as fallback.');
       setSnackbarSeverity('warning');
       setSnackbarOpen(true);
     } catch (e) {

@@ -441,6 +441,7 @@ export const ChemCanvas: React.FC<ChemCanvasProps> = ({
           structServiceProvider={structServiceProvider}
           onInit={(ketcher) => {
             editorRef.current = ketcher;
+            (window as any).__ketcher = ketcher;
             console.log('[ChemCanvas] Canvas initialized');
             
             // Ensure proper layout

@@ -29,6 +29,12 @@ def write_message(obj):
     sys.stdout.buffer.write(msg)
     sys.stdout.buffer.flush()
 
+def fix_ketcher_cdxml(cdxml):
+    """Ketcher uses charset='utf-8' which pycdxml doesn't recognize. Fix to iso-8859-1."""
+    import re
+    return re.sub(r'charset="utf-8"', 'charset="iso-8859-1"', cdxml)
+
+
 def cdxml_to_cdx_bytes(cdxml):
     """Convert CDXML to ChemDraw CDX using cdx-mol (ChemDraw-spec compatible)."""
     try:
@@ -41,6 +47,7 @@ def cdxml_to_cdx_bytes(cdxml):
                 return None, 'Install cdx-mol: pip install cdx-mol'
     except Exception as e:
         return None, str(e)
+    cdxml = fix_ketcher_cdxml(cdxml)
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.cdxml', delete=False, encoding='utf-8') as f:

@@ -10,11 +10,18 @@ import tempfile
 import base64
 import os
 
+def fix_ketcher_cdxml(cdxml):
+    """Ketcher uses charset='utf-8' which pycdxml doesn't recognize. Fix to iso-8859-1."""
+    import re
+    return re.sub(r'charset="utf-8"', 'charset="iso-8859-1"', cdxml)
+
+
 def main():
     cdxml = sys.stdin.read()
     if not cdxml.strip():
         sys.stderr.write("Error: No CDXML input\n")
         sys.exit(1)
+    cdxml = fix_ketcher_cdxml(cdxml)
 
     try:
         try:

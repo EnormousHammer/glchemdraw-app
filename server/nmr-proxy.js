@@ -172,6 +172,48 @@ app.post('/api/cdxml-to-cdx', async (req, res) => {
   }
 });
 
+/** Copy CDX to Windows clipboard (for FindMolecule paste). Local dev only. */
+app.post('/api/clipboard-cdx', async (req, res) => {
+  const { cdxml } = req.body || {};
+  if (!cdxml || typeof cdxml !== 'string') {
+    return res.status(400).json({ success: false, error: 'Missing or empty cdxml' });
+  }
+  const scriptPath = join(__dirname, '..', 'scripts', 'copy_cdx_to_clipboard.py');
+  if (!existsSync(scriptPath)) {
+    return res.status(500).json({ success: false, error: 'copy_cdx_to_clipboard.py not found' });
+  }
+  if (!cdxml.trim().startsWith('<?xml') && !cdxml.trim().startsWith('<CDXML')) {
+    return res.status(400).json({ success: false, error: 'Input does not look like CDXML' });
+  }
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const py = spawn('python', [scriptPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+      const timeout = setTimeout(() => { py.kill(); reject(new Error('Clipboard script timed out (15s)')); }, 15000);
+      py.stdin.write(JSON.stringify({ cdxml: cdxml.trim() }), 'utf8');
+      py.stdin.end();
+      const chunks = [];
+      const errChunks = [];
+      py.stdout.on('data', (c) => chunks.push(c));
+      py.stderr.on('data', (c) => errChunks.push(c));
+      py.on('close', (code) => {
+        clearTimeout(timeout);
+        const out = Buffer.concat(chunks).toString('utf8');
+        const err = Buffer.concat(errChunks).toString('utf8');
+        console.log('[clipboard-cdx] exit:', code, 'stdout:', out.slice(0, 200), 'stderr:', err.slice(0, 200));
+        try {
+          resolve(JSON.parse(out));
+        } catch {
+          reject(new Error(err || out || 'clipboard script failed'));
+        }
+      });
+    });
+    res.json(result);
+  } catch (e) {
+    console.error('[clipboard-cdx]', e?.message);
+    res.status(500).json({ success: false, error: e?.message || 'Clipboard write failed. Install: pip install cdx-mol pywin32' });
+  }
+});
+
 /** Debug: test OpenAI and return exact error on failure */
 app.get('/openai/debug', async (req, res) => {
   const apiKey = process.env.OPENAI_API_KEY;

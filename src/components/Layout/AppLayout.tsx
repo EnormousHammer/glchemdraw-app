@@ -700,6 +700,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ cdxml: cdxml.trim() }),
         });
+        const ct = resp.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          // 404 HTML or other non-JSON — fall through to extension
+          if (!resp.ok) console.warn('[Copy for FindMolecule] Proxy returned', resp.status, '— trying extension');
+          throw new Error('non-json');
+        }
         const result = await resp.json();
         if (result.success) {
           setSnackbarMessage('Copied CDX to clipboard — paste (Ctrl+V) into FindMolecule');
@@ -707,9 +713,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           setSnackbarOpen(true);
           return;
         }
-        console.warn('[Copy for FindMolecule] Proxy clipboard failed:', result.error);
+        // Proxy exists but clipboard failed (e.g. Vercel stub) — fall through to extension
+        if (!isLocal) console.info('[Copy for FindMolecule] Web: use extension or desktop app');
       } catch (proxyErr) {
-        console.warn('[Copy for FindMolecule] Proxy unavailable:', (proxyErr as Error).message);
+        if ((proxyErr as Error).message !== 'non-json') {
+          console.warn('[Copy for FindMolecule] Proxy unavailable:', (proxyErr as Error).message);
+        }
       }
 
       // Fallback 1: try the browser extension (if installed)
@@ -748,9 +757,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         return;
       }
 
-      // Fallback 2: copy CDXML as plain text
+      // Fallback 2: copy CDXML as plain text (FindMolecule won't paste it; user needs extension or desktop)
       await navigator.clipboard.writeText(cdxml.trim());
-      setSnackbarMessage('CDX clipboard failed (install cdx-mol + pywin32). Copied CDXML text as fallback.');
+      const onWeb = !isLocal;
+      setSnackbarMessage(
+        onWeb
+          ? 'Install the Chrome extension for paste into FindMolecule. Copied CDXML as fallback.'
+          : 'CDX clipboard failed (install cdx-mol + pywin32). Copied CDXML text as fallback.'
+      );
       setSnackbarSeverity('warning');
       setSnackbarOpen(true);
     } catch (e) {

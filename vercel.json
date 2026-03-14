@@ -24,6 +24,9 @@
     },
     "api/cdxml-to-cdx.py": {
       "maxDuration": 30
+    },
+    "api/clipboard-cdx.js": {
+      "maxDuration": 5
     }
   },
   "rewrites": [
@@ -33,6 +36,7 @@
     {"source": "/api/literature-proxy", "destination": "/api/literature-proxy.js"},
     {"source": "/api/structure-search-proxy", "destination": "/api/structure-search-proxy.js"},
     {"source": "/api/cdxml-to-cdx", "destination": "/api/cdxml-to-cdx.py"},
+    {"source": "/api/clipboard-cdx", "destination": "/api/clipboard-cdx.js"},
     {"source": "/findmolecule-setup", "destination": "/findmolecule-setup.html"},
     {"source": "/((?!api).*)", "destination": "/index.html"}
   ]

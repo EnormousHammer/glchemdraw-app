@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
@@ -6,36 +6,15 @@ const host = process.env.TAURI_DEV_HOST;
 // When building for ELN embed (e.g. GLCHEMDRAW_EMBED=1), use base path so assets load from /glchemdraw/
 const base = process.env.GLCHEMDRAW_EMBED ? '/glchemdraw/' : '/';
 
-// Ketcher lazily imports its macromolecules editor via dynamic import().
-// Vite discovers this at runtime and re-optimizes deps with a new hash,
-// creating a second React instance that crashes with "useRef is null".
-// This plugin converts the lazy import to a static one so the entire
-// module graph is known at initial optimization time.
-function ketcherEagerMacromolecules(): Plugin {
-  return {
-    name: 'ketcher-eager-macromolecules',
-    enforce: 'pre',
-    transform(code, id) {
-      if (!id.includes('ketcher-react') || !id.includes('index')) return;
-      if (!code.includes("import('./index.modern-")) return;
-      // Convert: lazy(function () { return import('./index.modern-HASH.js'); })
-      // Into:    a pre-imported module wrapped in a lazy-compatible promise
-      const match = code.match(/import\('(\.\/index\.modern-[^']+)'\)/);
-      if (!match) return;
-      const specifier = match[1];
-      const patched = `import * as __ketcherMacro from '${specifier}';\n` + code.replace(
-        `import('${specifier}')`,
-        `Promise.resolve(__ketcherMacro)`
-      );
-      return { code: patched, map: null };
-    },
-  };
-}
+// NOTE: We previously used ketcherEagerMacromolecules to convert lazy import to eager.
+// That caused a circular dependency: index.modern imports Icon/Input from ketcher-react
+// while ketcher-react was still loading, so styled(Icon) received undefined → __emotion_real.
+// Reverted to lazy loading; macromolecules loads on mode switch when ketcher-react is ready.
 
 // https://vite.dev/config/
 export default defineConfig({
   base,
-  plugins: [ketcherEagerMacromolecules(), react()],
+  plugins: [react()],
 
   // Define global variables for browser compatibility
   define: {

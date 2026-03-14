@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
@@ -6,15 +6,34 @@ const host = process.env.TAURI_DEV_HOST;
 // When building for ELN embed (e.g. GLCHEMDRAW_EMBED=1), use base path so assets load from /glchemdraw/
 const base = process.env.GLCHEMDRAW_EMBED ? '/glchemdraw/' : '/';
 
-// NOTE: We previously used ketcherEagerMacromolecules to convert lazy import to eager.
-// That caused a circular dependency: index.modern imports Icon/Input from ketcher-react
-// while ketcher-react was still loading, so styled(Icon) received undefined → __emotion_real.
-// Reverted to lazy loading; macromolecules loads on mode switch when ketcher-react is ready.
+// Ketcher's macromolecules editor is lazy-loaded. Two problems:
+// 1. Eager (static) import: index.modern loads before ketcher-react finishes → circular dep → styled(undefined) → __emotion_real
+// 2. Plain lazy import: Vite can re-optimize at runtime → second React instance → useRef is null
+// Fix: Defer import to next microtask so it runs AFTER ketcher-react finishes. No circular dep, and
+// the import is still dynamic so Vite knows the full graph at build time (no runtime re-optimization).
+function ketcherDeferredMacromolecules(): Plugin {
+  return {
+    name: 'ketcher-deferred-macromolecules',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.includes('ketcher-react') || !id.includes('index')) return;
+      if (!code.includes("import('./index.modern-")) return;
+      const match = code.match(/lazy\s*\(\s*function\s*\(\)\s*\{\s*return\s*import\s*\(\s*'(\.\/index\.modern-[^']+)'\s*\)\s*\}\s*\)/);
+      if (!match) return;
+      const specifier = match[1];
+      const patched = code.replace(
+        match[0],
+        `lazy(function () { return Promise.resolve().then(function () { return import('${specifier}'); }); })`
+      );
+      return { code: patched, map: null };
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   base,
-  plugins: [react()],
+  plugins: [ketcherDeferredMacromolecules(), react()],
 
   // Define global variables for browser compatibility
   define: {

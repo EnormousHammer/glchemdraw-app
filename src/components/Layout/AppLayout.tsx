@@ -680,8 +680,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       return;
     }
 
-    // Browser: get CDXML → send to local proxy → proxy writes CDX to Windows clipboard.
-    // No extension needed — the dev proxy (localhost:3001) handles clipboard via Python.
+    // Browser: get CDXML + MOL → send to local proxy → proxy writes CDX + MOL to Windows clipboard.
+    // ChemDraw-style: CDX in "ChemDraw Interchange Format", MOL in CF_UNICODETEXT (FindMolecule expects MOL).
     try {
       const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
       if (!cdxml?.trim()) {
@@ -690,6 +690,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         setSnackbarOpen(true);
         return;
       }
+      const mol = await getStructureMolfile(ketcher);
 
       const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const apiUrl = isLocal ? 'http://localhost:3001/api/clipboard-cdx' : '/api/clipboard-cdx';
@@ -698,7 +699,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         const resp = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cdxml: cdxml.trim() }),
+          body: JSON.stringify({ cdxml: cdxml.trim(), mol: mol?.trim() || '' }),
         });
         const ct = resp.headers.get('content-type') || '';
         if (!ct.includes('application/json')) {
@@ -740,7 +741,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
         };
         document.addEventListener('glchemdraw-copy-cdx-done', handler);
         document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', {
-          detail: { cdxBase64, cdxml: cdxml.trim() },
+          detail: { cdxBase64, cdxml: cdxml.trim(), mol: mol?.trim() || '' },
         }));
         setTimeout(() => {
           if (resolved) return;
@@ -905,11 +906,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           atom.pp.y = cy + (atom.pp.y - cy) * factor;
         }
       });
-      // Force the renderer to re-render from updated struct coordinates
-      ed.render.update(true);
-      const pct = Math.round(factor * 100);
-      const label = factor > 1 ? 'enlarged' : 'compressed';
-      setSnackbarMessage(`Structure ${label} to ${pct}%`);
+      // Apply scaled struct to renderer (update(true) alone does not refresh from modified struct)
+      ed.render.setMolecule(st);
+      const label = factor > 1 ? 'Structure enlarged' : 'Structure compressed';
+      setSnackbarMessage(label);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (err) {
@@ -1052,22 +1052,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
     }
   }, [recognizedCompound, chemicalData, aiIupacName]);
 
-  // Save current canvas state (KET fallback to molfile)
+  // Save current canvas state. Use molfile (not KET) so restorePageData can use setMolecule.
   const saveCurrentPageData = useCallback(async (): Promise<string | null> => {
     const ketcher = ketcherRef.current;
     if (!ketcher) return null;
     try {
-      const ket = await ketcher.getKet?.();
-      if (ket?.trim()) return ket;
-    } catch (_) {}
-    try {
       const mol = await ketcher.getMolfile?.();
       if (mol?.trim()) return mol;
+    } catch (_) {}
+    try {
+      const ket = await ketcher.getKet?.();
+      if (ket?.trim()) return ket;
     } catch (_) {}
     return null;
   }, []);
 
-  // Restore canvas from saved data (handles KET or molfile)
+  // Restore canvas from saved data (molfile or SMILES; setMolecule does not accept KET)
   const restorePageData = useCallback(async (data: string | null) => {
     const ketcher = ketcherRef.current;
     if (!ketcher) return;
@@ -3892,12 +3892,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           })()}
         </Box>
 
-        {/* Snackbar for notifications — longer for "not found" so user sees it */}
+        {/* Snackbar for notifications — visible bottom-right, 8s so user sees confirmations */}
         <Snackbar
           open={snackbarOpen}
-          autoHideDuration={snackbarMessage?.toLowerCase().includes('not found') ? 6000 : 4000}
+          autoHideDuration={snackbarMessage?.toLowerCase().includes('not found') ? 8000 : 8000}
           onClose={() => setSnackbarOpen(false)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          data-testid="snackbar"
           action={
             snackbarMessage?.includes('Install the Chrome extension') ? (
               <Button color="inherit" size="small" href="/findmolecule-setup" target="_blank" rel="noopener noreferrer" onClick={() => setSnackbarOpen(false)}>
@@ -3909,7 +3910,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
           <Alert 
             onClose={() => setSnackbarOpen(false)} 
             severity={snackbarSeverity}
-            sx={{ width: '100%' }}
+            sx={{ width: '100%', minWidth: 280, fontSize: '0.95rem', boxShadow: 3 }}
+            data-testid="snackbar-message"
           >
             {snackbarMessage}
           </Alert>

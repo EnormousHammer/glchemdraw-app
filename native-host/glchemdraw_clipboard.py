@@ -4,7 +4,7 @@ Chrome Native Messaging Host for GL-ChemDraw.
 Receives CDXML (required) and optional Ketcher CDX (base64) from the extension.
 Puts on Windows clipboard (ChemDraw-style):
   - CDX in "ChemDraw Interchange Format" (for ClipboardWin) – uses cdx-mol for ChemDraw compatibility
-  - CDXML as text/plain (browser paste fallback)
+  - MOL in CF_UNICODETEXT (FindMolecule expects this; ChemDraw uses MOL here, not CDXML)
 
 Priority: CDXML → cdx-mol conversion (ChemDraw-spec CDX) > Ketcher CDX fallback.
 Requires: pip install pywin32, pip install cdx-mol (for best FindMolecule compatibility)
@@ -77,6 +77,7 @@ def main():
             return
         data = json.loads(raw)
         cdxml = (data.get('cdxml') or '').strip()
+        mol = (data.get('mol') or '').strip()
         cdx_b64 = data.get('cdx') or data.get('cdxBase64') or ''
         if not cdxml and not cdx_b64:
             write_message({'success': False, 'error': 'Missing cdxml or cdx field'})
@@ -116,8 +117,10 @@ def main():
         try:
             win32clipboard.EmptyClipboard()
             win32clipboard.SetClipboardData(fmt_cdx, cdx_bytes)
-            if cdxml:
-                win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, cdxml)
+            # ChemDraw puts MOL in CF_UNICODETEXT; FindMolecule expects this for paste.
+            text_for_clipboard = mol if mol else cdxml
+            if text_for_clipboard:
+                win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text_for_clipboard)
             write_message({'success': True})
         finally:
             win32clipboard.CloseClipboard()

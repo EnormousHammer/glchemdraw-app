@@ -172,9 +172,9 @@ app.post('/api/cdxml-to-cdx', async (req, res) => {
   }
 });
 
-/** Copy CDX to Windows clipboard (for FindMolecule paste). Local dev only. */
+/** Copy CDX + MOL to Windows clipboard (for FindMolecule paste). Local dev only. ChemDraw-style: CDX + MOL in CF_UNICODETEXT. */
 app.post('/api/clipboard-cdx', async (req, res) => {
-  const { cdxml } = req.body || {};
+  const { cdxml, mol } = req.body || {};
   if (!cdxml || typeof cdxml !== 'string') {
     return res.status(400).json({ success: false, error: 'Missing or empty cdxml' });
   }
@@ -189,7 +189,7 @@ app.post('/api/clipboard-cdx', async (req, res) => {
     const result = await new Promise((resolve, reject) => {
       const py = spawn('python', [scriptPath], { stdio: ['pipe', 'pipe', 'pipe'] });
       const timeout = setTimeout(() => { py.kill(); reject(new Error('Clipboard script timed out (15s)')); }, 15000);
-      py.stdin.write(JSON.stringify({ cdxml: cdxml.trim() }), 'utf8');
+      py.stdin.write(JSON.stringify({ cdxml: cdxml.trim(), mol: (mol && typeof mol === 'string') ? mol.trim() : '' }), 'utf8');
       py.stdin.end();
       const chunks = [];
       const errChunks = [];

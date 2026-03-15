@@ -9,6 +9,7 @@
     const detail = ev.detail || {};
     const cdxBase64 = detail.cdxBase64 || null;
     const cdxml = detail.cdxml || null;
+    const mol = detail.mol || null;
     if (!cdxml && !cdxBase64) {
       dispatchDone(false, 'Missing CDXML or CDX data');
       return;
@@ -19,6 +20,7 @@
         type: 'copy-cdx',
         cdxBase64: cdxBase64,
         cdxml: cdxml,
+        mol: mol,
       });
       if (response && response.success) {
         dispatchDone(true);

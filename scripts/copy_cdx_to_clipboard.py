@@ -3,8 +3,9 @@
 Write CDX binary to the Windows clipboard as "ChemDraw Interchange Format".
 Used by the NMR proxy to enable FindMolecule paste from the browser.
 
-Reads JSON from stdin: { "cdxml": "<cdxml string>" }
+Reads JSON from stdin: { "cdxml": "<cdxml string>", "mol": "<molfile string>" }.
 Converts CDXML → CDX via cdx-mol, then writes to clipboard using pywin32.
+ChemDraw-style: CDX in "ChemDraw Interchange Format", MOL in CF_UNICODETEXT (FindMolecule expects MOL).
 
 Requires: pip install cdx-mol pywin32
 """
@@ -61,6 +62,7 @@ def main():
         return
 
     cdxml = (data.get('cdxml') or '').strip()
+    mol = (data.get('mol') or '').strip()
     if not cdxml:
         json.dump({'success': False, 'error': 'Missing cdxml'}, sys.stdout)
         return
@@ -76,13 +78,16 @@ def main():
         json.dump({'success': False, 'error': 'Install pywin32: pip install pywin32'}, sys.stdout)
         return
 
+    # ChemDraw puts MOL in CF_UNICODETEXT; FindMolecule expects this for paste. Use MOL if available, else CDXML.
+    text_for_clipboard = mol if mol else cdxml
+
     try:
         fmt_cdx = win32clipboard.RegisterClipboardFormat('ChemDraw Interchange Format')
         win32clipboard.OpenClipboard()
         try:
             win32clipboard.EmptyClipboard()
             win32clipboard.SetClipboardData(fmt_cdx, cdx_bytes)
-            win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, cdxml)
+            win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text_for_clipboard)
         finally:
             win32clipboard.CloseClipboard()
         json.dump({'success': True}, sys.stdout)

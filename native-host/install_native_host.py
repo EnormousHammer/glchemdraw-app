@@ -59,16 +59,23 @@ def main():
     with open(manifest_path, 'w', encoding='utf-8') as f:
         json.dump(manifest, f, indent=2)
 
-    # Register in Chrome native messaging (HKCU = current user, no admin)
-    try:
-        import winreg
-        key_path = r'Software\Google\Chrome\NativeMessagingHosts\com.glchemdraw.clipboard'
-        key = winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(key, None, 0, manifest_path)
-        winreg.CloseKey(key)
-    except Exception as e:
-        print(f'Warning: Could not register in registry: {e}')
-        print('You may need to run as Administrator.')
+    # Register in native messaging for Chrome, Edge, and Comet (HKCU = current user, no admin)
+    import winreg
+    reg_paths = [
+        r'Software\Google\Chrome\NativeMessagingHosts\com.glchemdraw.clipboard',
+        r'Software\Microsoft\Edge\NativeMessagingHosts\com.glchemdraw.clipboard',
+        r'Software\Comet\NativeMessagingHosts\com.glchemdraw.clipboard',
+    ]
+    for key_path in reg_paths:
+        try:
+            key = winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
+            winreg.SetValueEx(key, None, 0, manifest_path)
+            winreg.CloseKey(key)
+            browser = key_path.split('\\')[-3] if '\\' in key_path else 'browser'
+            print(f'  Registered for {browser}')
+        except Exception as e:
+            browser = key_path.split('\\')[-3] if '\\' in key_path else 'browser'
+            print(f'  Skip {browser}: {e}')
 
     print('')
     print('GL-ChemDraw clipboard host installed successfully!')

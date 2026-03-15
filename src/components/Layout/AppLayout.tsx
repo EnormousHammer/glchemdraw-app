@@ -666,7 +666,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
 
   const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
-  // Copy for FindMolecule: desktop uses Tauri; browser uses Ketcher CDX + Chrome extension + native host.
+  // Copy for FindMolecule: desktop uses Tauri (CDX); browser copies MOL to clipboard (zero setup).
   const handleCopyForFindMolecule = useCallback(async () => {
     const ketcher = ketcherRef.current;
     if (!ketcher) {
@@ -680,93 +680,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
       return;
     }
 
-    // Browser: get CDXML + MOL → send to local proxy → proxy writes CDX + MOL to Windows clipboard.
-    // ChemDraw-style: CDX in "ChemDraw Interchange Format", MOL in CF_UNICODETEXT (FindMolecule expects MOL).
+    // Browser: copy MOL to clipboard. Works everywhere with zero setup — just paste (Ctrl+V) in FindMolecule.
     try {
-      const cdxml = ketcher?.getCDXml ? await ketcher.getCDXml() : null;
-      if (!cdxml?.trim()) {
+      const mol = await getStructureMolfile(ketcher);
+      if (!mol?.trim()) {
         setSnackbarMessage('No structure to copy');
         setSnackbarSeverity('warning');
         setSnackbarOpen(true);
         return;
       }
-      const mol = await getStructureMolfile(ketcher);
 
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const apiUrl = isLocal ? 'http://localhost:3001/api/clipboard-cdx' : '/api/clipboard-cdx';
-
-      try {
-        const resp = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cdxml: cdxml.trim(), mol: mol?.trim() || '' }),
-        });
-        const ct = resp.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) {
-          // 404 HTML or other non-JSON — fall through to extension
-          if (!resp.ok) console.warn('[Copy for FindMolecule] Proxy returned', resp.status, '— trying extension');
-          throw new Error('non-json');
-        }
-        const result = await resp.json();
-        if (result.success) {
-          setSnackbarMessage('Copied CDX to clipboard — paste (Ctrl+V) into FindMolecule');
-          setSnackbarSeverity('success');
-          setSnackbarOpen(true);
-          return;
-        }
-        // Proxy exists but clipboard failed (e.g. Vercel stub) — fall through to extension
-        if (!isLocal) console.info('[Copy for FindMolecule] Web: use extension or desktop app');
-      } catch (proxyErr) {
-        if ((proxyErr as Error).message !== 'non-json') {
-          console.warn('[Copy for FindMolecule] Proxy unavailable:', (proxyErr as Error).message);
-        }
-      }
-
-      // Fallback 1: try the browser extension (if installed)
-      const cdxBytes = await getStructureCdxBytes(ketcher);
-      let cdxBase64: string | null = null;
-      if (cdxBytes?.length) {
-        let b64 = '';
-        for (let i = 0; i < cdxBytes.length; i++) b64 += String.fromCharCode(cdxBytes[i]);
-        cdxBase64 = btoa(b64);
-      }
-
-      const extResult = await new Promise<{ success: boolean; error?: string }>((resolve) => {
-        let resolved = false;
-        const handler = (e: Event) => {
-          if (resolved) return;
-          resolved = true;
-          document.removeEventListener('glchemdraw-copy-cdx-done', handler);
-          resolve((e as CustomEvent).detail || { success: false });
-        };
-        document.addEventListener('glchemdraw-copy-cdx-done', handler);
-        document.dispatchEvent(new CustomEvent('glchemdraw-copy-cdx', {
-          detail: { cdxBase64, cdxml: cdxml.trim(), mol: mol?.trim() || '' },
-        }));
-        setTimeout(() => {
-          if (resolved) return;
-          resolved = true;
-          document.removeEventListener('glchemdraw-copy-cdx-done', handler);
-          resolve({ success: false, error: 'Extension not installed' });
-        }, 2000);
-      });
-
-      if (extResult.success) {
-        setSnackbarMessage('Copied CDX — paste (Ctrl+V) into FindMolecule');
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-        return;
-      }
-
-      // Fallback 2: copy CDXML as plain text (FindMolecule won't paste it; user needs extension or desktop)
-      await navigator.clipboard.writeText(cdxml.trim());
-      const onWeb = !isLocal;
-      setSnackbarMessage(
-        onWeb
-          ? 'Install the Chrome extension for paste into FindMolecule. Copied CDXML as fallback.'
-          : 'CDX clipboard failed (install cdx-mol + pywin32). Copied CDXML text as fallback.'
-      );
-      setSnackbarSeverity('warning');
+      await navigator.clipboard.writeText(mol.trim());
+      setSnackbarMessage('Copied MOL. Paste in FindMolecule (paste often fails — use Download MOL instead).');
+      setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (e) {
       setSnackbarMessage((e as Error).message);
@@ -2503,12 +2429,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         <MenuItem onClick={handleCopyAsKET}>Copy as KET</MenuItem>
                         <MenuItem onClick={handleSaveCDX}>Save as CDX</MenuItem>
                         <Divider />
-                        <MenuItem onClick={handleCopyForFindMolecule}>Copy for FindMolecule (paste into ELN)</MenuItem>
                         <MenuItem onClick={handleDownloadMolForFindMolecule}>
                           <SaveAltIcon sx={{ fontSize: 16, mr: 1, opacity: 0.7 }} />
                           Download MOL for FindMolecule
                         </MenuItem>
-                        <MenuItem component="a" href="/findmolecule-setup" target="_blank" rel="noopener noreferrer" onClick={() => setExportMenuAnchor(null)} sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>Setup: Install extension & native host</MenuItem>
+                        <MenuItem onClick={handleCopyForFindMolecule} sx={{ color: 'text.secondary' }}>Copy for FindMolecule (paste unreliable)</MenuItem>
                       </Menu>
                       <Tooltip title="Document drawing settings">
                         <Button
@@ -2893,7 +2818,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                         justifyContent: 'space-between', 
                         alignItems: 'center', 
                         gap: 1,
-                        minWidth: 0,
+                        minWidth: 0,  
                         p: 0.5,
                         borderRadius: 1,
                         cursor: 'pointer',
@@ -4150,7 +4075,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onSearchByName }) => {
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: 1, display: 'block', mb: 1.5 }}>FindMolecule ELN</Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Export → Copy for FindMolecule (paste into ELN). Install the Chrome extension + native host for browser clipboard. Desktop: uses native clipboard directly.
+                    Export → Download MOL for FindMolecule. (FindMolecule paste is unreliable.)
                   </Typography>
                 </Box>
                 <Box sx={{ mb: 2 }}>
